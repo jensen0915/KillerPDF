@@ -5,9 +5,11 @@
 Each language is a single XAML `ResourceDictionary` file in this folder. The filename must be the BCP 47 language tag for the locale:
 
 - `en-US.xaml` - English (US)
-- `es.xaml` - Spanish
-- `zh-TW.xaml` - Traditional Chinese
 - `bn.xaml` - Bengali
+- `zh-CN.xaml` - Simplified Chinese
+- `zh-TW.xaml` - Traditional Chinese
+- `de-DE.xaml` - German
+- `es.xaml` - Spanish
 - `tr-TR.xaml` - Turkish
 
 ## How to contribute

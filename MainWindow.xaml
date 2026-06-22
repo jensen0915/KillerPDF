@@ -8,14 +8,27 @@
         Title="KillerPDF" Height="700" Width="1000" MinHeight="480" MinWidth="620"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
-        AllowsTransparency="True"
         ResizeMode="CanResize"
-        Background="Transparent"
+        Background="{DynamicResource BgDark}"
         FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
+
+    <!-- Hardware-accelerated custom chrome. Dropping AllowsTransparency lets WPF composite the
+         whole window on the GPU again (the film grain + drop shadows were being software-rendered
+         every frame, which made dragging/animation jumpy). WindowChrome gives native drag, snap,
+         resize and the OS drop shadow; the title bar (row 0, 36px) becomes the caption and the
+         min/max/close buttons opt back into hit-testing with IsHitTestVisibleInChrome. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="36"
+                      ResizeBorderThickness="8"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      NonClientFrameEdges="None"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
 
     <Window.Resources>
         <!-- Brush keys come from Application.Resources (theme dicts) via DynamicResource.
@@ -42,7 +55,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
             <Setter Property="Effect">
                 <Setter.Value>
-                    <DropShadowEffect Color="Black" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="0.5"/>
+                    <DropShadowEffect Color="Black" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="{DynamicResource HeaderShadowOpacity}"/>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -56,7 +69,7 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Effect">
                 <Setter.Value>
-                    <DropShadowEffect Color="Black" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="0.55"/>
+                    <DropShadowEffect Color="Black" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="{DynamicResource HeaderShadowOpacity}"/>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -958,6 +971,12 @@
 
     </Window.Resources>
 
+    <Grid x:Name="WindowRootGrid">
+    <!-- Static shadow silhouette behind the live content. The window drop shadow is cast here, not as an
+         Effect on RootBorder, so animating content inside the window (e.g. the Settings slide) doesn't
+         force the whole surface to re-blur every frame. Margin / corner radius / visibility / effect are
+         managed in UpdateWindowChrome. -->
+    <Border x:Name="WindowShadowBorder" Background="{DynamicResource BgDark}" CornerRadius="7" IsHitTestVisible="False"/>
     <Border x:Name="RootBorder" BorderBrush="{DynamicResource PaneBorder}" BorderThickness="1" Background="{DynamicResource BgDark}" CornerRadius="7">
     <!-- Starts invisible; revealed (fade-in) only after the final shadow/fade positioning pass in
          ContentRendered, so the unpositioned first frame (the "load deform") is never shown. -->
@@ -971,9 +990,10 @@
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
+        <!-- WindowChrome.CaptionHeight makes this row the draggable caption (native drag + double-click
+             maximize), so the explicit MouseLeftButtonDown drag handler is no longer wired. -->
         <Border Grid.Row="0" x:Name="TitleBarBorder" Background="{DynamicResource BgSidebar}" BorderThickness="0"
-                CornerRadius="7,7,0,0"
-                MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                CornerRadius="7,7,0,0">
             <Grid>
             <Border IsHitTestVisible="False" Opacity="{DynamicResource GrainOpacity}" Background="{StaticResource GrainBrushShared}"/>
             <Grid>
@@ -1000,9 +1020,9 @@
                            Margin="16,0,12,0" TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource TextSecondary}" FontFamily="Consolas" FontSize="11"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="&#xE921;" Click="MinimizeBtn_Click" Style="{StaticResource ChromeButton}"/>
-                    <Button Content="&#xE922;" Click="MaximizeBtn_Click" Style="{StaticResource ChromeButton}"/>
-                    <Button Content="&#xE8BB;" Click="CloseBtn_Click" Style="{StaticResource ChromeCloseButton}"/>
+                    <Button Content="&#xE921;" Click="MinimizeBtn_Click" Style="{StaticResource ChromeButton}" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="&#xE922;" Click="MaximizeBtn_Click" Style="{StaticResource ChromeButton}" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Button Content="&#xE8BB;" Click="CloseBtn_Click" Style="{StaticResource ChromeCloseButton}" WindowChrome.IsHitTestVisibleInChrome="True"/>
                 </StackPanel>
             </Grid>
             </Grid>
@@ -1841,6 +1861,19 @@
                                                        Foreground="{DynamicResource TextSecondary}"/>
                                         </Grid>
                                     </RadioButton>
+                                    <RadioButton x:Name="LangDeRadio" GroupName="LangGroup" Style="{StaticResource ThemeRadio}"
+                                                 Checked="LangDeRadio_Checked">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Deutsch" VerticalAlignment="Center"
+                                                       FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI"/>
+                                            <TextBlock Grid.Column="1" Text="de-DE" Margin="12,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                       Foreground="{DynamicResource TextSecondary}"/>
+                                        </Grid>
+                                    </RadioButton>
                                     <RadioButton x:Name="LangEsRadio" GroupName="LangGroup" Style="{StaticResource ThemeRadio}"
                                                  Checked="LangEsRadio_Checked">
                                         <Grid>
@@ -2447,4 +2480,5 @@
 
     </Grid>
     </Border>
+    </Grid>
 </Window>

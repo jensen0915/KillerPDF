@@ -310,16 +310,16 @@ namespace KillerPDF
             MainContentGrid.SizeChanged += (_, _) =>
             {
                 if (SettingsOverlay.Visibility == Visibility.Visible) PositionSettingsPanel();
-                UpdateTabStripFade();
+                ScheduleFadeRefresh();
             };
             // The sidebar column resizes via the splitter / collapse; track its width so the tab-strip
             // shadow gradient stays clipped to the document column.
             if (FindName("SidebarOuterGrid") is FrameworkElement sidebarOuter)
-                sidebarOuter.SizeChanged += (_, _) => UpdateTabStripFade();
+                sidebarOuter.SizeChanged += (_, _) => ScheduleFadeRefresh();
             // The footer shadow tracks the document pane's actual position; re-anchor when it (or the
             // tab strip, which shifts the document) changes size.
-            DocPaneBorder.SizeChanged += (_, _) => UpdateFooterFade();
-            TabStripBorder.SizeChanged += (_, _) => { UpdateTabStripFade(); ScheduleTabReflow(); };
+            DocPaneBorder.SizeChanged += (_, _) => ScheduleFadeRefresh();
+            TabStripBorder.SizeChanged += (_, _) => { ScheduleFadeRefresh(); ScheduleTabReflow(); };
             // After a sidebar-splitter drag, snap fully closed if dragged too narrow, else save the width.
             SidebarSplitter.PreviewMouseLeftButtonUp += (_, _) => OnSidebarResized();
             // Grabbing the splitter while collapsed reveals the page list so it can be pulled open.
@@ -470,6 +470,7 @@ namespace KillerPDF
             LangZhCNRadio.IsChecked = curLoc == KillerPDF.Services.Locale.ZhCN;
             LangBnRadio.IsChecked   = curLoc == KillerPDF.Services.Locale.Bn;
             LangTrRadio.IsChecked   = curLoc == KillerPDF.Services.Locale.TrTR;
+            LangDeRadio.IsChecked   = curLoc == KillerPDF.Services.Locale.De;
             LangCurrentLabel.Text   = LangDisplayName(curLoc);
             // Sync view mode radios
             ViewSingleRadio.IsChecked     = _viewMode == ViewMode.Single;
@@ -828,6 +829,7 @@ namespace KillerPDF
         private void LangZhCNRadio_Checked(object sender, RoutedEventArgs e) => SelectLocale(KillerPDF.Services.Locale.ZhCN);
         private void LangBnRadio_Checked(object sender, RoutedEventArgs e)   => SelectLocale(KillerPDF.Services.Locale.Bn);
         private void LangTrRadio_Checked(object sender, RoutedEventArgs e)   => SelectLocale(KillerPDF.Services.Locale.TrTR);
+        private void LangDeRadio_Checked(object sender, RoutedEventArgs e)   => SelectLocale(KillerPDF.Services.Locale.De);
 
         private void SelectLocale(KillerPDF.Services.Locale loc)
         {
@@ -879,6 +881,7 @@ namespace KillerPDF
             KillerPDF.Services.Locale.ZhCN => "中文 (简体)",
             KillerPDF.Services.Locale.Bn   => "বাংলা",
             KillerPDF.Services.Locale.TrTR => "Türkçe",
+            KillerPDF.Services.Locale.De   => "Deutsch",
             _                              => "English",
         };
 
@@ -1101,7 +1104,41 @@ namespace KillerPDF
 
         // ── Responsive toolbar overflow ───────────────────────────────────
         private bool _reflowingToolbar;
-        private void ToolbarGrid_SizeChanged(object sender, SizeChangedEventArgs e) => ReflowToolbar();
+        private bool _reflowQueued;
+
+        // ReflowToolbar decides which toolbar groups collapse into the overflow chevron. It must run
+        // live during a window resize (deferring it leaves buttons overlapping mid-drag), so the cost is
+        // kept low two ways: SizeChanged is coalesced to at most one reflow per render tick, and the
+        // reflow re-measures only the two bars instead of forcing repeated whole-tree UpdateLayout passes.
+        private void ToolbarGrid_SizeChanged(object sender, SizeChangedEventArgs e) => QueueReflowToolbar();
+
+        private void QueueReflowToolbar()
+        {
+            if (_reflowQueued) return;
+            _reflowQueued = true;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, (Action)(() =>
+            {
+                _reflowQueued = false;
+                ReflowToolbar();
+            }));
+        }
+
+        // The tab-strip and footer grain fades each allocate a gradient brush, run a TransformToVisual
+        // query, and reset an OpacityMask. Several SizeChanged handlers (window, sidebar, doc pane, tab
+        // strip) drive them, so during a live resize they fired multiple times per frame - synchronous
+        // UI-thread work that widened the WPF frame/content desync and made the whole window thrash.
+        // Coalesce every resize-driven fade refresh into a single pass per render tick.
+        private bool _fadeRefreshQueued;
+        private void ScheduleFadeRefresh()
+        {
+            if (_fadeRefreshQueued) return;
+            _fadeRefreshQueued = true;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, (Action)(() =>
+            {
+                _fadeRefreshQueued = false;
+                UpdateTabStripFade();   // also refreshes the footer fade
+            }));
+        }
 
         // Collapses lower-priority button groups into the overflow popup when the toolbar runs
         // out of room, and restores them when there is space again. Keeps the left/right layout.
@@ -1137,7 +1174,7 @@ namespace KillerPDF
                     grp.Visibility = Visibility.Visible;
                     foreach (var it in items) it.Visibility = Visibility.Collapsed;
                 }
-                ToolbarGrid.UpdateLayout();
+                MeasureToolbarBars();
 
                 double avail = ToolbarGrid.ActualWidth;
 
@@ -1175,7 +1212,7 @@ namespace KillerPDF
                         if (ReferenceEquals(grp, activeToolBar)) continue;   // never collapse the active tool
                         grp.Visibility = Visibility.Collapsed;          // pull this group out of the bar
                         foreach (var it in items) it.Visibility = Visibility.Visible;  // ...into the popup
-                        ToolbarGrid.UpdateLayout();
+                        MeasureToolbarBars();
                         if (LeftBar.DesiredSize.Width + RightContainer.DesiredSize.Width + 30 <= avail) break;
                     }
                 }
@@ -1202,6 +1239,22 @@ namespace KillerPDF
             finally { _reflowingToolbar = false; }
         }
 
+        private static readonly Size ToolbarMeasureBudget = new Size(double.PositiveInfinity, double.PositiveInfinity);
+
+        // Re-measures ONLY the two toolbar bars to refresh their DesiredSize, instead of calling
+        // ToolbarGrid.UpdateLayout() - which forces a synchronous Measure+Arrange of the ENTIRE visual
+        // tree. The reflow only needs each bar's natural width to decide what fits, so a measure-only
+        // pass on the bars is enough and far cheaper. This is what lets the reflow run live on every
+        // resize frame (no deferral, so no mid-drag button overlap) without thrashing the window.
+        // WPF re-arranges the bars with their real constraint on the next normal layout pass.
+        private void MeasureToolbarBars()
+        {
+            LeftBar.InvalidateMeasure();
+            RightContainer.InvalidateMeasure();
+            LeftBar.Measure(ToolbarMeasureBudget);
+            RightContainer.Measure(ToolbarMeasureBudget);
+        }
+
         private void OverflowItem_Click(object sender, RoutedEventArgs e)
         {
             OverflowChevron.IsChecked = false;   // close the flyout after a choice is made
@@ -1211,12 +1264,21 @@ namespace KillerPDF
         private const int  WM_DPICHANGED      = 0x02E0;
         private const int  WM_ENTERSIZEMOVE   = 0x0231;
         private const int  WM_EXITSIZEMOVE    = 0x0232;
+        private const int  WM_ERASEBKGND      = 0x0014;
         private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const uint SWP_NOZORDER       = 0x0004;
         private const uint SWP_NOACTIVATE     = 0x0010;
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (msg == WM_ERASEBKGND)
+            {
+                // WPF paints the whole client area itself, so let nothing erase the background to a flat
+                // fill underneath it during a resize - that erase is a flash that reads as part of the
+                // edge "jitter". Claim the message as handled and report success (1) without painting.
+                handled = true;
+                return new IntPtr(1);
+            }
             if (msg == WM_GETMINMAXINFO)
             {
                 WmGetMinMaxInfo(hwnd, lParam);
@@ -1253,11 +1315,9 @@ namespace KillerPDF
                         if (idx >= 0) RenderPage(idx);
                     }));
             }
-            else if (msg == WM_NCHITTEST && WindowState == WindowState.Normal)
-            {
-                int ht = WmNcHitTest(hwnd, lParam);
-                if (ht != 0) { handled = true; return new IntPtr(ht); }
-            }
+            // WM_NCHITTEST is no longer handled here: WindowChrome.ResizeBorderThickness now provides
+            // native edge/corner resize. WmNcHitTest / IsOverScrollBar are retained (unused) for now and
+            // will be removed in the chrome-code cleanup pass once the migration is verified.
             return IntPtr.Zero;
         }
 
@@ -1562,55 +1622,87 @@ namespace KillerPDF
             RepositionAnnotationBars();
         }
 
-        // Applies corner rounding, the frame border, and the content clip for the current window
-        // layout: floating = rounded; maximized or snapped = squared.
+        // Applies the frame border and corner treatment for the current window layout.
+        // Under WindowChrome the window is a real (opaque, GPU-composited) HWND: the OS draws the
+        // drop shadow, and on Windows 11 the OS rounds the window corners (via DwmSetWindowAttribute
+        // below). So the app content fills a SQUARE client rect - the old transparent shadow margin,
+        // the fake WindowShadowBorder silhouette, and the internal rounded clip are all retired.
+        private bool? _appliedSquared;   // last state pushed to the chrome; guards per-frame churn
         private void UpdateWindowChrome()
         {
             bool max     = WindowState == WindowState.Maximized;
             bool squared = max || IsSnapped();
-            _chromeSquared = squared;   // read by WmNcHitTest to inset the resize grips past the shadow margin
-            int  radius  = squared ? 0 : 7;
-            if (RootBorder != null)     RootBorder.CornerRadius     = new CornerRadius(radius);
-            if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(radius, radius, 0, 0);
-            if (FooterBorder != null)   FooterBorder.CornerRadius   = new CornerRadius(0, 0, radius, radius);
-            // Close button's hover fill follows the same top-right corner as the title bar.
-            Resources["ChromeCloseCorner"] = new CornerRadius(0, radius, 0, 0);
-            // Only a maximized window drops the 1px floating frame (it's flush to every screen edge).
-            // A snapped window keeps the border so it still reads against the window beside it.
-            if (RootBorder != null)     RootBorder.BorderThickness  = new Thickness(max ? 0 : 1);
-            // Drop shadow: the window is AllowsTransparency=True (no native OS shadow), so cast our own.
-            // A floating window gets a transparent margin with a soft shadow rendered into it; a
-            // maximized/snapped window is flush to its edges, so margin and shadow are dropped.
+            _chromeSquared = squared;
+
+            // The chrome treatment depends ONLY on the maximized/snapped state, not on the live size
+            // (the size-dependent rounded clip was retired with the WindowChrome migration). So skip the
+            // whole body - including the DwmSetWindowAttribute call and the property writes - while the
+            // state is unchanged. This is what was firing a native DWM corner call on every resize frame
+            // and making the toolbar/sidebar jump as content fell behind the window edge.
+            if (_appliedSquared == squared) return;
+            _appliedSquared = squared;
+
+            // Content fills the window rectangle. Rounding is done by the OS on the HWND, not here,
+            // so internal corners stay square to avoid dark nubs peeking past the rounded window edge.
             if (RootBorder != null)
             {
-                RootBorder.Margin = squared ? new Thickness(0) : new Thickness(ShadowMargin);
-                RootBorder.Effect = squared
-                    ? null
-                    : (_windowShadow ??= new System.Windows.Media.Effects.DropShadowEffect
-                       { Color = Colors.Black, BlurRadius = 9, ShadowDepth = 2, Direction = 270, Opacity = 0.4 });
+                RootBorder.CornerRadius   = new CornerRadius(0);
+                RootBorder.Margin         = new Thickness(0);
+                // Only a maximized window drops the 1px frame (it's flush to every screen edge); a
+                // snapped window keeps it so it still reads against the window beside it.
+                RootBorder.BorderThickness = new Thickness(max ? 0 : 1);
             }
-            // The custom grip only makes sense while floating (maximized/snapped can't be edge-resized).
+            if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(0);
+            if (FooterBorder   != null) FooterBorder.CornerRadius   = new CornerRadius(0);
+            Resources["ChromeCloseCorner"] = new CornerRadius(0);
+
+            // Retired: native OS shadow replaces the hand-cast one.
+            if (WindowShadowBorder != null)
+            {
+                WindowShadowBorder.Visibility = Visibility.Collapsed;
+                WindowShadowBorder.Effect     = null;
+            }
+
+            // Ask Windows 11 to round the HWND when floating, square when maximized/snapped. No-op
+            // (caught) on Windows 10 and earlier, which simply keep square corners.
+            ApplyWindowCorners(rounded: !squared);
+
+            // The custom grip still forwards a native HTBOTTOMRIGHT resize; only show it while floating.
             if (ResizeGripDots != null) ResizeGripDots.Visibility = squared ? Visibility.Collapsed : Visibility.Visible;
             UpdateRootClip(squared);
         }
 
+        // Windows 11 native rounded-corner toggle (DWMWA_WINDOW_CORNER_PREFERENCE = 33).
+        private void ApplyWindowCorners(bool rounded)
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+                int pref = rounded ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
+                DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+            }
+            catch { /* pre-Win11 DWM: attribute unsupported, square corners */ }
+        }
+
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWCP_DONOTROUND = 1;
+        private const int DWMWCP_ROUND      = 2;
+
+        [DllImport("dwmapi.dll", EntryPoint = "DwmSetWindowAttribute")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
         private const double ShadowMargin = 10;
         private System.Windows.Media.Effects.DropShadowEffect? _windowShadow;
-        private bool _chromeSquared;   // true when maximized/snapped (no shadow margin)
+        private bool _chromeSquared;   // true when maximized/snapped
 
-        // Clips all window content to the rounded corners. A Border's CornerRadius rounds only its
-        // own background/border, not its children, so without this the title bar, footer, and grain
-        // paint square corners over the rounded frame. Squared off when maximized or snapped.
+        // Under WindowChrome the OS rounds the HWND itself, so content fills a square client rect and
+        // needs no internal rounded clip. (A rounded clip here would expose dark corner triangles
+        // against the now-square frame.) Kept as a no-op hook so existing call sites stay valid.
         private void UpdateRootClip(bool squared)
         {
             if (RootClipGrid is null) return;
-            if (squared)
-            {
-                RootClipGrid.Clip = null;
-                return;
-            }
-            RootClipGrid.Clip = new RectangleGeometry(
-                new Rect(0, 0, RootClipGrid.ActualWidth, RootClipGrid.ActualHeight), 6, 6);
+            RootClipGrid.Clip = null;
         }
 
         // True when the window is Aero-Snapped (half/quarter screen). Snapping leaves WindowState
@@ -7975,15 +8067,23 @@ namespace KillerPDF
         // Guided AcroForm signing -------------------------------------------------------------------
         private enum FormFillRole { None, Signature, Initials, Date }
 
-        // Classifies a fillable text field by its name so signature / initials fields become
-        // click-to-sign zones. Checkboxes, radios, and dropdowns are never sign fields.
+        // Classifies a fillable field into a guided-signing role. A true PDF signature field
+        // (/FT /Sig) is authoritative. Otherwise the name is matched on WHOLE WORDS, so labels
+        // like "Computer Assigned" (contains the letters "sign") or "candidate"/"update" (contain
+        // "date") are not mistaken for sign/date zones. Checkboxes, radios, dropdowns are never roles.
         private static FormFillRole ClassifyFormField(FormFieldInfo f)
         {
             if (f.IsCheckBox || f.IsRadio || f.FieldType == "/Ch") return FormFillRole.None;
+
+            // A real signature field declares /FT /Sig - trust it regardless of name.
+            if (f.FieldType.Contains("Sig")) return FormFillRole.Signature;
+
             string n = (f.FieldName ?? string.Empty).ToLowerInvariant();
-            if (n.Contains("initial")) return FormFillRole.Initials;
-            if (n.Contains("signature") || n.Contains("sign")) return FormFillRole.Signature;
-            if (n.Contains("date")) return FormFillRole.Date;
+            bool Word(string pattern) => System.Text.RegularExpressions.Regex.IsMatch(n, pattern);
+
+            if (Word(@"\binitials?\b"))               return FormFillRole.Initials;
+            if (Word(@"\b(signature|signed|sign)\b")) return FormFillRole.Signature;
+            if (Word(@"\bdated?\b"))                   return FormFillRole.Date;
             return FormFillRole.None;
         }
 
