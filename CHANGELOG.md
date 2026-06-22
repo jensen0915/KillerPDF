@@ -7,46 +7,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 ## [1.5.6] - 2026-06-20
 
 ### Added
-- Strikethrough and underline annotation tools. Drag across text to mark it; each has its own color and opacity (shared bar with the highlighter) and flattens into the saved PDF.
-- Text annotation opacity: placed text can be made semi-transparent, and the text tool bar now matches the draw bar (color swatches, a size slider, and an opacity slider).
-- Resizable text boxes: the text tool now drops a word-wrapping box you can resize by dragging a corner (and double-click to re-edit), with an optional background fill (color + opacity) for clean whiteouts. Highlights, underlines, strikethroughs, and freehand ink can be moved and resized with the Select tool, and selecting any annotation reopens its tool bar so its color and opacity (and ink stroke width) can be changed in place.
-- Shift+click multi-selection in the Select tool. Hold Shift and click annotations to build up a selection of several at once (the first Shift+click folds in any current single selection), then press Delete to remove them all; Shift+click an already-selected annotation to drop it.
-- Movable Signatures popup. Drag it by its title bar to anywhere inside the window; it stays within the window bounds and its position is remembered between sessions.
-- Keyboard shortcuts: editing-tool keys (V Select, T Text, H Highlight, K Strikethrough, U Underline, D Draw, C Crop, I Image, G Signature), F1 to toggle the shortcuts list, F2 to toggle About, Ctrl+V to paste a clipboard image or text onto the page, and Esc to close the About/Settings panels. The Keyboard Shortcuts overlay now lists every shortcut (including ones that were already wired, like Ctrl+S/Ctrl+W/Ctrl+N/Ctrl+0) with a dedicated TOOLS section.
-- Printing: scale (Fit to page, Actual size, or a custom percentage), page position, margins (None / Narrow / Normal / Wide), pages per sheet (1/2/4/6/9, composed by KillerPDF and shown in the preview), a Color / Black-and-white selector (sets the job's output color so colour-restricted print policies see it correctly), and two-sided printing when the printer supports it.
-- Page-number stamping. Right-click a page or sidebar thumbnail and choose "Stamp Page Numbers" to number every page, with a start value, format string ({n}, {N}), position, and font size. Stamps flatten into the saved PDF and the whole batch is a single undo.
-- Per-field form font size. While filling a text field, a "Font size - N +" stepper appears so you can resize that field's text; the choice is remembered per field and baked into the saved PDF.
-- One-click update from the About dialog: when a newer release exists, KillerPDF can download, verify, and reinstall it automatically.
-- Toolbar style picker (Settings -> Toolbar): Small icons, Large icons, Text beside icons, Text under icons, or Text only. Text modes are translated and degrade gracefully as the window narrows. Defaults to Small icons.
-- Recent files: a dropdown arrow next to the Open button lists the last 10 PDFs (with a Clear option), and they're also shown on the start screen; a dropdown next to Save offers Save and Save As.
-- Tabbed documents. Open several PDFs at once, each in its own tab along a tab strip; switching tabs restores that document's page, zoom, and view mode. Opening a file (from the toolbar, Recent files, the command line, or the start screen) adds a tab instead of replacing what's open.
-- Sidebar placement (Settings -> Sidebar): put the page/outline sidebar on the left or right. The collapse toggle, the drag-to-resize splitter's divider line, and the Settings flyout all mirror to face the document, and the side is remembered between sessions.
-- Accent color variants for the Dark, Light, and Black (renamed from High Contrast) themes. Each base theme offers six accent hues - red, orange, green, teal, blue, purple - picked from colored circles in the Settings theme menu. Each theme remembers its own accent independently, and the choice persists between sessions.
-- Bengali (bn), Turkish (tr-TR), and Simplified Chinese (zh-CN) translations (contributors akib-h #79, mrantikadev #76, KaneLeung #82).
-- Digital signatures: cryptographically sign a PDF with a cloud certificate (Certum SimplySign). Drawn or imported signatures - and separate initials - can be saved and reused, and a document's signature form fields are filled by clicking them (guided click-to-sign).
-- Adjustable sidebar: drag the splitter to resize the page list, with the thumbnails scaling to match (and rendering at a higher resolution so they stay crisp when enlarged). Drag the collapsed strip to pull it open, drag it narrow to auto-close, or toggle it with Ctrl+B.
-- Full RGB color picker: every annotate-bar color swatch row ends with a picker that opens a themed dialog with a saturation/value square and hue strip, RGB and HTML-hex inputs, and a desktop-wide eyedropper to grab any pixel on screen. Its row of swatches is the toolbar palette - editable (Replace a slot with the current color), resettable to defaults, and kept in sync with the bar live - and a custom color shows as the active swatch on the bar.
+- Line tool: drag to draw straight lines, with its own color, opacity, and width.
+- Resizable, word-wrapping text boxes (double-click to re-edit) with an optional background fill for whiteouts, color, and opacity.
+- Highlighter bar with color and opacity controls.
+- Select tool moves and resizes any annotation, Shift+click to multi-select, and reopens an annotation's bar to restyle it in place.
+- Full RGB color picker on every swatch row: saturation/value square, hue strip, RGB/hex inputs, a screen eyedropper, and an editable palette.
+- Tabbed documents: open several PDFs at once, each restoring its page, zoom, and view mode.
+- Recent files: a dropdown by Open (last 10) and on the start screen, plus a Save / Save As dropdown.
+- One-click update from the About dialog when a newer release exists.
+- Print options: scale, position, margins, pages per sheet, color / black-and-white, and two-sided.
+- Page-number stamping from the right-click menu (start value, format, position, size) as one undo.
+- Per-field font size while filling text fields, baked into the saved PDF.
+- Digital signatures with a cloud certificate (Certum SimplySign): reusable signatures and initials, and click-to-sign form fields.
+- Movable Signatures popup, its position remembered.
+- Toolbar style picker: small or large icons, text beside, under, or only.
+- Sidebar on the left or right, with the collapse toggle, splitter, and Settings flyout mirroring to match.
+- Resizable sidebar: drag the splitter to scale the page list and thumbnails; drag to open or close, or toggle with Ctrl+B.
+- Accent colors (red, orange, green, teal, blue, purple) for the Dark, Light, and Black themes, each remembered independently.
+- Keyboard shortcuts for tools and panels (F1 shortcuts list, F2 About, Ctrl+V paste, Esc to close); the overlay lists them all.
+- Bengali, Turkish, and Simplified Chinese translations (contributors akib-h #79, mrantikadev #76, KaneLeung #82).
 
 ### Changed
-- Visual refresh across the app: rounded window corners (squared when maximized or snapped); film grain on app surfaces including dialogs and the floating annotation bars; drop shadows on icons, buttons, menus, and panels; a green "PDF" wordmark; accent-colored radio buttons; per-theme scrollbars; themed size/opacity sliders (no more white control, and the WPF default blue no longer flashes while dragging); quick fade in/out for the Shortcuts, About, and signature panels (the Settings panel slides out of the sidebar's edge, and the floating annotation bars fade, crossfade between tools, and minimize to a dotted strip); a clearer sidebar drag handle; a bolder Install button; a new chisel-tip highlighter icon and mouse-cursor Select icon; a title-bar filename that truncates instead of overlapping the window buttons; and crisper anti-aliasing for text, menus, and dialogs (which now share one unified background, border, and "KillerPDF" wordmark). Print preview sits on a soft drop shadow with a grained page-counter strip.
-- Theme polish: Blood/Greed/Cyanotic use darker chrome with a lighter document pane and lighter accent borders so the document frame and the Settings/signature/dialog outlines read clearly; Dark chrome is a touch darker to offset the grain; the signature and Create Signature windows are fully themed and reload live on theme change.
-- Settings reorganized into a slide-out accordion menu: it slides out from the sidebar's edge, and each section (Language, Theme, Toolbar, View Mode, Sidebar) expands in place and stays open after a pick so you can try options back to back.
-- Editing tool order is now Select, Text, Underline, Strikethrough, Highlight, Draw, Add Image, Signature, Crop across the toolbar, the overflow menu, and the shortcuts overlay.
+- Visual refresh: rounded window corners (squared when maximized), film grain on surfaces and dialogs, drop shadows on icons and menus, a green "PDF" wordmark, accent-colored radios, per-theme scrollbars, and themed sliders. The floating annotation bars fade, crossfade between tools, and minimize to a dotted strip.
+- Blood, Greed, and Cyanotic use darker chrome with a lighter document pane; the signature windows are fully themed and reload on theme change.
+- Settings is now a slide-out accordion (Language, Theme, Toolbar, View Mode, Sidebar) that stays open after a pick.
+- Text-over-text editing drops an opaque cover (fill sampled from the page) with an editable box on top; the pair can be unpaired, and image-only pages get a manual cover and box.
 - Grid and Two-Page pages render sharper on high-DPI displays.
-- Save Flattened opens the source PDF once instead of re-parsing it for every page, so large documents flatten faster still (Issue #68).
-- Performance: a restored session loads tabs lazily (only the focused document renders at launch; the rest load the first time you switch to them), and placed image signatures and images no longer re-decode on every mouse-move while being dragged or resized.
-- Text edit tool revamped: double-clicking existing text now lays down an opaque cover (its fill sampled from the page so it blends into colored headers and panels) with a normal, fully editable text box on top, instead of one fused overlay. The replacement text's size and ink color are detected from the original, both halves stay paired so selecting either shows both (and they can be unpaired from the right-click menu), and on a scanned or image-only page with no text layer a double-click drops a manual cover + text box so you can white out and retype by hand.
+- Restored sessions load tabs lazily, and placed images no longer re-decode while being dragged.
+- Save Flattened opens the source PDF once instead of per page (Issue #68).
 
 ### Fixed
-- Interactive form fields appear and fill in every view mode (previously Single Page only), line up precisely on pages with an inset CropBox or offset origin (common in government/scanned forms), and size their text from the field's own /DA instead of guessing from the box height.
-- Undo reliability: undo removes one item per press, in order, and a held Ctrl+Z no longer fires several undos at once.
-- "Clear All Annotations" clears the whole document in every view mode as a single undo; the right-click "Clear Page Annotations" updates the correct page and can be undone.
-- Grid view: the wheel keeps scrolling reliably (it could stick after a zoom or column change), clicking a sidebar page or entering a page number scrolls and fits correctly (Issue #78), and annotations commit to the page they were drawn on rather than a neighbor that was still streaming in.
-- Opening a protected (encrypted) PDF, or repairing a damaged one, no longer freezes the window; the work runs on a background thread behind a busy spinner instead of locking the UI with an hourglass.
-- Printing and Save Flattened no longer crash with an "Unexpected token 'xref'" / "Invalid entry in XRef table" error on documents PdfSharpCore can't reopen; they use the same repair fallback as Save.
-- A manually-closed PDF no longer reopens on the next launch (Issue #75).
-- The vertical scrollbar is grabbable again - the window-resize border used to capture it at the window's edge.
-- Search waits for a brief pause in typing before running, so the first keystrokes on a large document no longer lock the UI. The Outlines panel scrolls with the mouse wheel, and its tree no longer auto-expands every branch (handy for long, deeply-nested documents).
+- Form fields appear and fill in every view mode, align on pages with an inset CropBox or offset origin, and size their text from the field's own /DA.
+- Undo removes one item per press; a held Ctrl+Z no longer fires several at once.
+- Clear All Annotations clears every view mode as one undo; right-click Clear Page Annotations targets the correct page.
+- Grid view: the wheel keeps scrolling after a zoom or column change, page jumps fit correctly (Issue #78), and annotations commit to the page they were drawn on.
+- Opening an encrypted PDF or repairing a damaged one runs on a background thread instead of freezing the window.
+- Printing and Save Flattened no longer crash on documents PdfSharpCore can't reopen; they use the same repair fallback as Save.
+- A manually-closed PDF no longer reopens on next launch (Issue #75).
+- The vertical scrollbar is grabbable again at the window edge.
+- Search waits for a pause in typing before running; the Outlines panel scrolls and no longer auto-expands every branch.
 
 ## [1.5.1] - 2026-06-14
 

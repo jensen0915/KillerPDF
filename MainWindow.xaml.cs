@@ -111,9 +111,9 @@ namespace KillerPDF
         // Installed font-family names, sorted, computed once (the text bar rebuilds often).
         private static List<string>? _systemFontNamesCache;
         private static List<string> SystemFontNames => _systemFontNamesCache ??=
-            System.Windows.Media.Fonts.SystemFontFamilies
+            [.. System.Windows.Media.Fonts.SystemFontFamilies
                 .Select(f => f.Source).Where(s => !string.IsNullOrWhiteSpace(s))
-                .Distinct().OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList();
+                .Distinct().OrderBy(s => s, StringComparer.OrdinalIgnoreCase)];
         // WPF renders a given point size visually ~25% larger than the source PDF text, so scale the
         // detected size down when seeding an existing-text edit. The user can still fine-tune after.
         private const double EditTextSizeCorrection = 0.8;
@@ -319,7 +319,7 @@ namespace KillerPDF
             // The footer shadow tracks the document pane's actual position; re-anchor when it (or the
             // tab strip, which shifts the document) changes size.
             DocPaneBorder.SizeChanged += (_, _) => UpdateFooterFade();
-            TabStripBorder.SizeChanged += (_, _) => UpdateTabStripFade();
+            TabStripBorder.SizeChanged += (_, _) => { UpdateTabStripFade(); ScheduleTabReflow(); };
             // After a sidebar-splitter drag, snap fully closed if dragged too narrow, else save the width.
             SidebarSplitter.PreviewMouseLeftButtonUp += (_, _) => OnSidebarResized();
             // Grabbing the splitter while collapsed reveals the page list so it can be pulled open.
@@ -574,13 +574,14 @@ namespace KillerPDF
             // Anchor the panel against the sidebar's inner edge so it opens toward the document,
             // on whichever side the sidebar currently sits.
             SettingsPanel.Margin = _sidebarRight
-                ? new Thickness(0, 0, edge, 28)
-                : new Thickness(edge, 0, 0, 28);
-            // Cap to the DOCUMENT pane height (below the tab strip, above the 28px footer) - NOT
-            // MainContentGrid, which also spans the tab-strip row and made the panel run up under the tabs.
-            // With the 28px bottom margin matching the footer, the panel top lands just below the tab bar;
-            // the inner ScrollViewer scrolls when the content is taller.
-            SettingsPanel.MaxHeight = Math.Max(160, DocPaneBorder.ActualHeight);
+                ? new Thickness(0, 0, edge, 36)
+                : new Thickness(edge, 0, 0, 36);
+            // Cap to the DOCUMENT pane height (below the tab strip, above the footer) - NOT MainContentGrid,
+            // which also spans the tab-strip row and made the panel run up under the tabs. The bottom margin
+            // (36) is the 28px footer + an 8px gap so the panel floats a little above the footer for depth;
+            // trimming MaxHeight by that same 8 keeps its top aligned just below the tab bar. Inner
+            // ScrollViewer scrolls when the content is taller.
+            SettingsPanel.MaxHeight = Math.Max(160, DocPaneBorder.ActualHeight - 8);
         }
 
         // ── Quick fade in/out for the full-window overlay panels (Settings/Shortcuts/About) ──
@@ -1210,10 +1211,6 @@ namespace KillerPDF
         private const int  WM_DPICHANGED      = 0x02E0;
         private const int  WM_ENTERSIZEMOVE   = 0x0231;
         private const int  WM_EXITSIZEMOVE    = 0x0232;
-        // True while the user is inside the window's resize/move modal loop (dragging an edge).
-        // During the loop we only transform-scale the page (smooth, no re-render); the single crisp
-        // re-render runs once on WM_EXITSIZEMOVE instead of thrashing on every size tick.
-        private bool _inResizeLoop;
         private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const uint SWP_NOZORDER       = 0x0004;
         private const uint SWP_NOACTIVATE     = 0x0010;
@@ -1256,20 +1253,6 @@ namespace KillerPDF
                         if (idx >= 0) RenderPage(idx);
                     }));
             }
-            else if (msg == WM_ENTERSIZEMOVE)
-            {
-                _inResizeLoop = true;   // suppress per-tick re-renders; only transform-scale while dragging
-            }
-            else if (msg == WM_EXITSIZEMOVE)
-            {
-                // Drag finished: one crisp re-render for the final size. (No-op for a pure window MOVE,
-                // since no SizeChanged fired and the fit mode/zoom are unchanged.)
-                bool wasResizing = _inResizeLoop;
-                _inResizeLoop = false;
-                if (wasResizing)
-                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
-                        (Action)OnResizeSettled);
-            }
             else if (msg == WM_NCHITTEST && WindowState == WindowState.Normal)
             {
                 int ht = WmNcHitTest(hwnd, lParam);
@@ -1288,16 +1271,19 @@ namespace KillerPDF
 
             if (!GetWindowRect(hwnd, out RECT rc)) return 0;
 
-            bool onLeft   = mx < rc.left   + ResizeBorder;
-            bool onRight  = mx >= rc.right  - ResizeBorder;
-            bool onTop    = my < rc.top    + ResizeBorder;
-            bool onBottom = my >= rc.bottom - ResizeBorder;
+            // The floating window has a transparent ShadowMargin around the visible content, so the resize
+            // grips must sit at the CONTENT edge (inset by the margin), not the window edge - otherwise you
+            // have to reach out into the shadow to resize. Maximized/snapped has no margin.
+            int sm = _chromeSquared ? 0 : (int)ShadowMargin;
+            bool onLeft   = mx >= rc.left   + sm                 && mx <  rc.left   + sm + ResizeBorder;
+            bool onRight  = mx <  rc.right  - sm                 && mx >= rc.right  - sm - ResizeBorder;
+            bool onTop    = my >= rc.top    + sm                 && my <  rc.top    + sm + ResizeBorder;
+            bool onBottom = my <  rc.bottom - sm                 && my >= rc.bottom - sm - ResizeBorder;
 
             // Never hijack a scrollbar for window resizing. The vertical scrollbar sits flush
             // against the window's right edge, so the resize border used to swallow it - the
             // cursor showed the resize arrow and dragging resized the window instead of moving
-            // the thumb. If a ScrollBar is under the cursor, report client area so it stays
-            // grabbable (Issue #75 follow-up).
+            // the thumb. If a ScrollBar is under the cursor, report client area so it stays grabbable.
             if ((onLeft || onRight || onTop || onBottom) && IsOverScrollBar(mx, my))
                 return HTCLIENT;
 
@@ -1437,6 +1423,16 @@ namespace KillerPDF
             SendMessage(hwnd, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
         }
 
+        // Custom bottom-right grip: forward a native bottom-right resize so it behaves exactly like the OS
+        // border resize (and stays smooth). Only when floating; maximized/snapped don't resize.
+        private void ResizeGrip_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (WindowState != WindowState.Normal) return;
+            e.Handled = true;
+            var hwnd = new WindowInteropHelper(this).Handle;
+            SendMessage(hwnd, WM_NCLBUTTONDOWN, new IntPtr(HTBOTTOMRIGHT), IntPtr.Zero);
+        }
+
         private void Install_Click(object sender, RoutedEventArgs e)
         {
             var res = KillerDialog.Show(this,
@@ -1572,6 +1568,7 @@ namespace KillerPDF
         {
             bool max     = WindowState == WindowState.Maximized;
             bool squared = max || IsSnapped();
+            _chromeSquared = squared;   // read by WmNcHitTest to inset the resize grips past the shadow margin
             int  radius  = squared ? 0 : 7;
             if (RootBorder != null)     RootBorder.CornerRadius     = new CornerRadius(radius);
             if (TitleBarBorder != null) TitleBarBorder.CornerRadius = new CornerRadius(radius, radius, 0, 0);
@@ -1581,8 +1578,25 @@ namespace KillerPDF
             // Only a maximized window drops the 1px floating frame (it's flush to every screen edge).
             // A snapped window keeps the border so it still reads against the window beside it.
             if (RootBorder != null)     RootBorder.BorderThickness  = new Thickness(max ? 0 : 1);
+            // Drop shadow: the window is AllowsTransparency=True (no native OS shadow), so cast our own.
+            // A floating window gets a transparent margin with a soft shadow rendered into it; a
+            // maximized/snapped window is flush to its edges, so margin and shadow are dropped.
+            if (RootBorder != null)
+            {
+                RootBorder.Margin = squared ? new Thickness(0) : new Thickness(ShadowMargin);
+                RootBorder.Effect = squared
+                    ? null
+                    : (_windowShadow ??= new System.Windows.Media.Effects.DropShadowEffect
+                       { Color = Colors.Black, BlurRadius = 9, ShadowDepth = 2, Direction = 270, Opacity = 0.4 });
+            }
+            // The custom grip only makes sense while floating (maximized/snapped can't be edge-resized).
+            if (ResizeGripDots != null) ResizeGripDots.Visibility = squared ? Visibility.Collapsed : Visibility.Visible;
             UpdateRootClip(squared);
         }
+
+        private const double ShadowMargin = 10;
+        private System.Windows.Media.Effects.DropShadowEffect? _windowShadow;
+        private bool _chromeSquared;   // true when maximized/snapped (no shadow margin)
 
         // Clips all window content to the rounded corners. A Border's CornerRadius rounds only its
         // own background/border, not its children, so without this the title bar, footer, and grain
@@ -1995,7 +2009,7 @@ namespace KillerPDF
             {
                 PageIndex = s.PageIndex, PairId = s.PairId, GroupId = s.GroupId, Position = s.Position, Scale = s.Scale,
                 SourceWidth = s.SourceWidth, SourceHeight = s.SourceHeight,
-                Strokes = s.Strokes.Select(st => new List<Point>(st)).ToList(),
+                Strokes = [.. s.Strokes.Select(st => new List<Point>(st))],
                 StrokeWidth = s.StrokeWidth, ImageData = s.ImageData
             },
             ImageAnnotation img => new ImageAnnotation
@@ -6087,7 +6101,7 @@ namespace KillerPDF
         private double _annotBarFullHeight;    // remembered full height to expand back to
         private FrameworkElement? _annotBarContent;   // the bar's normal content (hidden while minimized)
         private FrameworkElement? _annotBarDots;      // grip-dots strip shown while minimized
-        private readonly List<FrameworkElement> _annotBarDragInners = new();   // nested panels whose empty areas also drag the bar
+        private readonly List<FrameworkElement> _annotBarDragInners = [];   // nested panels whose empty areas also drag the bar
 
         // Positions an annotation bar and wires up sliding. If we already know the X (this session or
         // saved), set it synchronously so the bar appears in place; only the very first time do we
@@ -6203,7 +6217,7 @@ namespace KillerPDF
             // once the grip shrinks and the bar fits a row again, the panel stops resizing, so only the
             // source's width change tells us there is room to restore the grip. Unhook on teardown - the bar
             // is rebuilt often (every swatch click), so a lingering handler would leak.
-            SizeChangedEventHandler onSource = (_, _) => Apply();
+            void onSource(object? sender, SizeChangedEventArgs e) => Apply();
             sizeSource.SizeChanged += onSource;
             host.Unloaded += (_, _) => sizeSource.SizeChanged -= onSource;
             host.SizeChanged += (_, _) => Apply();   // catches the first valid measurement
@@ -6874,9 +6888,9 @@ namespace KillerPDF
                 {
                     Width = 18, Height = 20, CornerRadius = new CornerRadius(3),
                     Margin = new Thickness(3, 0, 0, 0), Cursor = Cursors.Hand,
-                    BorderThickness = new Thickness(1), Background = Brushes.Transparent, Child = st
+                    BorderThickness = new Thickness(1), Background = Brushes.Transparent, Child = st,
+                    BorderBrush = _swatchDimBorder
                 };
-                sb.BorderBrush = _swatchDimBorder;
                 sb.MouseLeftButtonDown += (_, _) => onClick();
                 return sb;
             }
@@ -8511,7 +8525,7 @@ namespace KillerPDF
                         rect.Fill = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255));
                         rect.Stroke = Brushes.White;
                         rect.StrokeThickness = 1.5;
-                        rect.StrokeDashArray = new DoubleCollection { 4, 3 };
+                        rect.StrokeDashArray = [4, 3];
                     }
                     else rect.Fill = new SolidColorBrush(previewFill);
                     Canvas.SetLeft(rect, pos.X);
@@ -9508,7 +9522,7 @@ namespace KillerPDF
                 {
                     Width = pb.Width + 4, Height = pb.Height + 4,
                     Stroke = DarkerAccentBrush(), StrokeThickness = 1.5 * inv,
-                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    StrokeDashArray = [4, 3],
                     Fill = Brushes.Transparent, IsHitTestVisible = false
                 };
                 Canvas.SetLeft(_pairedCoverOutline, pb.X - 2);
@@ -9880,7 +9894,7 @@ namespace KillerPDF
                         foreach (var p in dense)
                         {
                             if (covered(p)) { if (cur is { Count: >= 2 }) runs.Add(cur); cur = null; }
-                            else (cur ??= new List<Point>()).Add(p);
+                            else (cur ??= []).Add(p);
                         }
                         if (cur is { Count: >= 2 }) runs.Add(cur);
                         foreach (var run in runs)
@@ -10452,7 +10466,7 @@ namespace KillerPDF
             {
                 Width = pb.Width + 4, Height = pb.Height + 4,
                 Stroke = DarkerAccentBrush(), StrokeThickness = 1.5 * inv,
-                StrokeDashArray = new DoubleCollection { 4, 3 },
+                StrokeDashArray = [4, 3],
                 Fill = Brushes.Transparent, IsHitTestVisible = false
             };
             Canvas.SetLeft(_reeditCoverOutline, pb.X - 2);
@@ -11466,7 +11480,7 @@ namespace KillerPDF
             var snap = new Dictionary<int, List<PageAnnotation>>();
             foreach (int p in pages.Distinct())
                 if (_annotations.TryGetValue(p, out var list))
-                    snap[p] = list.Select(CloneAnnotation).Where(c => c is not null).Cast<PageAnnotation>().ToList();
+                    snap[p] = [.. list.Select(CloneAnnotation).Where(c => c is not null).Cast<PageAnnotation>()];
             if (snap.Count > 0)
                 _undoStack.Push(new UndoEntry(UndoKind.PageSnapshot, WasDirty: _isDirty, AnnotSnapshot: snap));
         }
@@ -11553,7 +11567,7 @@ namespace KillerPDF
                         {
                             covRect.Stroke = DarkerAccentBrush();
                             covRect.StrokeThickness = 1;
-                            covRect.StrokeDashArray = new DoubleCollection { 4, 3 };
+                            covRect.StrokeDashArray = [4, 3];
                         }
                         Canvas.SetLeft(covRect, cov.Bounds.X);
                         Canvas.SetTop(covRect, cov.Bounds.Y);
@@ -13775,13 +13789,6 @@ namespace KillerPDF
         {
             RepositionAnnotationBars();   // cheap; keep the draw/text bar tracking its anchored edge
             if (_cropPreviewRect is not null || _cropConfirmBar is not null) return;
-
-            // Interactive edge-drag: defer ALL document rescaling to release. This window is
-            // AllowsTransparency=True, so Windows recomposites the whole frame on the CPU every resize
-            // tick; stacking a per-tick layout pass (the lite rescale relayouts the page subtree and the
-            // scroll extent) on top of that is what makes the page judder. The page holds its current size
-            // during the drag and snaps to the new fit exactly once, on WM_EXITSIZEMOVE -> OnResizeSettled.
-            if (_inResizeLoop) return;
 
             if (_viewMode == ViewMode.Grid)
             {

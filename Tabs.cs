@@ -418,10 +418,15 @@ namespace KillerPDF
         // Tab strip UI (built in code so it follows the active theme)
         // ============================================================
 
+        private readonly List<(DocumentSession s, FrameworkElement btn, double natW)> _tabButtonList = new();
+        private System.Windows.Threading.DispatcherTimer? _tabReflowTimer;
+        private bool _reflowingTabs;
+
         private void RebuildTabStrip()
         {
             if (TabStrip == null || TabStripBorder == null) return;
             TabStrip.Children.Clear();
+            _tabButtonList.Clear();
 
             var docTabs = _sessions.Where(t => t.Doc != null || t.DeferredPath != null).ToList();
             // Only show the strip once there's more than one document - a single open PDF
@@ -435,10 +440,147 @@ namespace KillerPDF
 
             TabStripBorder.Visibility = Visibility.Visible;
             foreach (var t in docTabs)
-                TabStrip.Children.Add(BuildTabButton(t));
-            TabStrip.Children.Add(BuildNewTabButton());
+            {
+                var btn = BuildTabButton(t);
+                // Cache each tab's natural width once (off-tree measure). Reflow uses this instead of a
+                // visible measure pass, so tabs never flash out to full width and back when squishing.
+                btn.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                _tabButtonList.Add((t, btn, btn.DesiredSize.Width));
+                TabStrip.Children.Add(btn);
+            }
+
             UpdateTabStripFade();
+            // Reflow once laid out: tabs that don't fit roll into a "N more" dropdown at the end.
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)ReflowTabs);
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)UpdateFooterFade);
+        }
+
+        // Debounced from TabStripBorder.SizeChanged so we don't reflow (two layout passes) every resize tick.
+        private void ScheduleTabReflow()
+        {
+            if (_tabReflowTimer is null)
+            {
+                _tabReflowTimer = new System.Windows.Threading.DispatcherTimer
+                    { Interval = TimeSpan.FromMilliseconds(90) };
+                _tabReflowTimer.Tick += (_, _) => { _tabReflowTimer!.Stop(); ReflowTabs(); };
+            }
+            _tabReflowTimer.Stop();
+            _tabReflowTimer.Start();
+        }
+
+        // Lays the tabs out to measure them, then keeps as many as fit (left to right) on the strip and
+        // moves the rest into a "N more" dropdown button at the end. The active tab is always kept visible.
+        private void ReflowTabs()
+        {
+            if (_reflowingTabs || TabScroll is null || TabStrip is null) return;
+            if (_tabButtonList.Count == 0) return;
+            _reflowingTabs = true;
+            try
+            {
+                double viewport = TabScroll.ViewportWidth;
+                if (viewport <= 1) return;   // not laid out yet
+
+                int n = _tabButtonList.Count;
+                var nat = _tabButtonList.Select(t => t.natW).ToList();   // cached natural widths, no measure pass
+                double natTotal = nat.Sum();
+                const double minTab = 92;   // tab MinWidth (90) + ~margin
+
+                // Case 1: everything fits at natural width.
+                if (natTotal <= viewport)
+                {
+                    TabStrip.Children.Clear();
+                    foreach (var t in _tabButtonList) { t.btn.Width = double.NaN; TabStrip.Children.Add(t.btn); }
+                    return;
+                }
+
+                // Case 2: SQUISH - shrink the tabs so they all still fit, no overflow. Only the wide tabs
+                // shrink (toward `target`); narrow ones keep their width and hand their slack over so the
+                // strip stays filled. This is what makes overflow a genuine last resort.
+                if (n * minTab <= viewport)
+                {
+                    double target    = viewport / n;
+                    double narrowSum = nat.Where(w => w <= target).Sum();
+                    int    wideCount = nat.Count(w => w > target);
+                    double perWide   = wideCount > 0 ? (viewport - narrowSum) / wideCount : target;
+                    TabStrip.Children.Clear();
+                    for (int i = 0; i < n; i++)
+                    {
+                        _tabButtonList[i].btn.Width = nat[i] <= target ? double.NaN : Math.Min(nat[i], perWide);
+                        TabStrip.Children.Add(_tabButtonList[i].btn);
+                    }
+                    return;
+                }
+
+                // Case 3: even squished to MinWidth they can't all fit - overflow into the dropdown.
+                const double moreW = 40;
+                double budget = viewport - moreW;
+                int    nFit   = Math.Max(1, (int)(budget / minTab));
+                double tabW   = budget / nFit;               // share the strip evenly among the shown tabs
+
+                var visible  = _tabButtonList.Take(nFit).ToList();
+                var overflow = _tabButtonList.Skip(nFit).ToList();
+                // Active tab must stay on the strip: if it overflowed, swap it for the last visible tab.
+                if (_active != null && overflow.Any(t => t.s == _active))
+                {
+                    var act = overflow.First(t => t.s == _active);
+                    overflow.Remove(act);
+                    if (visible.Count > 0)
+                    {
+                        var last = visible[^1];
+                        visible.RemoveAt(visible.Count - 1);
+                        overflow.Insert(0, last);
+                    }
+                    visible.Add(act);
+                }
+
+                TabStrip.Children.Clear();
+                foreach (var t in visible) { t.btn.Width = tabW; TabStrip.Children.Add(t.btn); }
+                TabStrip.Children.Add(BuildTabOverflowButton(overflow));
+            }
+            finally { _reflowingTabs = false; }
+        }
+
+        // The "N v" dropdown at the end of the strip. Clicking it lists the overflowed tabs; choosing one
+        // switches to it (the next reflow then pulls it onto the strip and pushes another into the menu).
+        private FrameworkElement BuildTabOverflowButton(List<(DocumentSession s, FrameworkElement btn, double natW)> overflow)
+        {
+            var content = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            content.Children.Add(new TextBlock
+            {
+                Text = overflow.Count.ToString(),
+                FontFamily = new FontFamily("Segoe UI, Microsoft JhengHei UI, Nirmala UI"), FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 5, 0),
+            });
+            content.Children.Add(new TextBlock
+            {
+                Text = "",   // Segoe MDL2 chevron-down
+                FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 10,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var btn = new Button
+            {
+                Content = content,
+                Height = 22,
+                Margin = new Thickness(2, 3, 0, 0),
+                Padding = new Thickness(6, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Cursor = Cursors.Hand,
+                ToolTip = $"{overflow.Count} more tab(s)",
+                Style = (Style)FindResource("TabNewButton"),
+            };
+
+            var menu = new ContextMenu();
+            foreach (var (s, _, _) in overflow)
+            {
+                var sess = s;
+                var item = new MenuItem { Header = (s.IsDirty ? "• " : "") + s.Title };
+                item.Click += (_, _) => SwitchToTab(sess);
+                menu.Items.Add(item);
+            }
+            btn.Click += (_, _) => { menu.PlacementTarget = btn;
+                menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom; menu.IsOpen = true; };
+            return btn;
         }
 
         private FrameworkElement BuildTabButton(DocumentSession s)
@@ -480,7 +622,10 @@ namespace KillerPDF
                 bd.BorderBrush = MakeTabDividerBrush();
             }
 
-            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+            // DockPanel (not StackPanel): the close button is docked right so it stays pinned and fully
+            // visible, while the label fills the remaining space and trims with an ellipsis. With a
+            // StackPanel the close button got pushed off the edge and clipped when tabs were squished.
+            var sp = new DockPanel { LastChildFill = true };
 
             var label = new TextBlock
             {
@@ -489,7 +634,6 @@ namespace KillerPDF
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxWidth = 170,
             };
             label.SetResourceReference(TextBlock.ForegroundProperty, active ? "TextPrimary" : "TextSecondary");
 
@@ -502,13 +646,15 @@ namespace KillerPDF
                 Height = 16,
                 Margin = new Thickness(6, 0, 0, 0),
                 Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center,
                 ToolTip = "Close tab",
                 Style = (Style)FindResource("TabCloseButton"),
             };
             close.Click += (_, e) => { CloseTab(s); };
 
-            sp.Children.Add(label);
-            sp.Children.Add(close);
+            DockPanel.SetDock(close, Dock.Right);
+            sp.Children.Add(close);   // docked right first, stays pinned
+            sp.Children.Add(label);   // fills the rest, trims with ellipsis
 
             // Every tab is opaque, so paint the strip's grain back onto it to keep the texture, while
             // ensuring the shadow gradient behind the strip never shows ON a tab (only in empty space).

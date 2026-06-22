@@ -8,9 +8,9 @@
         Title="KillerPDF" Height="700" Width="1000" MinHeight="480" MinWidth="620"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
-        AllowsTransparency="False"
-        ResizeMode="CanResizeWithGrip"
-        Background="{DynamicResource BgCanvas}"
+        AllowsTransparency="True"
+        ResizeMode="CanResize"
+        Background="Transparent"
         FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
@@ -1694,6 +1694,21 @@
             </Grid>
             </Grid>
         </Border>
+
+        <!-- Bottom-right resize grip. The WPF CanResizeWithGrip dots land out in the transparent shadow
+             margin, so this custom one sits at the visible content corner and forwards a HTBOTTOMRIGHT
+             resize to Windows on drag. -->
+        <Canvas x:Name="ResizeGripDots" Grid.Row="4" Width="13" Height="13"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,4,4"
+                Background="Transparent" Cursor="SizeNWSE"
+                MouseLeftButtonDown="ResizeGrip_MouseDown">
+            <Rectangle Canvas.Left="10" Canvas.Top="2"  Width="2" Height="2" Fill="{DynamicResource TextDim}"/>
+            <Rectangle Canvas.Left="6"  Canvas.Top="6"  Width="2" Height="2" Fill="{DynamicResource TextDim}"/>
+            <Rectangle Canvas.Left="10" Canvas.Top="6"  Width="2" Height="2" Fill="{DynamicResource TextDim}"/>
+            <Rectangle Canvas.Left="2"  Canvas.Top="10" Width="2" Height="2" Fill="{DynamicResource TextDim}"/>
+            <Rectangle Canvas.Left="6"  Canvas.Top="10" Width="2" Height="2" Fill="{DynamicResource TextDim}"/>
+            <Rectangle Canvas.Left="10" Canvas.Top="10" Width="2" Height="2" Fill="{DynamicResource TextDim}"/>
+        </Canvas>
 
         <!-- Settings overlay. No Background, so it doesn't catch clicks - the panel is non-modal and the
              window stays interactive while it's open (a click elsewhere is dismissed by a window-level

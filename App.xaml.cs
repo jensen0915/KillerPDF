@@ -142,6 +142,17 @@ namespace KillerPDF
             }
         }
 
+        // Release the single-instance mutex so a relaunched/installed copy starts as the PRIMARY instance.
+        // Without this, the new process sees the still-running old process holding the mutex, treats itself
+        // as a secondary launch, forwards its args and exits - so once the old process finishes shutting
+        // down, no window is left (the "installed but it didn't come back" bug).
+        internal void ReleaseInstanceMutex()
+        {
+            try { _instanceMutex?.ReleaseMutex(); } catch { /* not owned on this thread / already released */ }
+            _instanceMutex?.Dispose();
+            _instanceMutex = null;
+        }
+
         // Secondary instance: send our file path to the primary instance over the pipe.
         private static void ForwardToPrimary(string? path)
         {
@@ -549,6 +560,9 @@ namespace KillerPDF
             var psi = new ProcessStartInfo(InstallExe);
             if (fileToOpen != null)
                 psi.Arguments = $"\"{fileToOpen}\"";
+            // Free the single-instance mutex first so the launched copy becomes primary (and shows a
+            // window) instead of treating itself as a duplicate and exiting.
+            (Current as App)?.ReleaseInstanceMutex();
             Process.Start(psi);
             Application.Current.Shutdown();
         }
