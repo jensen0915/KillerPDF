@@ -178,6 +178,8 @@ Sie können das Programm jederzeit über „Programme hinzufügen oder entfernen
     <sys:String x:Key="Str_Lbl_Highlight">Hervorheben</sys:String>
     <sys:String x:Key="Str_Lbl_Strike">Durchstreichen</sys:String>
     <sys:String x:Key="Str_Lbl_Underline">Unterstreichen</sys:String>
+    <sys:String x:Key="Str_Lbl_Bold">Fett</sys:String>
+    <sys:String x:Key="Str_Lbl_Italic">Kursiv</sys:String>
     <sys:String x:Key="Str_Lbl_Draw">Zeichnen</sys:String>
     <sys:String x:Key="Str_Lbl_Crop">Zuschneiden</sys:String>
     <sys:String x:Key="Str_Lbl_Image">Bild hinzufügen</sys:String>
@@ -266,6 +268,20 @@ Sie können das Programm jederzeit über „Programme hinzufügen oder entfernen
     <sys:String x:Key="Str_Menu_RecentNone">Keine zuletzt verwendeten Dateien</sys:String>
     <sys:String x:Key="Str_Menu_ClearList">Liste leeren</sys:String>
     <sys:String x:Key="Str_Menu_RemoveFromRecents">Aus zuletzt verwendeten entfernen</sys:String>
+
+    <!-- Bilder als PDF importieren / In ZIP komprimieren -->
+    <sys:String x:Key="Str_Menu_Import">Bilder als PDF importieren</sys:String>
+    <sys:String x:Key="Str_Menu_CompressZip">In ZIP komprimieren</sys:String>
+    <sys:String x:Key="Str_Filter_Images">Bilder</sys:String>
+    <sys:String x:Key="Str_Filter_AllFiles">Alle Dateien</sys:String>
+    <sys:String x:Key="Str_Filter_Zip">ZIP-Archiv</sys:String>
+    <sys:String x:Key="Str_Status_Imported">{0} Bild(er) importiert - noch nicht gespeichert</sys:String>
+    <sys:String x:Key="Str_Err_ImportFailed">Import fehlgeschlagen:</sys:String>
+    <sys:String x:Key="Str_Err_NoImages">Es konnten keine Bilder gelesen werden.</sys:String>
+    <sys:String x:Key="Str_Msg_OpenFirst">Öffnen Sie zuerst eine PDF.</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveBeforeZip">Änderungen vor dem Komprimieren in ZIP speichern?</sys:String>
+    <sys:String x:Key="Str_Status_Zipped">Als ZIP gespeichert: {0} - {1} (vorher {2})</sys:String>
+    <sys:String x:Key="Str_Err_ZipFailed">Komprimierung in ZIP fehlgeschlagen:</sys:String>
     <sys:String x:Key="Str_Sig_Title">Signaturen</sys:String>
     <sys:String x:Key="Str_Sig_None">Keine gespeicherten Signaturen</sys:String>
     <sys:String x:Key="Str_Sig_Create">Signatur erstellen</sys:String>

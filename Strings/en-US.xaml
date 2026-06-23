@@ -178,6 +178,8 @@ You can uninstall via Add/Remove Programs at any time.</sys:String>
     <sys:String x:Key="Str_Lbl_Highlight">Highlight</sys:String>
     <sys:String x:Key="Str_Lbl_Strike">Strikethrough</sys:String>
     <sys:String x:Key="Str_Lbl_Underline">Underline</sys:String>
+    <sys:String x:Key="Str_Lbl_Bold">Bold</sys:String>
+    <sys:String x:Key="Str_Lbl_Italic">Italic</sys:String>
     <sys:String x:Key="Str_Lbl_Draw">Draw</sys:String>
     <sys:String x:Key="Str_Lbl_Crop">Crop</sys:String>
     <sys:String x:Key="Str_Lbl_Image">Add Image</sys:String>
@@ -266,6 +268,20 @@ You can uninstall via Add/Remove Programs at any time.</sys:String>
     <sys:String x:Key="Str_Menu_RecentNone">No recent files</sys:String>
     <sys:String x:Key="Str_Menu_ClearList">Clear list</sys:String>
     <sys:String x:Key="Str_Menu_RemoveFromRecents">Remove from recents</sys:String>
+
+    <!-- Import images as PDF / Compress to ZIP -->
+    <sys:String x:Key="Str_Menu_Import">Import images as PDF</sys:String>
+    <sys:String x:Key="Str_Menu_CompressZip">Compress to ZIP</sys:String>
+    <sys:String x:Key="Str_Filter_Images">Images</sys:String>
+    <sys:String x:Key="Str_Filter_AllFiles">All files</sys:String>
+    <sys:String x:Key="Str_Filter_Zip">ZIP archive</sys:String>
+    <sys:String x:Key="Str_Status_Imported">Imported {0} image(s) - not yet saved</sys:String>
+    <sys:String x:Key="Str_Err_ImportFailed">Import failed:</sys:String>
+    <sys:String x:Key="Str_Err_NoImages">No images could be read.</sys:String>
+    <sys:String x:Key="Str_Msg_OpenFirst">Open a PDF first.</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveBeforeZip">Save changes before compressing to ZIP?</sys:String>
+    <sys:String x:Key="Str_Status_Zipped">Zipped to {0} - {1} (was {2})</sys:String>
+    <sys:String x:Key="Str_Err_ZipFailed">Compress to ZIP failed:</sys:String>
     <sys:String x:Key="Str_Sig_Title">Signatures</sys:String>
     <sys:String x:Key="Str_Sig_None">No saved signatures</sys:String>
     <sys:String x:Key="Str_Sig_Create">Create Signature</sys:String>

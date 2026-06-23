@@ -178,6 +178,8 @@
     <sys:String x:Key="Str_Lbl_Highlight">高亮标记</sys:String>
     <sys:String x:Key="Str_Lbl_Strike">删除线</sys:String>
     <sys:String x:Key="Str_Lbl_Underline">底线</sys:String>
+    <sys:String x:Key="Str_Lbl_Bold">粗体</sys:String>
+    <sys:String x:Key="Str_Lbl_Italic">斜体</sys:String>
     <sys:String x:Key="Str_Lbl_Draw">绘图</sys:String>
     <sys:String x:Key="Str_Lbl_Crop">裁切</sys:String>
     <sys:String x:Key="Str_Lbl_Image">加入图片</sys:String>
@@ -266,6 +268,20 @@
     <sys:String x:Key="Str_Menu_RecentNone">没有最近的文件</sys:String>
     <sys:String x:Key="Str_Menu_ClearList">清除列表</sys:String>
     <sys:String x:Key="Str_Menu_RemoveFromRecents">从最近移除</sys:String>
+
+    <!-- 将图片导入为 PDF / 压缩为 ZIP -->
+    <sys:String x:Key="Str_Menu_Import">将图片导入为 PDF</sys:String>
+    <sys:String x:Key="Str_Menu_CompressZip">压缩为 ZIP</sys:String>
+    <sys:String x:Key="Str_Filter_Images">图片</sys:String>
+    <sys:String x:Key="Str_Filter_AllFiles">所有文件</sys:String>
+    <sys:String x:Key="Str_Filter_Zip">ZIP 压缩包</sys:String>
+    <sys:String x:Key="Str_Status_Imported">已导入 {0} 张图片 - 尚未保存</sys:String>
+    <sys:String x:Key="Str_Err_ImportFailed">导入失败：</sys:String>
+    <sys:String x:Key="Str_Err_NoImages">无法读取任何图片。</sys:String>
+    <sys:String x:Key="Str_Msg_OpenFirst">请先打开一个 PDF。</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveBeforeZip">压缩为 ZIP 前保存更改？</sys:String>
+    <sys:String x:Key="Str_Status_Zipped">已压缩为 {0} - {1}（原 {2}）</sys:String>
+    <sys:String x:Key="Str_Err_ZipFailed">压缩为 ZIP 失败：</sys:String>
     <sys:String x:Key="Str_Sig_Title">签名</sys:String>
     <sys:String x:Key="Str_Sig_None">没有已保存的签名</sys:String>
     <sys:String x:Key="Str_Sig_Create">创建签名</sys:String>

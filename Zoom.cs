@@ -1,0 +1,206 @@
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Docnet.Core;
+using Docnet.Core.Models;
+using Microsoft.Win32;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+using KillerPDF.Services;
+using PdfPigDoc = UglyToad.PdfPig.PdfDocument;
+
+namespace KillerPDF
+{
+    public partial class MainWindow
+    {
+        // ============================================================
+        // Zoom
+        // ============================================================
+
+        private void PagePreview_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                e.Handled = true;
+                if (_viewMode == ViewMode.Grid) { GridZoomStep(e.Delta < 0); return; }
+
+                // Capture cursor position and scroll offsets BEFORE zoom changes so we can
+                // compute the new offsets that keep the point under the cursor stationary.
+                Point cursorInViewport = e.GetPosition(PagePreviewPanel);
+                double oldZoom = _zoomLevel;
+                double oldHOff = PagePreviewPanel.HorizontalOffset;
+                double oldVOff = PagePreviewPanel.VerticalOffset;
+
+                SetZoom(e.Delta > 0 ? _zoomLevel + ZoomStep : _zoomLevel - ZoomStep);
+
+                // After layout settles, reposition the scroll so the cursor point stays fixed.
+                // Formula: newOffset = (oldOffset + cursorPos) * (newZoom / oldZoom) - cursorPos
+                double ratio = _zoomLevel / oldZoom;
+                double newHOff = (oldHOff + cursorInViewport.X) * ratio - cursorInViewport.X;
+                double newVOff = (oldVOff + cursorInViewport.Y) * ratio - cursorInViewport.Y;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() =>
+                {
+                    PagePreviewPanel.ScrollToHorizontalOffset(Math.Max(0, newHOff));
+                    PagePreviewPanel.ScrollToVerticalOffset(Math.Max(0, newVOff));
+                }));
+                return;
+            }
+
+            // Regular scroll. Grid and Continuous are a single scroll over the WHOLE document, so the
+            // wheel must never be hijacked for page navigation there - just let the ScrollViewer
+            // scroll. This is the fix for grid refusing to scroll: right after a zoom/column change
+            // the extent can momentarily measure as zero, and the old page-nav fallback below would
+            // fire instead of scrolling (and stick until a theme/view-mode switch forced a re-measure).
+            if (_viewMode == ViewMode.Grid || _viewMode == ViewMode.Continuous)
+                return;
+
+            // Single / Two-Page: a page often fits the viewport, so at the scroll boundary fall
+            // through to page navigation so the user can reach adjacent pages without the sidebar.
+            if (PagePreviewPanel.ScrollableHeight <= 0)
+            {
+                e.Handled = true;
+                NavigatePageByWheel(e.Delta);
+                return;
+            }
+
+            bool atTop = PagePreviewPanel.VerticalOffset <= 0;
+            bool atBottom = PagePreviewPanel.VerticalOffset >= PagePreviewPanel.ScrollableHeight - 1;
+            if ((atTop && e.Delta > 0) || (atBottom && e.Delta < 0))
+            {
+                e.Handled = true;
+                NavigatePageByWheel(e.Delta);
+            }
+            // Otherwise let the ScrollViewer scroll naturally.
+        }
+
+        private void PagePreviewPanel_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            bool spaceDown = Keyboard.IsKeyDown(Key.Space);
+            if (e.ChangedButton == MouseButton.Middle ||
+                (e.ChangedButton == MouseButton.Left && spaceDown))
+            {
+                _isPanning = true;
+                _panStart = e.GetPosition(PagePreviewPanel);
+                _panScrollH = PagePreviewPanel.HorizontalOffset;
+                _panScrollV = PagePreviewPanel.VerticalOffset;
+                PagePreviewPanel.CaptureMouse();
+                PagePreviewPanel.Cursor = Cursors.SizeAll;
+                e.Handled = true;
+            }
+            // Crop: allow starting the selection OUTSIDE the page. On-page clicks are handled by
+            // the page overlay; here we catch clicks in the margins, route them to the nearest page
+            // overlay, and clamp the start point to the page edge so the rect stays on the page.
+            else if (e.ChangedButton == MouseButton.Left && !spaceDown
+                     && _currentTool == EditTool.Crop && _doc is not null)
+            {
+                // Resolve the page surface for an off-page crop start in any view mode. On-page
+                // clicks are left to the page canvas/overlay; we only handle margin clicks here.
+                Canvas? target = null;
+                if (_viewMode == ViewMode.Continuous)
+                {
+                    if (!(e.OriginalSource is DependencyObject osc && IsWithinPageOverlay(osc)))
+                    {
+                        // Prefer the page centered in the viewport (kept in sync by scrolling) - it's
+                        // the page the user is looking at. Fall back to the nearest page by click Y.
+                        int pg = PageList.SelectedIndex;
+                        if (pg < 0 || !_continuousCanvases.ContainsKey(pg))
+                            pg = NearestContinuousPage(e.GetPosition(_continuousPanel).Y);
+                        if (pg >= 0) _continuousCanvases.TryGetValue(pg, out target);
+                    }
+                }
+                else
+                {
+                    // Single / Two-Page / Grid. An on-page click is handled by that page's own
+                    // surface: the primary page uses _annotationCanvas, secondary/grid tiles use
+                    // their per-page overlay. Only a genuine margin click (on neither) is routed
+                    // here, and we fall back to the primary page for it.
+                    bool onPrimary = e.OriginalSource is DependencyObject oss && IsDescendantOf(oss, _annotationCanvas);
+                    bool onTile = e.OriginalSource is DependencyObject ost && IsWithinPageOverlay(ost);
+                    if (!onPrimary && !onTile)
+                        target = _annotationCanvas;
+                }
+                if (target is not null && target.Width > 0 && target.Height > 0)
+                {
+                    _activeCanvas = target;
+                    // Pin the gesture surface/page so mouse-move/up resolve against this overlay
+                    // (a margin crop start doesn't go through Canvas_MouseLeftButtonDown).
+                    _gestureCanvas = target;
+                    _gesturePage = target.Tag is int gt ? gt : PageList.SelectedIndex;
+                    var p = e.GetPosition(target);
+                    p.X = Math.Max(0, Math.Min(target.Width, p.X));
+                    p.Y = Math.Max(0, Math.Min(target.Height, p.Y));
+                    StartCropDraw(p);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        // Begin a crop selection on the active overlay at pos (render-dim coords).
+        private void StartCropDraw(Point pos)
+        {
+            _cropPageIndex = _activeCanvas.Tag is int cpi ? cpi : (_viewMode == ViewMode.Grid ? 0 : PageList.SelectedIndex);
+            ClearSelection();
+            HideCropConfirmBar();
+            _isDrawing = true;
+            _drawStart = pos;
+            _cropPreviewRect = new Rectangle
+            {
+                Stroke = Brushes.White,
+                StrokeThickness = 1.5,
+                StrokeDashArray = [5, 3],
+                Fill = AccentBrush(55),
+                Width = 0,
+                Height = 0,
+                IsHitTestVisible = false,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                { Color = Colors.Black, ShadowDepth = 0, BlurRadius = 3, Opacity = 0.7 },
+            };
+            Canvas.SetLeft(_cropPreviewRect, pos.X);
+            Canvas.SetTop(_cropPreviewRect, pos.Y);
+            Panel.SetZIndex(_cropPreviewRect, 1);
+            _activeCanvas.Children.Add(_cropPreviewRect);
+            _activePreview = _cropPreviewRect;
+            _activeCanvas.CaptureMouse();
+        }
+
+        private bool IsWithinPageOverlay(DependencyObject node)
+        {
+            var cur = node;
+            while (cur != null)
+            {
+                if (cur is Canvas c && _continuousCanvases.ContainsValue(c)) return true;
+                cur = VisualTreeHelper.GetParent(cur);
+            }
+            return false;
+        }
+
+        private void PagePreviewPanel_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isPanning) return;
+            var pos = e.GetPosition(PagePreviewPanel);
+            PagePreviewPanel.ScrollToHorizontalOffset(_panScrollH - (pos.X - _panStart.X));
+            PagePreviewPanel.ScrollToVerticalOffset(_panScrollV - (pos.Y - _panStart.Y));
+            e.Handled = true;
+        }
+
+        private void PagePreviewPanel_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isPanning) return;
+            if (e.ChangedButton != MouseButton.Middle && e.ChangedButton != MouseButton.Left) return;
+            _isPanning = false;
+            PagePreviewPanel.ReleaseMouseCapture();
+            PagePreviewPanel.Cursor = _spaceHeld ? Cursors.Hand : Cursors.Arrow;
+            e.Handled = true;
+        }
+    }
+}

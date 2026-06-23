@@ -42,7 +42,7 @@ namespace KillerPDF
         }
 
         /// <summary>
-        /// Seed the thumbnail before ItemsSource is set — no dispatch needed because
+        /// Seed the thumbnail before ItemsSource is set - no dispatch needed because
         /// no binding exists yet. Used to carry old thumbnails across a RefreshPageList
         /// call so the list never flashes blank.
         /// </summary>

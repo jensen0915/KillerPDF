@@ -178,6 +178,8 @@ Puede desinstalarla en cualquier momento desde Agregar o quitar programas.</sys:
     <sys:String x:Key="Str_Lbl_Highlight">Resaltar</sys:String>
     <sys:String x:Key="Str_Lbl_Strike">Tachado</sys:String>
     <sys:String x:Key="Str_Lbl_Underline">Subrayado</sys:String>
+    <sys:String x:Key="Str_Lbl_Bold">Negrita</sys:String>
+    <sys:String x:Key="Str_Lbl_Italic">Cursiva</sys:String>
     <sys:String x:Key="Str_Lbl_Draw">Dibujar</sys:String>
     <sys:String x:Key="Str_Lbl_Crop">Recortar</sys:String>
     <sys:String x:Key="Str_Lbl_Image">Agregar imagen</sys:String>
@@ -266,6 +268,20 @@ Puede desinstalarla en cualquier momento desde Agregar o quitar programas.</sys:
     <sys:String x:Key="Str_Menu_RecentNone">No hay archivos recientes</sys:String>
     <sys:String x:Key="Str_Menu_ClearList">Borrar lista</sys:String>
     <sys:String x:Key="Str_Menu_RemoveFromRecents">Quitar de recientes</sys:String>
+
+    <!-- Importar imágenes como PDF / Comprimir a ZIP -->
+    <sys:String x:Key="Str_Menu_Import">Importar imágenes como PDF</sys:String>
+    <sys:String x:Key="Str_Menu_CompressZip">Comprimir a ZIP</sys:String>
+    <sys:String x:Key="Str_Filter_Images">Imágenes</sys:String>
+    <sys:String x:Key="Str_Filter_AllFiles">Todos los archivos</sys:String>
+    <sys:String x:Key="Str_Filter_Zip">Archivo ZIP</sys:String>
+    <sys:String x:Key="Str_Status_Imported">{0} imagen(es) importada(s) - sin guardar todavía</sys:String>
+    <sys:String x:Key="Str_Err_ImportFailed">Error al importar:</sys:String>
+    <sys:String x:Key="Str_Err_NoImages">No se pudo leer ninguna imagen.</sys:String>
+    <sys:String x:Key="Str_Msg_OpenFirst">Primero abre un PDF.</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveBeforeZip">¿Guardar los cambios antes de comprimir a ZIP?</sys:String>
+    <sys:String x:Key="Str_Status_Zipped">Comprimido en {0} - {1} (antes {2})</sys:String>
+    <sys:String x:Key="Str_Err_ZipFailed">Error al comprimir a ZIP:</sys:String>
     <sys:String x:Key="Str_Sig_Title">Firmas</sys:String>
     <sys:String x:Key="Str_Sig_None">No hay firmas guardadas</sys:String>
     <sys:String x:Key="Str_Sig_Create">Crear firma</sys:String>

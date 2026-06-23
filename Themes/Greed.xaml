@@ -28,6 +28,8 @@
     <SolidColorBrush x:Key="AccentDim"      Color="#44ffffff" po:Freeze="True"/>
     <SolidColorBrush x:Key="SelectionBg" Color="#44ffffff" po:Freeze="True"/>
     <SolidColorBrush x:Key="SelectionFg" Color="#ffffff" po:Freeze="True"/>
+    <!-- Open settings row uses the translucent-white SelectionBg (matches selected page/tool). -->
+    <SolidColorBrush x:Key="SettingsOpenRowBg" Color="#44ffffff" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextPrimary"    Color="#fffde8" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextSecondary"  Color="#e0d49a" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextDim"        Color="#c0aa68" po:Freeze="True"/>
@@ -42,7 +44,7 @@
     <SolidColorBrush x:Key="BgOverlay"      Color="#CC003322" po:Freeze="True"/>
     <sys:Double x:Key="GrainOpacity">0.26</sys:Double>
     <sys:Double x:Key="IconShadowOpacity">0.9</sys:Double>
-    <sys:Double x:Key="HeaderShadowOpacity">0.5</sys:Double>
+    <sys:Double x:Key="HeaderShadowOpacity">0.8</sys:Double>
 
     <SolidColorBrush x:Key="BgCanvas"                                                       Color="#0a5234" po:Freeze="True"/>
     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"                      Color="#44ffffff" po:Freeze="True"/>

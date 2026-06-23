@@ -243,7 +243,7 @@ namespace KillerPDF
 
             var win = new Window
             {
-                Title                 = "KillerPDF — Unexpected Error",
+                Title                 = "KillerPDF - Unexpected Error",
                 Width                 = 680,
                 Height                = 520,
                 MinWidth              = 480,
@@ -276,7 +276,7 @@ namespace KillerPDF
             titleBar.Children.Add(xBtn);
             titleBar.Children.Add(new TextBlock
             {
-                Text              = "KillerPDF — Unexpected Error",
+                Text              = "KillerPDF - Unexpected Error",
                 Foreground        = dimText,
                 FontSize          = 12,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -625,7 +625,7 @@ namespace KillerPDF
             }
             catch { }
 
-            // Legacy %TEMP% location — sweep once for users upgrading from older builds
+            // Legacy %TEMP% location - sweep once for users upgrading from older builds
             try
             {
                 foreach (var f in Directory.GetFiles(Path.GetTempPath(), "killerpdf_*.pdf"))
@@ -759,7 +759,7 @@ namespace KillerPDF
                 if (e.ButtonState == MouseButtonState.Pressed) win.DragMove();
             };
 
-            // Close button — custom template so Background trigger actually renders
+            // Close button - custom template so Background trigger actually renders
             var closeBtnTemplate = new ControlTemplate(typeof(Button));
             var closeBorder = new FrameworkElementFactory(typeof(Border));
             closeBorder.SetBinding(Border.BackgroundProperty,
@@ -896,7 +896,7 @@ namespace KillerPDF
         }
 
         // ============================================================
-        // Security — Authenticode verification + pdfium integrity
+        // Security - Authenticode verification + pdfium integrity
         // ============================================================
 
         // ── WinVerifyTrust P/Invoke ──────────────────────────────────────────
@@ -1143,7 +1143,7 @@ namespace KillerPDF
             okBtn.Margin = new Thickness(0, 12, 0, 0);
             okBtn.Click += (_, __) => dlg!.Close();
 
-            // KillerPDF logo — clickable link to product site
+            // KillerPDF logo - clickable link to product site
             var logo = new TextBlock { FontSize = 22, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 4) };
             var logoHl = new Hyperlink(new Run("KillerPDF"))
             {
@@ -1235,7 +1235,7 @@ namespace KillerPDF
                         $"Expected: {BuildInfo.PdfiumSha256}\n" +
                         $"Actual  : {actual}\n\n" +
                         "The bundled PDF engine may have been tampered with. KillerPDF will exit.",
-                        $"{AppName} — Security", MessageBoxButton.OK, MessageBoxImage.Error);
+                        $"{AppName} - Security", MessageBoxButton.OK, MessageBoxImage.Error);
                     return false;
                 }
                 return true;
@@ -1318,7 +1318,7 @@ namespace KillerPDF
                     key.SetValue("NoRepair",             1);
                 }
 
-                // Register as PDF file handler (per-user — no admin needed)
+                // Register as PDF file handler (per-user - no admin needed)
                 RegisterFileHandler();
             }
             catch (Exception ex)
@@ -1342,7 +1342,7 @@ namespace KillerPDF
                 @"Software\Classes\KillerPDF.pdf\shell\open\command"))
                 k.SetValue("", $"\"{InstallExe}\" \"%1\"");
 
-            // Associate .pdf extension — adds KillerPDF to the "Open with" list
+            // Associate .pdf extension - adds KillerPDF to the "Open with" list
             using (var k = Registry.CurrentUser.CreateSubKey(
                 @"Software\Classes\.pdf\OpenWithProgids"))
                 k.SetValue("KillerPDF.pdf", new byte[0], RegistryValueKind.None);

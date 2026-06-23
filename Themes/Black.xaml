@@ -28,6 +28,7 @@
     <SolidColorBrush x:Key="AccentDim"      Color="#003322" po:Freeze="True"/>
     <SolidColorBrush x:Key="SelectionBg" Color="#003314" po:Freeze="True"/>
     <SolidColorBrush x:Key="SelectionFg" Color="#ffffff" po:Freeze="True"/>
+    <SolidColorBrush x:Key="SettingsOpenRowBg" Color="#333333" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextPrimary"    Color="#ffffff" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextSecondary"  Color="#cccccc" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextDim"        Color="#aaaaaa" po:Freeze="True"/>

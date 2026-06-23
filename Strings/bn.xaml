@@ -178,6 +178,8 @@
     <sys:String x:Key="Str_Lbl_Highlight">হাইলাইট</sys:String>
     <sys:String x:Key="Str_Lbl_Strike">স্ট্রাইকথ্রু</sys:String>
     <sys:String x:Key="Str_Lbl_Underline">আন্ডারলাইন</sys:String>
+    <sys:String x:Key="Str_Lbl_Bold">বোল্ড</sys:String>
+    <sys:String x:Key="Str_Lbl_Italic">ইটালিক</sys:String>
     <sys:String x:Key="Str_Lbl_Draw">আঁকুন</sys:String>
     <sys:String x:Key="Str_Lbl_Crop">ক্রপ</sys:String>
     <sys:String x:Key="Str_Lbl_Image">ছবি যোগ করুন</sys:String>
@@ -266,6 +268,20 @@
     <sys:String x:Key="Str_Menu_RecentNone">সাম্প্রতিক কোনো ফাইল নেই</sys:String>
     <sys:String x:Key="Str_Menu_ClearList">তালিকা সাফ করুন</sys:String>
     <sys:String x:Key="Str_Menu_RemoveFromRecents">সাম্প্রতিক থেকে সরান</sys:String>
+
+    <!-- ছবিগুলি PDF হিসেবে আমদানি করুন / ZIP-এ সংকুচিত করুন -->
+    <sys:String x:Key="Str_Menu_Import">ছবিগুলি PDF হিসেবে আমদানি করুন</sys:String>
+    <sys:String x:Key="Str_Menu_CompressZip">ZIP-এ সংকুচিত করুন</sys:String>
+    <sys:String x:Key="Str_Filter_Images">ছবি</sys:String>
+    <sys:String x:Key="Str_Filter_AllFiles">সমস্ত ফাইল</sys:String>
+    <sys:String x:Key="Str_Filter_Zip">ZIP আর্কাইভ</sys:String>
+    <sys:String x:Key="Str_Status_Imported">{0}টি ছবি আমদানি করা হয়েছে - এখনও সংরক্ষণ করা হয়নি</sys:String>
+    <sys:String x:Key="Str_Err_ImportFailed">আমদানি ব্যর্থ হয়েছে:</sys:String>
+    <sys:String x:Key="Str_Err_NoImages">কোনো ছবি পড়া যায়নি।</sys:String>
+    <sys:String x:Key="Str_Msg_OpenFirst">প্রথমে একটি PDF খুলুন।</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveBeforeZip">ZIP-এ সংকুচিত করার আগে পরিবর্তনগুলি সংরক্ষণ করবেন?</sys:String>
+    <sys:String x:Key="Str_Status_Zipped">{0}-এ সংকুচিত - {1} (পূর্বে {2})</sys:String>
+    <sys:String x:Key="Str_Err_ZipFailed">ZIP-এ সংকুচিত করা ব্যর্থ হয়েছে:</sys:String>
     <sys:String x:Key="Str_Sig_Title">স্বাক্ষর</sys:String>
     <sys:String x:Key="Str_Sig_None">কোনো সংরক্ষিত স্বাক্ষর নেই</sys:String>
     <sys:String x:Key="Str_Sig_Create">স্বাক্ষর তৈরি করুন</sys:String>

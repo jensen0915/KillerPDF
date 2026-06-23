@@ -178,6 +178,8 @@ Bu işlem uygulamayı %LocalAppData%\KillerPDF konumuna kopyalar ve bir Başlat 
     <sys:String x:Key="Str_Lbl_Highlight">Vurgula</sys:String>
     <sys:String x:Key="Str_Lbl_Strike">Üstü çizili</sys:String>
     <sys:String x:Key="Str_Lbl_Underline">Altı çizili</sys:String>
+    <sys:String x:Key="Str_Lbl_Bold">Kalın</sys:String>
+    <sys:String x:Key="Str_Lbl_Italic">İtalik</sys:String>
     <sys:String x:Key="Str_Lbl_Draw">Çiz</sys:String>
     <sys:String x:Key="Str_Lbl_Crop">Kırp</sys:String>
     <sys:String x:Key="Str_Lbl_Image">Resim Ekle</sys:String>
@@ -266,6 +268,20 @@ Bu işlem uygulamayı %LocalAppData%\KillerPDF konumuna kopyalar ve bir Başlat 
     <sys:String x:Key="Str_Menu_RecentNone">Son dosya yok</sys:String>
     <sys:String x:Key="Str_Menu_ClearList">Listeyi temizle</sys:String>
     <sys:String x:Key="Str_Menu_RemoveFromRecents">Son kullanılanlardan kaldır</sys:String>
+
+    <!-- Görüntüleri PDF olarak içe aktar / ZIP olarak sıkıştır -->
+    <sys:String x:Key="Str_Menu_Import">Görüntüleri PDF olarak içe aktar</sys:String>
+    <sys:String x:Key="Str_Menu_CompressZip">ZIP olarak sıkıştır</sys:String>
+    <sys:String x:Key="Str_Filter_Images">Görüntüler</sys:String>
+    <sys:String x:Key="Str_Filter_AllFiles">Tüm dosyalar</sys:String>
+    <sys:String x:Key="Str_Filter_Zip">ZIP arşivi</sys:String>
+    <sys:String x:Key="Str_Status_Imported">{0} görüntü içe aktarıldı - henüz kaydedilmedi</sys:String>
+    <sys:String x:Key="Str_Err_ImportFailed">İçe aktarma başarısız:</sys:String>
+    <sys:String x:Key="Str_Err_NoImages">Hiçbir görüntü okunamadı.</sys:String>
+    <sys:String x:Key="Str_Msg_OpenFirst">Önce bir PDF açın.</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveBeforeZip">ZIP olarak sıkıştırmadan önce değişiklikler kaydedilsin mi?</sys:String>
+    <sys:String x:Key="Str_Status_Zipped">{0} olarak sıkıştırıldı - {1} (önceki {2})</sys:String>
+    <sys:String x:Key="Str_Err_ZipFailed">ZIP olarak sıkıştırma başarısız:</sys:String>
     <sys:String x:Key="Str_Sig_Title">İmzalar</sys:String>
     <sys:String x:Key="Str_Sig_None">Kayıtlı imza yok</sys:String>
     <sys:String x:Key="Str_Sig_Create">İmza Oluştur</sys:String>

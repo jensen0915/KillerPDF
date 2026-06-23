@@ -1,0 +1,1201 @@
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Docnet.Core;
+using Docnet.Core.Models;
+using Microsoft.Win32;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+using KillerPDF.Services;
+using PdfPigDoc = UglyToad.PdfPig.PdfDocument;
+
+namespace KillerPDF
+{
+    // Document viewport - first extraction slice out of the MainWindow monolith. Holds the continuous
+    // view renderer and the preview scroll handler. This is a behavior-preserving MOVE (same partial
+    // class, identical code); the logic is unchanged. Later slices bring the single/two-page/grid
+    // render path here too, after which the four view modes can be unified onto one model.
+    public partial class MainWindow
+    {
+        private void ScrollContinuousToPage(int pageIndex)
+        {
+            if (pageIndex < 0 || pageIndex >= _continuousTops.Count) return;
+            double target = _continuousTops[pageIndex] * _zoomLevel;
+            PagePreviewPanel.ScrollToVerticalOffset(target);
+        }
+
+        private void PagePreviewPanel_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            // The vertical scrollbar can appear/disappear without a window resize (zoom, page count
+            // changes). When it does, re-anchor the annotate bars so a right-docked bar tracks the
+            // scrollbar's edge instead of getting covered (or stranded once it's gone).
+            bool vis = PagePreviewPanel.ComputedVerticalScrollBarVisibility == Visibility.Visible;
+            if (vis != _vScrollVisible)
+            {
+                _vScrollVisible = vis;
+                RepositionAnnotationBars();
+            }
+
+            if (_viewMode != ViewMode.Continuous || _continuousTops.Count == 0) return;
+
+            double viewportCenter = (PagePreviewPanel.VerticalOffset + PagePreviewPanel.ViewportHeight * 0.5)
+                                    / Math.Max(0.01, _zoomLevel);
+            int nearest = 0;
+            double minDist = double.MaxValue;
+            for (int i = 0; i < _continuousTops.Count; i++)
+            {
+                if (i >= _continuousPanel.Children.Count) break;
+                var slot = (FrameworkElement)_continuousPanel.Children[i];
+                double center = _continuousTops[i] + slot.Height * 0.5;
+                double dist   = Math.Abs(center - viewportCenter);
+                if (dist < minDist) { minDist = dist; nearest = i; }
+            }
+
+            if (PageList.SelectedIndex != nearest)
+            {
+                _pageJumpBox.Text = (nearest + 1).ToString();
+                // Update sidebar thumbnail without triggering a full page render
+                PageList.SelectionChanged -= PageList_SelectionChanged;
+                PageList.SelectedIndex = nearest;
+                PageList.SelectionChanged += PageList_SelectionChanged;
+            }
+        }
+
+        private void SetupContinuousView(int initialPage)
+        {
+            if (_doc is null) return;
+            _continuousRenderCts?.Cancel();
+            _continuousPanel.Children.Clear();
+            _continuousTops.Clear();
+            _continuousCanvases.Clear();
+
+            // Use the PDF's natural page width in WPF DIPs (96 DIP/inch, 72 pt/inch).
+            // This is zoom-independent, which is critical: FitToWidth computes
+            //   zoom = viewportW / _continuousPageW
+            // and if _continuousPageW were derived from the current zoom level the two
+            // would cancel and FitToWidth would always return approximately the old zoom.
+            var refPage = _doc.Pages[0];
+            _continuousPageW = Math.Max(200.0, refPage.Width.Point * (96.0 / 72.0));
+
+            double y = 0;
+            for (int i = 0; i < _doc.PageCount; i++)
+            {
+                _continuousTops.Add(y);
+                var pdfPage = _doc.Pages[i];
+                double pw = pdfPage.Width.Point, ph = pdfPage.Height.Point;
+                if (_pageRotations.TryGetValue(i, out int prot) && (prot == 90 || prot == 270))
+                    (pw, ph) = (ph, pw);
+                double ratio = Math.Max(0.1, ph / Math.Max(1, pw));
+                double slotH = _continuousPageW * ratio;
+
+                // Canonical render-dim space (matches single-page RenderPage: longest side -> 2048)
+                // so annotation coordinates are identical in both view modes.
+                double maxDim = Math.Max(pw, ph);
+                int rdW = Math.Max(1, (int)Math.Round(2048.0 * pw / maxDim));
+                int rdH = Math.Max(1, (int)Math.Round(2048.0 * ph / maxDim));
+                _renderDims[i] = (rdW, rdH);
+
+                // Per-page annotation overlay: sized in render-dim space, scaled to the slot.
+                double slotScale = _continuousPageW / rdW;
+                var overlay = new Canvas
+                {
+                    Width           = rdW,
+                    Height          = rdH,
+                    Background       = Brushes.Transparent,
+                    ClipToBounds     = true,
+                    Tag              = i,
+                    LayoutTransform  = new System.Windows.Media.ScaleTransform(slotScale, slotScale)
+                };
+                overlay.PreviewMouseLeftButtonDown += Canvas_MouseLeftButtonDown;
+                overlay.MouseMove                  += Canvas_MouseMove;
+                overlay.PreviewMouseLeftButtonUp   += Canvas_MouseLeftButtonUp;
+                // Right-click opens the same context menu as the primary page (overlays don't
+                // inherit _annotationCanvas's ContextMenu), targeting the right-clicked page.
+                int rcPage = i;
+                overlay.PreviewMouseRightButtonUp += (s, ev) =>
+                {
+                    if (_viewMode != ViewMode.TwoPage) PageList.SelectedIndex = rcPage;
+                    if (_annotationCanvas.ContextMenu is ContextMenu cm)
+                    {
+                        // Selection chrome draws on _activeCanvas, so point it at this tile before populating.
+                        _activeCanvas = (Canvas)s;
+                        PopulateContextMenu(ev.GetPosition((Canvas)s), rcPage);
+                        cm.PlacementTarget = (UIElement)s;
+                        cm.IsOpen = true;
+                        ev.Handled = true;
+                    }
+                };
+                _continuousCanvases[i] = overlay;
+
+                var pageImg = new Image { Stretch = Stretch.None, Width = _continuousPageW, Height = slotH };
+                RenderOptions.SetBitmapScalingMode(pageImg, BitmapScalingMode.HighQuality);
+
+                var slotGrid = new Grid();
+                slotGrid.Children.Add(pageImg);
+                slotGrid.Children.Add(overlay);
+
+                var placeholder = new Border
+                {
+                    Width      = _continuousPageW,
+                    Height     = slotH,
+                    Margin     = new Thickness(0, 0, 0, 12),
+                    Background = Application.Current.TryFindResource("Background") as SolidColorBrush
+                                 ?? new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+                    Tag = i,
+                    Child = slotGrid
+                };
+                int capturedI = i;
+                placeholder.PreviewMouseLeftButtonDown += (_, _) => PageList.SelectedIndex = capturedI;
+                _continuousPanel.Children.Add(placeholder);
+                y += slotH + 12;
+            }
+
+            // Paint existing annotations onto the freshly built per-page overlays so they show
+            // immediately. Without this they stayed invisible until the next tool/page change
+            // happened to trigger a render for that page.
+            foreach (var annotPage in _annotations.Keys.ToList())
+                if (_continuousCanvases.ContainsKey(annotPage))
+                    RenderAllAnnotations(annotPage);
+
+            // Re-apply fit mode now that _continuousPageW is known; default to fit-page (one whole
+            // page in view) unless the user explicitly chose fit-width.
+            if (_fitMode == FitMode.Width) FitToWidth(); else FitToPage();
+
+            _continuousScrollTarget = initialPage;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                () => ScrollContinuousToPage(initialPage));
+
+            _ = RenderContinuousPages();
+        }
+
+        private async System.Threading.Tasks.Task RenderContinuousPages()
+        {
+            if (_doc is null || _currentFile is null) return;
+            _continuousRenderCts?.Cancel();
+            _continuousRenderCts = new System.Threading.CancellationTokenSource();
+            var cts = _continuousRenderCts;
+
+            string currentFile = _currentFile;
+            int pageCount      = _doc.PageCount;
+            double targetW     = _continuousPageW;
+            int renderW        = Math.Max(800, Math.Min(2048, (int)(targetW * 2)));
+
+            // Capture per-page rotations on the UI thread before going async
+            var rotations = new Dictionary<int, int>(_pageRotations);
+
+            await System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    using var docReader = DocLib.Instance.GetDocReader(
+                        currentFile, new PageDimensions(renderW, renderW * 2));
+
+                    for (int i = 0; i < pageCount; i++)
+                    {
+                        if (cts.IsCancellationRequested) return;
+                        using var pr = docReader.GetPageReader(i);
+                        int w = pr.GetPageWidth();
+                        int h = pr.GetPageHeight();
+                        var raw = pr.GetImage();
+                        if (w <= 0 || h <= 0 || raw is null) continue;
+                        if (rotations.TryGetValue(i, out int rot) && rot != 0)
+                            (raw, w, h) = RotateBitmap(raw, w, h, rot);
+
+                        int fi = i, fw = w, fh = h;
+                        byte[] bytes = raw;
+                        if (cts.IsCancellationRequested) return;
+                        // Use the window's own dispatcher, not Application.Current.Dispatcher: during app
+                        // shutdown Application.Current goes null and this background render would NRE.
+                        Dispatcher.Invoke(() =>
+                        {
+                            if (cts.IsCancellationRequested || _viewMode != ViewMode.Continuous) return;
+                            if (fi >= _continuousPanel.Children.Count) return;
+
+                            var slot = (Border)_continuousPanel.Children[fi];
+                            double dipW = slot.Width;
+                            double dipH = dipW * fh / fw;
+                            double dpiX = 96.0 * fw / dipW;
+                            double dpiY = 96.0 * fh / dipH;
+
+                            var bmp = new WriteableBitmap(fw, fh, dpiX, dpiY, PixelFormats.Bgra32, null);
+                            bmp.WritePixels(new Int32Rect(0, 0, fw, fh), bytes, fw * 4, 0);
+                            bmp.Freeze();
+
+                            if (slot.Child is Grid slotGrid && slotGrid.Children.Count > 0
+                                && slotGrid.Children[0] is Image pageImg)
+                            {
+                                pageImg.Source  = bmp;
+                                pageImg.Width   = dipW;
+                                pageImg.Height  = dipH;
+                                slot.Background = Brushes.White;
+
+                                // Size the slot and overlay from the ACTUAL rendered page so a
+                                // cropped page (which renders shorter than its MediaBox estimate)
+                                // fills its slot with no white bars. Mirrors single-page view.
+                                slot.Height = dipH;
+                                double maxF = Math.Max(fw, fh);
+                                int rdW = Math.Max(1, (int)Math.Round(2048.0 * fw / maxF));
+                                int rdH = Math.Max(1, (int)Math.Round(2048.0 * fh / maxF));
+                                _renderDims[fi] = (rdW, rdH);
+                                if (slotGrid.Children.Count > 1 && slotGrid.Children[1] is Canvas ov)
+                                {
+                                    ov.Width  = rdW;
+                                    ov.Height = rdH;
+                                    ov.LayoutTransform =
+                                        new System.Windows.Media.ScaleTransform(dipW / rdW, dipW / rdW);
+                                }
+
+                                // Slot heights are now exact; recompute scroll offsets from them.
+                                double yy = 0;
+                                for (int k = 0; k < _continuousPanel.Children.Count && k < _continuousTops.Count; k++)
+                                {
+                                    _continuousTops[k] = yy;
+                                    double hk = ((FrameworkElement)_continuousPanel.Children[k]).Height;
+                                    if (double.IsNaN(hk)) hk = 0;
+                                    yy += hk + 12;
+                                }
+
+                                // Pages render in order, so when the target page is reached every
+                                // page above it has its final height; re-scroll so a crop lands you
+                                // back on the same page instead of drifting to the next one.
+                                if (_continuousScrollTarget >= 0 && fi >= _continuousScrollTarget)
+                                {
+                                    int tgt = _continuousScrollTarget;
+                                    _continuousScrollTarget = -1;
+                                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                                        (Action)(() => ScrollContinuousToPage(tgt)));
+                                }
+
+                                RenderAllAnnotations(fi);
+                            }
+                        });
+                    }
+                }
+                catch { /* render cancelled or doc closed */ }
+            }, cts.Token);
+        }
+
+        private void RenderPage(int pageIndex)
+        {
+            if (_currentFile is null || _doc is null) return;
+            // Two-page spreads pair (0,1),(2,3),...; render the pair's left (even) page as primary so
+            // selecting the right page of a pair still shows the whole spread, not a lone page.
+            if (_viewMode == ViewMode.TwoPage) pageIndex -= pageIndex % 2;
+            try
+            {
+                // Scale render resolution to match display DPI AND current zoom so the
+                // bitmap stays sharp when zoomed in.  Base 2048 means Fit Width on a
+                // wide monitor stays crisp; zoom factor ensures 1:1 pixels at 2× zoom.
+                // Capped at 6144 to keep memory manageable.
+                var dpiInfo = VisualTreeHelper.GetDpi(this);
+                double dpiScaleX = dpiInfo.DpiScaleX;
+                double dpiScaleY = dpiInfo.DpiScaleY;
+                int scaledMax = (int)Math.Min(6144,
+                    2048 * Math.Max(dpiScaleX, dpiScaleY) * Math.Max(1.0, _zoomLevel));
+                _lastRenderZoom = _zoomLevel;
+
+                using var docReader = DocLib.Instance.GetDocReader(_currentFile, new PageDimensions(scaledMax, scaledMax));
+                using var pageReader = docReader.GetPageReader(pageIndex);
+
+                int width = pageReader.GetPageWidth();
+                int height = pageReader.GetPageHeight();
+                var rawBytes = pageReader.GetImage();
+
+                // Apply rotation: the temp file has /Rotate stripped so Docnet renders
+                // unrotated (no clipping); rotate the pixel buffer to match the visual.
+                if (_pageRotations.TryGetValue(pageIndex, out int pgRot) && pgRot != 0)
+                    (rawBytes, width, height) = RotateBitmap(rawBytes, width, height, pgRot);
+
+                if (width <= 0 || height <= 0 || rawBytes == null || rawBytes.Length == 0)
+                {
+                    PageImage.Source = null;
+                    SetStatus(string.Format(Loc("Str_PageRenderError"), pageIndex + 1));
+                    return;
+                }
+
+                // Convert pixel dimensions to WPF DIPs so the annotation canvas and
+                // link overlays are sized in the same coordinate space that WPF uses for
+                // layout.  Divide by the zoom factor so the canvas size (and therefore the
+                // coordinate map used by DrawAnnotationsOnDocument) stays stable across
+                // zoom re-renders — the bitmap just gets more pixels per DIP.
+                // LayoutTransform handles the visual zoom, not the canvas dimensions.
+                double zoomFactor = Math.Max(1.0, _zoomLevel);
+                int dipW = (int)Math.Round(width  / dpiScaleX / zoomFactor);
+                int dipH = (int)Math.Round(height / dpiScaleY / zoomFactor);
+                _renderDims[pageIndex] = (dipW, dipH);
+
+                // Scale bitmap DPI up so the extra pixels display within the same DIP area.
+                double bitmapDpiX = 96.0 * width  / dipW;
+                double bitmapDpiY = 96.0 * height / dipH;
+                var bitmap = new WriteableBitmap(width, height, bitmapDpiX, bitmapDpiY, PixelFormats.Bgra32, null);
+                bitmap.WritePixels(new Int32Rect(0, 0, width, height), rawBytes, width * 4, 0);
+
+                PageImage.Source = bitmap;
+                _annotationCanvas.Width  = dipW;
+                _annotationCanvas.Height = dipH;
+                _annotationCanvas.Tag    = pageIndex;   // so clicks on the primary page resolve to the
+                                                        // page actually shown (page 0 in grid), not the
+                                                        // selected index - otherwise annotations on it
+                                                        // are unhittable and clicks "do nothing".
+                ClearSelection();
+                ClearSecondaryPages();
+                RenderAllAnnotations(pageIndex);
+                SetStatus(string.Format(Loc("Str_PageOf"), pageIndex + 1, _doc!.PageCount));
+                // Defer additional pages until layout has settled so ActualWidth is valid.
+                // RenderPageLinks runs AFTER RenderAdditionalPages so ClearSecondaryPages
+                // inside RenderAdditionalPages doesn't wipe the overlays we just added.
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+                {
+                    RenderAdditionalPages(pageIndex);
+                    RenderPageLinks(pageIndex, dipW, dipH);
+                });
+                _renderedPrimaryPage = pageIndex;
+            }
+            catch (Exception ex)
+            {
+                PageImage.Source = null;
+                SetStatus(string.Format(Loc("Str_RenderError"), ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Clears all dynamically-added secondary page borders from the panel,
+        /// leaving only the first child (the primary page border).
+        /// </summary>
+        // Removes secondary tiles whose page is no longer shown (keeps the primary at index 0 and any
+        // tile still in range so it can be reused in place). Keeps the tile map in sync.
+        private void RemoveSecondaryTilesNotIn(HashSet<int> keep)
+        {
+            if (_pageContentPanel is null) return;
+            var stale = new List<int>();
+            foreach (var k in _continuousCanvases.Keys)
+                if (!keep.Contains(k)) stale.Add(k);
+            foreach (var pg in stale)
+            {
+                if (_continuousCanvases.TryGetValue(pg, out var ov) && ov.Parent is Grid g && g.Parent is Border tile)
+                {
+                    foreach (var gc in g.Children) if (gc is Image im) im.Source = null;
+                    _pageContentPanel.Children.Remove(tile);
+                }
+                _continuousCanvases.Remove(pg);
+            }
+        }
+
+        private void ClearSecondaryPages()
+        {
+            if (_pageContentPanel is null) return;
+            // Explicitly null out Image sources before removing so the GC can
+            // reclaim the WriteableBitmap backing arrays promptly.
+            while (_pageContentPanel.Children.Count > 1)
+            {
+                var child = _pageContentPanel.Children[^1];
+                if (child is Border b && b.Child is Grid g)
+                {
+                    foreach (var gc in g.Children)
+                        if (gc is Image img) img.Source = null;
+                }
+                _pageContentPanel.Children.RemoveAt(_pageContentPanel.Children.Count - 1);
+            }
+            // NOTE: do NOT reset _pageContentPanel.Width here.  Width is managed exclusively
+            // by RenderAdditionalPages (which runs only via Dispatcher) so that no synchronous
+            // call to ClearSecondaryPages triggers an intermediate layout pass that would cause
+            // the primary page to flash centered and then jerk back to left-aligned.
+            // Clear any link overlays from the annotation canvas.
+            foreach (var lo in _linkOverlays)
+                _annotationCanvas.Children.Remove(lo);
+            _linkOverlays.Clear();
+            _continuousCanvases.Clear();   // keep the page->tile map in sync with the visible tiles
+        }
+
+        /// <summary>
+        /// Renders secondary pages as a grid. Panel-width setup is synchronous so layout
+        /// is correct immediately; Docnet pixel rendering runs on a background thread so
+        /// the UI stays responsive. WPF element creation returns to the UI thread.
+        /// </summary>
+        private async void RenderAdditionalPages(int primaryPageIdx)
+        {
+            if (_currentFile is null || _doc is null) return;
+            // Grid is a stable overview anchored at page 0 (independent of the selected page), so it
+            // always shows the whole document instead of only the selected page onward.
+            if (_viewMode == ViewMode.Grid) primaryPageIdx = 0;
+
+            double viewportW = PagePreviewPanel.ActualWidth;
+            if (viewportW <= 0 || _doc.PageCount <= 1)
+            {
+                ClearSecondaryPages();
+                _pageContentPanel.Width = double.NaN;
+                return;
+            }
+
+            // Snap the WrapPanel width to a whole number of page-width slots.
+            double primaryPageW = _annotationCanvas.Width > 0 ? _annotationCanvas.Width : 595;
+            double pageSlotW = primaryPageW + 12;
+            double availablePreZoom = (viewportW - 24) / _zoomLevel;
+            // +1e-6: same floating-point underflow guard as GridZoomStep, so a zoom set for n columns
+            // actually lays out n (not n-1) when the division lands a hair under the integer.
+            int pagesPerRow = _viewMode == ViewMode.TwoPage ? 2 : Math.Max(1, (int)(availablePreZoom / pageSlotW + 1e-6));
+            if (_viewMode == ViewMode.Grid) _gridColumns = pagesPerRow;   // remember it for resize column-holding
+            double panelW = pagesPerRow * pageSlotW;
+            if (panelW > 0) _pageContentPanel.Width = panelW;
+
+            // Cancel any previously running secondary render.
+            _secondaryRenderCts?.Cancel();
+            _secondaryRenderCts = new System.Threading.CancellationTokenSource();
+            var cts = _secondaryRenderCts;
+
+            // Secondary pages: 1536 px base, scaled up for high-DPI displays so grid / two-page text
+            // stays crisp on 150%/200% screens (capped at 3072 to keep memory in check). Stays 1536
+            // at 100% DPI, so standard displays are unaffected.
+            int SecondaryMax = (int)Math.Min(3072, 1536 * Math.Max(1.0, VisualTreeHelper.GetDpi(this).DpiScaleX));
+            // Grid shows the whole document; Two-Page shows one secondary; other modes peek ahead.
+            int limit = _viewMode == ViewMode.Grid
+                ? _doc.PageCount
+                : Math.Min(_doc.PageCount, primaryPageIdx + 1 + (_viewMode == ViewMode.TwoPage ? 1 : 25));
+            if (limit <= primaryPageIdx + 1) { ClearSecondaryPages(); return; }
+
+            // Per-tile reuse: drop tiles for pages that left the view, keep the rest. Pages that already
+            // have a tile get their bitmap swapped in place (AddSecondaryTile); only genuinely new pages
+            // are built. Stays smooth even mid-stream on a large doc, where the tile set is only partly
+            // built. (Navigation clears everything via RenderPage first, so it rebuilds.)
+            var keepPages = new HashSet<int>();
+            for (int i = primaryPageIdx + 1; i < limit; i++) keepPages.Add(i);
+            RemoveSecondaryTilesNotIn(keepPages);
+
+            string currentFile = _currentFile;
+
+            // Collect rotations on the UI thread before the background task.
+            var secRotations = new Dictionary<int, int>();
+            for (int i = primaryPageIdx + 1; i < limit; i++)
+                if (_pageRotations.TryGetValue(i, out int r) && r != 0)
+                    secRotations[i] = r;
+
+            // Capture the primary page width and reset the tile map on the UI thread before
+            // streaming tiles in from the background render.
+            double primaryDipW = _annotationCanvas.Width > 0 ? _annotationCanvas.Width : 595;
+
+            // Render pixels on a background thread and attach each page tile to the UI as soon
+            // as it is ready, so large documents fill in progressively instead of blocking
+            // until every page has been rendered.
+            try
+            {
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    using var docReader = DocLib.Instance.GetDocReader(currentFile, new PageDimensions(SecondaryMax, SecondaryMax));
+                    for (int i = primaryPageIdx + 1; i < limit; i++)
+                    {
+                        if (cts.IsCancellationRequested) break;
+                        using var pageReader = docReader.GetPageReader(i);
+                        int w = pageReader.GetPageWidth();
+                        int h = pageReader.GetPageHeight();
+                        var rawBytes = pageReader.GetImage();
+                        if (w <= 0 || h <= 0 || rawBytes is null) continue;
+                        if (secRotations.TryGetValue(i, out int rot))
+                            (rawBytes, w, h) = RotateBitmap(rawBytes, w, h, rot);
+
+                        int pi = i, pw = w, ph = h;
+                        byte[] bytes = rawBytes;
+                        try
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (cts.IsCancellationRequested || _doc is null) return;
+                                if (_viewMode != ViewMode.Grid && _viewMode != ViewMode.TwoPage) return;
+                                AddSecondaryTile(pi, pw, ph, bytes, primaryDipW);
+                            });
+                        }
+                        // Dispatcher.Invoke throws when the dispatcher is shutting down (app closing) or
+                        // the render was cancelled; stop rendering cleanly instead of crashing.
+                        catch (System.Threading.Tasks.TaskCanceledException) { break; }
+                        catch (OperationCanceledException) { break; }
+                    }
+                }, cts.Token);
+            }
+            catch { return; }
+        }
+
+        /// <summary>
+        /// Builds one secondary-page tile (image + annotation overlay + links) and appends it
+        /// to the page content panel. Must run on the UI thread.
+        /// </summary>
+        private void AddSecondaryTile(int pi, int w, int h, byte[] rawBytes, double primaryDipW)
+        {
+            int pageDipW = (int)Math.Round(primaryDipW);
+            int pageDipH = (int)Math.Round(primaryDipW * h / w);
+            double bitmapDpiX = 96.0 * w / pageDipW;
+            double bitmapDpiY = 96.0 * h / pageDipH;
+
+            var bitmap = new WriteableBitmap(w, h, bitmapDpiX, bitmapDpiY, PixelFormats.Bgra32, null);
+            bitmap.WritePixels(new Int32Rect(0, 0, w, h), rawBytes, w * 4, 0);
+
+            // This page already has a tile: swap just the bitmap (same logical size, crisper pixels).
+            // No clear, no reflow - so the grid/spread never jumps or blinks.
+            if (_continuousCanvases.TryGetValue(pi, out var exOverlay)
+                && exOverlay.Parent is Grid exGrid && exGrid.Children.Count > 0 && exGrid.Children[0] is Image exImg)
+            {
+                exImg.Source = bitmap;
+                return;
+            }
+
+            // Do NOT overwrite _renderDims if the page was already rendered as primary -
+            // its annotation coordinate mapping must stay intact.
+            if (!_renderDims.ContainsKey(pi))
+                _renderDims[pi] = (pageDipW, pageDipH);
+
+            var img = new Image { Source = bitmap, Stretch = Stretch.None };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+
+            var overlay = new Canvas
+            {
+                Width = pageDipW, Height = pageDipH,
+                Background = Brushes.Transparent,
+                Cursor = CursorForTool(_currentTool),
+                Tag = pi,
+                ToolTip = $"Page {pi + 1}"
+            };
+            int capturedPi = pi;
+            overlay.PreviewMouseLeftButtonDown += (s, ev) =>
+            {
+                if (_currentTool == EditTool.Select)
+                {
+                    var hit = ev.GetPosition((Canvas)s);
+                    bool onAnnot = (_annotations.TryGetValue(capturedPi, out var list)
+                                    && list.Any(a => HitTestAnnotation(a, hit, out _)))
+                                   || _selectedAnnotation?.PageIndex == capturedPi;
+                    // Forward to the canvas handler when the click is on an annotation, OR on any
+                    // double-click: double-click starts text editing on raw PDF text, which is not an
+                    // annotation yet, so it must reach Canvas_MouseLeftButtonDown (EditTextAtPosition)
+                    // even on an "empty" tile. Without the ClickCount check, editing fresh text was
+                    // impossible on secondary tiles (all grid pages, the 2nd two-page page).
+                    if (onAnnot || ev.ClickCount == 2) Canvas_MouseLeftButtonDown(s, ev);
+                    // Selecting the page reflows the Two-Page pair (looks like the doc "advances"),
+                    // so don't change the selection on an empty click of a secondary tile there.
+                    else if (_viewMode != ViewMode.TwoPage) PageList.SelectedIndex = capturedPi;
+                }
+                else Canvas_MouseLeftButtonDown(s, ev);
+            };
+            overlay.MouseMove                += Canvas_MouseMove;
+            overlay.PreviewMouseLeftButtonUp += Canvas_MouseLeftButtonUp;
+            // Right-click on a tile selects that page and opens the same context menu the primary
+            // page uses (per-page overlays don't inherit _annotationCanvas's ContextMenu).
+            overlay.PreviewMouseRightButtonUp += (s, ev) =>
+            {
+                // Don't change the selected page in Two-Page view - it would reflow the pair and
+                // drop to a single page. Grid is anchored at page 0 and Continuous just scrolls.
+                if (_viewMode != ViewMode.TwoPage) PageList.SelectedIndex = capturedPi;
+                if (_annotationCanvas.ContextMenu is ContextMenu cm)
+                {
+                    // Selection chrome draws on _activeCanvas, so point it at this tile before populating.
+                    _activeCanvas = (Canvas)s;
+                    PopulateContextMenu(ev.GetPosition((Canvas)s), capturedPi);
+                    cm.PlacementTarget = (UIElement)s;
+                    cm.IsOpen = true;
+                    ev.Handled = true;
+                }
+            };
+            _continuousCanvases[pi] = overlay;
+
+            var pageGrid = new Grid();
+            pageGrid.Children.Add(img);
+            pageGrid.Children.Add(overlay);
+            AddSecondaryPageLinks(pi, pageGrid, pageDipW, pageDipH);
+
+            var tile = new Border
+            {
+                Background = Brushes.White,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 0, 12, 12),
+                Child = pageGrid
+            };
+            _pageContentPanel.Children.Add(tile);
+            RenderAllAnnotations(pi);
+
+            // Grid tiles render asynchronously, so a "scroll to page N" requested when entering grid
+            // can't run until page N's tile exists. Do it the moment that tile streams in.
+            if (pi == _gridScrollToPage)
+            {
+                _gridScrollToPage = -1;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                    (Action)(() =>
+                    {
+                        if (_viewMode != ViewMode.Grid) return;
+                        try
+                        {
+                            // Top-align the page's row in the viewport (accounts for the zoom transform).
+                            if (PagePreviewPanel.Content is FrameworkElement content)
+                                PagePreviewPanel.ScrollToVerticalOffset(
+                                    tile.TransformToVisual(content).Transform(new Point(0, 0)).Y);
+                            else
+                                tile.BringIntoView();
+                        }
+                        catch { tile.BringIntoView(); }
+                    }));
+            }
+        }
+
+        private void BootstrapDocumentView(int initialPage, bool autoFit)
+        {
+            // The document is (re)displaying - usually a different one (tab switch/close/open). The
+            // skip-render guard in PageList_SelectionChanged compares the target page to the last
+            // rasterised page (_renderedPrimaryPage) but not to WHICH document, so a switch to another
+            // doc at the same page index + zoom would skip the render and leave the previous doc on
+            // screen. Invalidate it here so the new document always renders.
+            _renderedPrimaryPage = -1;
+            ClearSecondaryPages();
+            ClearSelection();
+            RefreshPageList();
+            LoadOutlines();
+            DropZone.Visibility = Visibility.Collapsed;
+            PagePreviewPanel.Visibility = Visibility.Visible;
+            if (_closeFileBtnRef != null) _closeFileBtnRef.IsEnabled = true;
+            _pageJumpBox.IsEnabled = true;
+            _pageTotalLabel.Text = $"/ {_doc!.PageCount}";
+            if (_doc!.PageCount > 0)
+            {
+                int page = Math.Max(0, Math.Min(initialPage, _doc.PageCount - 1));
+                // Show the panel that matches THIS tab's view mode. This must run for every mode, not
+                // only Continuous: switching from a Continuous tab to a Single/Two-Page/Grid tab has to
+                // collapse the continuous panel, otherwise the previous tab's continuous render stays on
+                // screen over the new document.
+                bool isContinuous = _viewMode == ViewMode.Continuous;
+                _pageContentPanel.Visibility = isContinuous ? Visibility.Collapsed : Visibility.Visible;
+                _continuousPanel.Visibility  = isContinuous ? Visibility.Visible   : Visibility.Collapsed;
+                PageList.SelectedIndex = page;
+                // Continuous's SelectionChanged returns early (no RenderPage call), so build its panel here.
+                if (isContinuous)
+                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                        () => SetupContinuousView(page));
+                // Fit / zoom once the first page has rendered and layout has settled.
+                // DispatcherPriority.Background is lower than Loaded, so this fires after
+                // all pending RenderPage / RefreshPageView callbacks have completed.
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
+                    (Action)(() =>
+                    {
+                        if (autoFit)
+                        {
+                            // Grid opens to its 3-across default; other modes fit to width.
+                            if (_viewMode == ViewMode.Grid)
+                                SetZoom(GridZoomForN(Math.Min(_doc?.PageCount ?? 1, 3)));
+                            else
+                                FitToPage();
+                        }
+                        else
+                        {
+                            // Tab restore: keep the document's saved zoom level.
+                            SetZoom(_zoomLevel);
+                        }
+                    }));
+            }
+        }
+
+        private void RefreshPageView(int pageIndex)
+        {
+            if (_viewMode == ViewMode.Continuous)
+                return; // continuous mode manages its own rendering
+            if (_viewMode == ViewMode.TwoPage) pageIndex -= pageIndex % 2;   // snap to the spread's left page
+
+            // Grid fits its columns to the viewport, so it never needs a horizontal scrollbar.
+            // Leaving it on Auto shows a stray (green) thumb across the bottom when the tile panel
+            // overflows by the vertical scrollbar's width. Disable it for grid, Auto elsewhere.
+            PagePreviewPanel.HorizontalScrollBarVisibility =
+                _viewMode == ViewMode.Grid ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+            // Reserve the vertical scrollbar in Grid so its appearing/disappearing can't change the
+            // viewport width mid-resize and feed a width change back into the layout (the loop the grid
+            // used to guard against). A stable width lets the column-holding resize stay stable too.
+            PagePreviewPanel.VerticalScrollBarVisibility =
+                _viewMode == ViewMode.Grid ? ScrollBarVisibility.Visible : ScrollBarVisibility.Auto;
+            // Single page is centered; drop the right/bottom tile-gap margin that grid/two-page
+            // need for spacing (it would otherwise push the lone page a few px left of center).
+            if (_pageContentPanel is not null && _pageContentPanel.Children.Count > 0
+                && _pageContentPanel.Children[0] is Border primaryBorder)
+                primaryBorder.Margin = _viewMode == ViewMode.Single
+                    ? new Thickness(0) : new Thickness(0, 0, 12, 12);
+            if (_viewMode == ViewMode.Grid || _viewMode == ViewMode.TwoPage)
+                RenderAdditionalPages(pageIndex);
+            else
+            {
+                ClearSecondaryPages();
+                if (_pageContentPanel is not null)
+                    _pageContentPanel.Width = double.NaN;
+            }
+            if (_renderDims.TryGetValue(pageIndex, out var dims))
+                RenderPageLinks(pageIndex, dims.w, dims.h);
+        }
+
+        private void ApplyZoom(bool lite = false)
+        {
+            if (_pageContentGrid.LayoutTransform is ScaleTransform st)
+            {
+                st.ScaleX = _zoomLevel;
+                st.ScaleY = _zoomLevel;
+            }
+            SyncZoomBox();   // keep the toolbar box in step (FitToWidth/FitToPage don't call SetZoom)
+            // Live-resize path: the ScaleTransform above already grew/shrank the existing render to
+            // match the new size - smooth and flicker-free. Skip the bitmap re-render and tile rebuild;
+            // PagePreviewPanel_SizeChanged debounces one crisp re-render once the drag settles, instead
+            // of thrashing it on every size tick (which is what made the page blink during a resize).
+            if (lite) return;
+            // Recalculate how many pages fit after zoom changes.
+            // Use RefreshPageView so link overlays are re-added after RenderAdditionalPages
+            // calls ClearSecondaryPages (which wipes them).
+            int applyIdx = PageList.SelectedIndex;
+            if (applyIdx >= 0)
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                    () => RefreshPageView(applyIdx));
+
+            // If the user has zoomed in past ~10% of the last render, queue a deferred re-render at
+            // higher resolution so text re-sharpens quickly (especially on high-DPI displays, where
+            // the upscaled bitmap shows blur sooner). The timer debounces rapid Ctrl+scroll.
+            // Skipped in Grid: this re-renders via the selected page (not page 0) and, once the render
+            // hits its pixel cap when zoomed in, shifts page 0's render width - which is the basis for
+            // the grid's column math. That desync locks Ctrl+scroll to a 1<->2 column toggle. The grid
+            // is an overview and doesn't need the re-sharpen.
+            if (applyIdx >= 0 && _zoomLevel > _lastRenderZoom * 1.10 && _doc is not null
+                && _viewMode != ViewMode.Grid)
+            {
+                if (_rerenderTimer is null)
+                {
+                    _rerenderTimer = new System.Windows.Threading.DispatcherTimer
+                        { Interval = TimeSpan.FromMilliseconds(250) };
+                    _rerenderTimer.Tick += (_, _) =>
+                    {
+                        _rerenderTimer!.Stop();
+                        // Never re-render the primary in Grid (it would shift page 0's width basis and
+                        // desync the column math); guards a timer started just before a switch into grid.
+                        if (_doc is not null && _viewMode != ViewMode.Grid && PageList.SelectedIndex >= 0)
+                            RenderPage(PageList.SelectedIndex);
+                    };
+                }
+                _rerenderTimer.Stop();
+                _rerenderTimer.Start();
+            }
+        }
+
+        private void ResetZoom() => SetZoom(1.0);
+
+        // Grid zoom snaps to "fit N pages across the viewport", so zooming steps through clean
+        // columns (1, 2, 3, ... per row) instead of arbitrary percentages. N rises as you zoom out
+        // and keeps going for larger documents until the page size hits the zoom floor.
+        private double GridZoomForN(int n)
+        {
+            if (n < 1) n = 1;
+            double rdW = _annotationCanvas.Width > 0 ? _annotationCanvas.Width : 1583;
+            double vw  = PagePreviewPanel.ActualWidth;   // SAME width + slot the layout uses
+            if (vw <= 0 || rdW <= 0) return _zoomLevel;
+            // RenderAdditionalPages lays out pages in slots of (rdW + 12) within (ActualWidth - 24);
+            // invert that so "fit n" produces exactly n columns with no gap.
+            return (vw - 24.0) / (n * (rdW + 12.0));
+        }
+
+        private void GridZoomStep(bool zoomOut)
+        {
+            double rdW = _annotationCanvas.Width > 0 ? _annotationCanvas.Width : 1583;
+            double vw  = PagePreviewPanel.ActualWidth;
+            if (vw <= 0 || rdW <= 0) { SetZoom(zoomOut ? _zoomLevel - ZoomStep : _zoomLevel + ZoomStep); return; }
+            // Current columns, computed the SAME way RenderAdditionalPages computes pagesPerRow.
+            // +1e-6 guards against floating-point underflow: when _zoomLevel is exactly GridZoomForN(n),
+            // (vw-24)/(z*(rdW+12)) computes as n minus a tiny epsilon and would floor to n-1, making the
+            // column count read one low - which locked zoom into a 1<->2 column toggle.
+            int curN = Math.Max(1, (int)Math.Floor((vw - 24.0) / (_zoomLevel * (rdW + 12.0)) + 1e-6));
+            int newN = Math.Max(1, zoomOut ? curN + 1 : curN - 1);
+            // If the column count is already at the limit the clamped zoom is unchanged, so
+            // skip the re-render entirely - otherwise every Ctrl+Scroll reloads all tiles
+            // without changing anything.
+            double target = Math.Max(ZoomMin, Math.Min(ZoomMax, GridZoomForN(newN)));
+            if (Math.Abs(target - _zoomLevel) < 1e-4) return;
+            SetZoom(target);   // already clamped to [ZoomMin, ZoomMax]
+        }
+
+        /// <summary>
+        /// Central zoom-change entry point for buttons, keyboard shortcuts, and the dropdown.
+        /// Clamps to [ZoomMin, ZoomMax], applies the scale, syncs the combo box, and updates
+        /// the status bar. Does NOT apply a fit mode — call FitToWidth / FitToPage for that.
+        /// </summary>
+        // The internal _zoomLevel scales each page's layout box. In Continuous mode that box is
+        // the page's natural DIP width, so _zoomLevel already reads as true zoom (1.0 = 100%).
+        // In Single/Two-Page/Grid the box is the render-dimension bitmap (~2x natural width), so
+        // the raw _zoomLevel reads about half the real size. DisplayZoomFactor converts to true
+        // zoom for everything shown to (or typed by) the user; the internal value is unchanged.
+        private double DisplayZoomFactor()
+        {
+            if (_viewMode == ViewMode.Continuous || _doc is null) return 1.0;
+            int idx = _viewMode == ViewMode.Grid ? 0 : Math.Max(0, PageList.SelectedIndex);
+            if (idx < 0 || idx >= _doc.PageCount) return 1.0;
+            if (!_renderDims.TryGetValue(idx, out var d) || d.w <= 0) return 1.0;
+            double wpt = _doc.Pages[idx].Width.Point, hpt = _doc.Pages[idx].Height.Point;
+            if (_pageRotations.TryGetValue(idx, out int r) && (r == 90 || r == 270)) wpt = hpt;
+            double naturalW = wpt * 96.0 / 72.0;
+            if (naturalW <= 0) return 1.0;
+            return d.w / naturalW;
+        }
+        private double DisplayZoomPct() => _zoomLevel * DisplayZoomFactor() * 100.0;
+
+        private void SetZoom(double level)
+        {
+            _fitMode   = FitMode.None;
+            _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax, level));
+            ApplyZoom();
+            SyncZoomBox();
+            if (_doc != null && PageList.SelectedIndex >= 0)
+                SetStatus(string.Format(Loc("Str_PageOf"), PageList.SelectedIndex + 1, _doc.PageCount) + $" - {DisplayZoomPct():F0}%");
+        }
+
+        private void ZoomIn_Click(object sender, RoutedEventArgs e)  { if (_viewMode == ViewMode.Grid) GridZoomStep(false); else SetZoom(_zoomLevel + ZoomStep); }
+        private void ZoomOut_Click(object sender, RoutedEventArgs e) { if (_viewMode == ViewMode.Grid) GridZoomStep(true);  else SetZoom(_zoomLevel - ZoomStep); }
+
+        private void SyncZoomBox()
+        {
+            if (_zoomBox is null) return;
+            _zoomBox.SelectionChanged -= ZoomBox_SelectionChanged;
+
+            // When a fit mode is active, show the "Fit Width"/"Fit Page" entry rather than a raw
+            // percentage so the box matches the status bar.
+            string? fitTag = _fitMode == FitMode.Width ? "fitwidth"
+                           : _fitMode == FitMode.Page  ? "fitpage"
+                           : null;
+            if (fitTag != null)
+            {
+                foreach (ComboBoxItem item in _zoomBox.Items)
+                {
+                    if (item.Tag?.ToString() == fitTag)
+                    {
+                        _zoomBox.SelectedItem = item;
+                        _zoomBox.SelectionChanged += ZoomBox_SelectionChanged;
+                        return;
+                    }
+                }
+            }
+
+            string target = $"{DisplayZoomPct():F0}%";
+            foreach (ComboBoxItem item in _zoomBox.Items)
+            {
+                if (item.Content?.ToString() == target)
+                {
+                    _zoomBox.SelectedItem = item;
+                    _zoomBox.SelectionChanged += ZoomBox_SelectionChanged;
+                    return;
+                }
+            }
+            // No preset match - clear dropdown selection and show free-form percentage
+            _zoomBox.SelectedItem = null;
+            _zoomBox.Text = target;
+            _zoomBox.SelectionChanged += ZoomBox_SelectionChanged;
+        }
+
+        private void ZoomBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_zoomBox?.SelectedItem is not ComboBoxItem item) return;
+            // Editable combos highlight the shown value after a pick (looks like selected text);
+            // collapse that selection to just the caret once the value settles.
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, (Action)(() =>
+            {
+                if (_zoomBox.Template?.FindName("PART_EditableTextBox", _zoomBox) is TextBox etb)
+                    etb.Select(etb.Text.Length, 0);
+            }));
+            string? tag = item.Tag?.ToString();
+            if (tag is null) return;
+
+            if (tag == "fitwidth") { FitToWidth(); return; }
+            if (tag == "fitpage")  { FitToPage();  return; }
+
+            if (double.TryParse(tag, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out double z))
+            {
+                _fitMode = FitMode.None;
+                // Preset tags are true zoom (1.0 = 100%); convert to the internal render-dim scale.
+                double zf = DisplayZoomFactor(); if (zf <= 0) zf = 1.0;
+                _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax, z / zf));
+                ApplyZoom();
+                if (PageList.SelectedIndex >= 0 && _doc != null)
+                    SetStatus(string.Format(Loc("Str_PageOf"), PageList.SelectedIndex + 1, _doc.PageCount) + $" - {DisplayZoomPct():F0}%");
+            }
+        }
+
+        private void FitToWidth(bool lite = false)
+        {
+            double viewW = PagePreviewPanel.ActualWidth - 40;
+            if (viewW <= 0) return;
+
+            // Continuous mode: pages are laid out at _continuousPageW (natural DIPs width)
+            // and scaled by the ScaleTransform on PageContentGrid. PageImage is hidden, so
+            // we cannot use its Source as a guard; use _continuousPageW directly instead.
+            if (_viewMode == ViewMode.Continuous)
+            {
+                if (_continuousPageW <= 0) return;
+                _fitMode   = FitMode.Width;
+                _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax, viewW / _continuousPageW));
+                ApplyZoom(lite);
+                int ci = PageList.SelectedIndex;
+                if (ci >= 0 && _doc != null)
+                    SetStatus(string.Format(Loc("Str_FitWidth"), ci + 1, _doc.PageCount, $"{DisplayZoomPct():F0}"));
+                return;
+            }
+
+            if (PageImage.Source is null) return;
+            // Use _renderDims rather than PageImage.ActualWidth - the latter can be stale
+            // (reporting the previous page's layout size) if WPF layout hasn't fully settled.
+            // _renderDims is set synchronously inside RenderPage so it always matches the
+            // current page. dipW is zoom-stable: scaledMax scales with zoom while RenderPage
+            // divides by zoomFactor, so the two cancel out. Use dipW directly.
+            int idx = PageList.SelectedIndex;
+            double dipW = (idx >= 0 && _renderDims.TryGetValue(idx, out var dimsW))
+                ? dimsW.w
+                : (PageImage.ActualWidth > 0 ? PageImage.ActualWidth : 1);
+            if (dipW <= 0) return;
+            // Two Page mode shows two pages side by side — each page gets roughly half
+            // the viewport width (minus a small gap between pages).
+            double slotW = _viewMode == ViewMode.TwoPage ? (viewW - 12) / 2 : viewW;
+            _fitMode = FitMode.Width;
+            _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax, slotW / dipW));
+            ApplyZoom(lite);
+            if (idx >= 0 && _doc != null)
+                SetStatus(string.Format(Loc("Str_FitWidth"), idx + 1, _doc.PageCount, $"{DisplayZoomPct():F0}"));
+        }
+
+        private void FitToPage(bool lite = false)
+        {
+            double viewW = PagePreviewPanel.ActualWidth  - 40;
+            double viewH = PagePreviewPanel.ActualHeight - 40;
+            if (viewW <= 0 || viewH <= 0) return;
+
+            // Continuous mode: derive the current page's natural height from its PDF aspect
+            // ratio and _continuousPageW, then fit both axes.
+            if (_viewMode == ViewMode.Continuous)
+            {
+                if (_continuousPageW <= 0 || _doc is null) return;
+                int ci = PageList.SelectedIndex;
+                if (ci < 0) return;
+                var pdfPage = _doc.Pages[ci];
+                double ratio = Math.Max(0.1, pdfPage.Height.Point / Math.Max(1.0, pdfPage.Width.Point));
+                double dipH  = _continuousPageW * ratio;
+                _fitMode   = FitMode.Page;
+                _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax,
+                    Math.Min(viewW / _continuousPageW, viewH / dipH)));
+                ApplyZoom(lite);
+                SetStatus(string.Format(Loc("Str_FitPage"), ci + 1, _doc.PageCount, $"{DisplayZoomPct():F0}"));
+                return;
+            }
+
+            if (PageImage.Source is null) return;
+            int idx = PageList.SelectedIndex;
+            // dipW/dipH are zoom-stable (see FitToWidth comment). Use them directly.
+            double dipW = (idx >= 0 && _renderDims.TryGetValue(idx, out var dimsP))
+                ? dimsP.w
+                : (PageImage.ActualWidth > 0 ? PageImage.ActualWidth : 1);
+            double dipH2 = (idx >= 0 && _renderDims.TryGetValue(idx, out var dimsP2))
+                ? dimsP2.h
+                : (PageImage.ActualHeight > 0 ? PageImage.ActualHeight : 1);
+            if (dipW <= 0 || dipH2 <= 0) return;
+            double slotW2 = _viewMode == ViewMode.TwoPage ? (viewW - 12) / 2 : viewW;
+            _fitMode = FitMode.Page;
+            _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax,
+                Math.Min(slotW2 / dipW, viewH / dipH2)));
+            ApplyZoom(lite);
+            SetStatus(string.Format(Loc("Str_FitPage"), idx + 1, _doc!.PageCount, $"{DisplayZoomPct():F0}"));
+        }
+
+        // Re-fit the main view after a reload. Grid keeps its column-fit (FitToWidth alone would
+        // yank it out into a single-page Fit Width view); other modes honor the fit mode.
+        private void ReapplyGridOrFit()
+        {
+            if (_viewMode == ViewMode.Grid)
+            {
+                double rdW = _annotationCanvas.Width > 0 ? _annotationCanvas.Width : 1583;
+                double vw  = PagePreviewPanel.ActualWidth;
+                if (vw > 0 && rdW > 0)
+                {
+                    int curN = Math.Max(1, (int)Math.Round((vw - 24.0) / (Math.Max(0.01, _zoomLevel) * (rdW + 12.0))));
+                    SetZoom(GridZoomForN(curN));
+                }
+                else ApplyZoom();
+                return;
+            }
+            if (_fitMode == FitMode.Page) FitToPage();
+            else FitToWidth();
+        }
+
+        private void NavigatePageByWheel(int delta)
+        {
+            if (_doc is null) return;
+            int cur = PageList.SelectedIndex;
+            if (delta > 0 && cur > 0)
+                PageList.SelectedIndex = cur - 1;
+            else if (delta < 0 && cur < _doc.PageCount - 1)
+                PageList.SelectedIndex = cur + 1;
+        }
+
+        private System.Windows.Threading.DispatcherTimer? _resizeRefitTimer;
+        private int _gridColumns = 1;   // columns the grid is currently laid out in; held across resizes
+
+        private void PagePreviewPanel_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            RepositionAnnotationBars();   // cheap; keep the draw/text bar tracking its anchored edge
+            if (_cropPreviewRect is not null || _cropConfirmBar is not null) return;
+
+            if (_viewMode == ViewMode.Grid)
+            {
+                // Grid columns depend only on width, so a height-only resize (e.g. dragging the bottom
+                // edge) changes nothing - skip it so it doesn't needlessly re-render/blink.
+                if (!e.WidthChanged) return;
+                // Hold the column count through a non-modal resize: scale the already-laid-out tiles via
+                // the transform so the same number of columns fills the new width (lite, no re-render).
+                if (_doc is null || _gridColumns < 1) return;
+                double rdWg = _annotationCanvas.Width > 0 ? _annotationCanvas.Width : 1583;
+                if (PagePreviewPanel.ActualWidth <= 0 || rdWg <= 0) return;
+                _zoomLevel = Math.Max(ZoomMin, Math.Min(ZoomMax, GridZoomForN(_gridColumns)));
+                ApplyZoom(lite: true);
+                StartResizeSettleTimer();
+                return;
+            }
+
+            // Non-modal resize (maximize/restore, splitter, programmatic): rescale lite + settle.
+            if (_fitMode == FitMode.Width) FitToWidth(lite: true);
+            else if (_fitMode == FitMode.Page) FitToPage(lite: true);
+            StartResizeSettleTimer();
+        }
+
+        // Coalesces resize ticks: the crisp re-render runs once, a beat after the last size change.
+        private void StartResizeSettleTimer()
+        {
+            if (_resizeRefitTimer is null)
+            {
+                _resizeRefitTimer = new System.Windows.Threading.DispatcherTimer
+                    { Interval = TimeSpan.FromMilliseconds(110) };
+                _resizeRefitTimer.Tick += (_, _) => { _resizeRefitTimer!.Stop(); OnResizeSettled(); };
+            }
+            _resizeRefitTimer.Stop();
+            _resizeRefitTimer.Start();
+        }
+
+        private void OnResizeSettled()
+        {
+            if (_viewMode == ViewMode.Grid)
+            {
+                // Crisp re-render at the held column count for the final size (the drag only transform-
+                // scaled the tiles). The grid's width is stable (vertical scrollbar reserved), so this
+                // settles in one pass instead of looping.
+                if (_doc is not null && _gridColumns >= 1)
+                    SetZoom(Math.Max(ZoomMin, Math.Min(ZoomMax, GridZoomForN(_gridColumns))));
+                RepositionAnnotationBars();   // settle the bar against the final pane size
+                return;
+            }
+            if (_fitMode == FitMode.Width) FitToWidth();
+            else if (_fitMode == FitMode.Page) FitToPage();
+            RepositionAnnotationBars();   // settle the bar against the final pane size (scrollbar may have toggled)
+        }
+
+        private int NearestContinuousPage(double yInPanel)
+        {
+            int best = -1; double bestDist = double.MaxValue;
+            for (int i = 0; i < _continuousTops.Count && i < _continuousPanel.Children.Count; i++)
+            {
+                double top = _continuousTops[i];
+                double h = ((FrameworkElement)_continuousPanel.Children[i]).Height;
+                if (double.IsNaN(h)) h = 0;
+                double bottom = top + h;
+                double dist = yInPanel < top ? top - yInPanel : (yInPanel > bottom ? yInPanel - bottom : 0);
+                if (dist < bestDist) { bestDist = dist; best = i; }
+            }
+            return best;
+        }
+
+        private void SelectViewMode(ViewMode mode)
+        {
+            SetViewMode(mode);
+            if (ViewCurrentLabel is not null) ViewCurrentLabel.Text = ViewModeDisplayName(mode);
+            // Leave the flyout and Settings panel open so the user can try view modes back to back.
+        }
+
+        private string ViewModeDisplayName(ViewMode mode) => mode switch
+        {
+            ViewMode.Single  => Loc("Str_View_Single"),
+            ViewMode.TwoPage => Loc("Str_View_TwoPage"),
+            ViewMode.Grid    => Loc("Str_View_Grid"),
+            _                => Loc("Str_View_Continuous"),
+        };
+
+        private void SetViewMode(ViewMode mode)
+        {
+            if (_viewMode == mode) return;
+            _viewMode = mode;
+            _renderedPrimaryPage = -1;   // spread/layout changes with the mode; force the next render
+            _gridScrollToPage = -1;
+            App.SetSetting("ViewMode", mode.ToString());
+
+            bool isContinuous = mode == ViewMode.Continuous;
+            _pageContentPanel.Visibility = isContinuous ? Visibility.Collapsed : Visibility.Visible;
+            _continuousPanel.Visibility  = isContinuous ? Visibility.Visible   : Visibility.Collapsed;
+
+            if (!isContinuous)
+            {
+                _continuousRenderCts?.Cancel();
+                _continuousPanel.Children.Clear();
+                _continuousTops.Clear();
+                _continuousCanvases.Clear();
+            }
+
+            if (_doc is null) return;
+            int idx = PageList.SelectedIndex;
+            if (mode == ViewMode.Continuous)
+            {
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                    () => SetupContinuousView(idx));
+            }
+            else
+            {
+                _secondaryRenderCts?.Cancel();
+                ClearSecondaryPages();
+                _pageContentPanel.Width = double.NaN;
+                // Drop any scroll offset carried over from the previous mode (especially Continuous,
+                // whose large vertical offset would otherwise land the grid mid-document).
+                PagePreviewPanel.ScrollToVerticalOffset(0);
+                PagePreviewPanel.ScrollToHorizontalOffset(0);
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+                {
+                    RenderPage(mode == ViewMode.Grid ? 0 : idx);
+                    // Grid: apply a clean column-fit zoom (continuous's zoom is far too large for a
+                    // grid, and a non-column zoom leaves a gap). SetZoom -> ApplyZoom defers the
+                    // single tile render, so return here instead of calling RefreshPageView again
+                    // (a second render would duplicate tiles).
+                    if (mode == ViewMode.Grid)
+                    {
+                        SetZoom(GridZoomForN(Math.Min(_doc!.PageCount, 3)));
+                        // The first fit can run before the viewport width has settled (leaving the
+                        // grid off-center / at the wrong zoom); re-fit once more after layout settles,
+                        // and pin to the top so nothing carries over from the previous mode.
+                        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background,
+                            (Action)(() =>
+                            {
+                                ReapplyGridOrFit();
+                                // Selection is preserved across the switch; scroll to that page once
+                                // its tile streams in (grid tiles render async). Page 0 stays at top.
+                                if (idx > 0) _gridScrollToPage = idx;
+                                else
+                                {
+                                    PagePreviewPanel.ScrollToVerticalOffset(0);
+                                    PagePreviewPanel.ScrollToHorizontalOffset(0);
+                                }
+                            }));
+                        return;
+                    }
+                    // Switching into Single or Two-Page fits the whole page so it isn't left at an
+                    // awkward carried-over zoom from another mode.
+                    if      (mode == ViewMode.Single || mode == ViewMode.TwoPage) FitToPage();
+                    else if (_fitMode == FitMode.Width) FitToWidth();
+                    else if (_fitMode == FitMode.Page)  FitToPage();
+                    else                                ApplyZoom();
+                    RefreshPageView(idx);
+                });
+            }
+        }
+    }
+}

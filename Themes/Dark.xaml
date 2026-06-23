@@ -28,6 +28,9 @@
     <SolidColorBrush x:Key="AccentDim"      Color="#0d2a18" po:Freeze="True"/>
     <SolidColorBrush x:Key="SelectionBg" Color="#1c5e38" po:Freeze="True"/>
     <SolidColorBrush x:Key="SelectionFg" Color="#ffffff" po:Freeze="True"/>
+    <!-- Background of an open settings row. Solid hover tint here; the RGB themes override it with their
+         translucent-white SelectionBg so the accent row text reads on it like a selected page/tool. -->
+    <SolidColorBrush x:Key="SettingsOpenRowBg" Color="#404040" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextPrimary"    Color="#e0e0e0" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextSecondary"  Color="#a0a0a0" po:Freeze="True"/>
     <SolidColorBrush x:Key="TextDim"        Color="#6a6a6a" po:Freeze="True"/>
