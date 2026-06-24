@@ -488,6 +488,10 @@ namespace KillerPDF
                 else
                     App.RemoveSetting("ActiveTab");
                 PersistToolSettings();
+                // The active tab may not have been captured yet at exit; persist its view state directly.
+                if (_active != null)
+                    SaveDocState(_originalFile, _fitMode, _zoomLevel, _viewMode,
+                        PageList.SelectedIndex >= 0 ? PageList.SelectedIndex : 0);
             }
             catch { /* best-effort */ }
         }

@@ -221,7 +221,20 @@ namespace KillerPDF
             _searchPageCursor = -1;
             _gridScrollToPage = -1;
             MarkDirty(false);
-            BootstrapDocumentView(0, autoFit: true);
+            // Restore this file's last fit/zoom/view/page if we've seen it before; otherwise open at the
+            // per-view-mode default. Set the fields first, then let BootstrapDocumentView apply them.
+            if (TryGetDocState(displayPath, out var sfit, out var szoom, out var sview, out var spage))
+            {
+                _viewMode  = sview;
+                _fitMode   = sfit;
+                _zoomLevel = szoom;
+                int pg = Math.Max(0, Math.Min(spage, _doc!.PageCount - 1));
+                BootstrapDocumentView(pg, autoFit: false, restoreFitMode: true);
+            }
+            else
+            {
+                BootstrapDocumentView(0, autoFit: true);
+            }
             SetStatus(string.Format(Loc("Str_Opened"), System.IO.Path.GetFileName(displayPath), _doc!.PageCount));
         }
 

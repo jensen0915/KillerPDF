@@ -683,7 +683,7 @@ namespace KillerPDF
             }
         }
 
-        private void BootstrapDocumentView(int initialPage, bool autoFit)
+        private void BootstrapDocumentView(int initialPage, bool autoFit, bool restoreFitMode = false)
         {
             // The document is (re)displaying - usually a different one (tab switch/close/open). The
             // skip-render guard in PageList_SelectionChanged compares the target page to the last
@@ -728,6 +728,15 @@ namespace KillerPDF
                                 SetZoom(GridZoomForN(Math.Min(_doc?.PageCount ?? 1, 3)));
                             else
                                 FitToPage();
+                        }
+                        else if (restoreFitMode)
+                        {
+                            // Reopened document: re-fit to the current window if it was in a fit mode,
+                            // else apply its exact saved zoom. (Grid's zoom encodes its column count.)
+                            if (_viewMode == ViewMode.Grid)       SetZoom(_zoomLevel);
+                            else if (_fitMode == FitMode.Width)   FitToWidth();
+                            else if (_fitMode == FitMode.Page)    FitToPage();
+                            else                                  SetZoom(_zoomLevel);
                         }
                         else
                         {

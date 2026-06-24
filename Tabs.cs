@@ -90,6 +90,58 @@ namespace KillerPDF
             s.UndoStack        = _undoStack;
             s.AllSearchRects   = _allSearchRects;
             s.SearchResultPages = _searchResultPages;
+            // Persist this document's fit/zoom/view/page so reopening it (even after a restart) restores it.
+            SaveDocState(s.OriginalFile, s.Fit, s.ZoomLevel, s.View, s.PageIndex);
+        }
+
+        // ── Per-document view state (persisted across restarts, keyed by file path) ──────────────────
+        // So reopening a file restores how you left it (fit mode, zoom, view mode, page) instead of the
+        // per-view-mode default. Stored as one registry value: lines of "path|fit|zoom|view|page", most
+        // recent first, capped. '|' and newline are both illegal in Windows paths, so they're safe delimiters.
+        private const int DocStatesMax = 40;
+
+        private void SaveDocState(string? path, FitMode fit, double zoom, ViewMode view, int page)
+        {
+            if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return;   // skip Untitled/imported
+            string entry = string.Join("|", path,
+                fit.ToString(),
+                zoom.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                view.ToString(),
+                page.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var lines = new List<string> { entry };
+            var raw = App.GetSetting("DocStates");
+            if (!string.IsNullOrEmpty(raw))
+                foreach (var line in raw!.Split('\n'))
+                {
+                    if (line.Length == 0) continue;
+                    int bar = line.IndexOf('|');
+                    string lpath = bar > 0 ? line.Substring(0, bar) : line;
+                    if (!string.Equals(lpath, path, StringComparison.OrdinalIgnoreCase))
+                        lines.Add(line);
+                }
+            if (lines.Count > DocStatesMax) lines = lines.GetRange(0, DocStatesMax);
+            App.SetSetting("DocStates", string.Join("\n", lines));
+        }
+
+        private bool TryGetDocState(string? path, out FitMode fit, out double zoom, out ViewMode view, out int page)
+        {
+            fit = FitMode.None; zoom = 1.0; view = ViewMode.Continuous; page = 0;
+            if (string.IsNullOrEmpty(path)) return false;
+            var raw = App.GetSetting("DocStates");
+            if (string.IsNullOrEmpty(raw)) return false;
+            foreach (var line in raw!.Split('\n'))
+            {
+                var p = line.Split('|');
+                if (p.Length < 5 || !string.Equals(p[0], path, StringComparison.OrdinalIgnoreCase)) continue;
+                Enum.TryParse(p[1], out fit);
+                double.TryParse(p[2], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out zoom);
+                Enum.TryParse(p[3], out view);
+                int.TryParse(p[4], out page);
+                if (zoom <= 0) zoom = 1.0;
+                return true;
+            }
+            return false;
         }
 
         // Point the live working set AT the session's state. Pure field assignment - no UI.
