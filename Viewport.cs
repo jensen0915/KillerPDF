@@ -961,6 +961,19 @@ namespace KillerPDF
             }
         }
 
+        // The selected page's DIP size for fit/zoom math (Single + Two-Page). Prefer _renderDims - it's set
+        // synchronously in RenderPage so it always matches the current page and is zoom-stable (scaledMax
+        // scales with zoom while RenderPage divides it back out, so the two cancel). Fall back to PageImage's
+        // live layout size only when _renderDims has no entry yet, and to 1 to avoid divide-by-zero. Single
+        // source so FitToWidth/FitToPage don't each re-derive it. (Continuous/Grid use their own page metrics.)
+        private (double w, double h) GetPageDipSize(int idx)
+        {
+            if (idx >= 0 && _renderDims.TryGetValue(idx, out var d))
+                return (d.w, d.h);
+            return (PageImage.ActualWidth  > 0 ? PageImage.ActualWidth  : 1,
+                    PageImage.ActualHeight > 0 ? PageImage.ActualHeight : 1);
+        }
+
         private void FitToWidth(bool lite = false)
         {
             double viewW = PagePreviewPanel.ActualWidth - 40;
@@ -982,15 +995,8 @@ namespace KillerPDF
             }
 
             if (PageImage.Source is null) return;
-            // Use _renderDims rather than PageImage.ActualWidth - the latter can be stale
-            // (reporting the previous page's layout size) if WPF layout hasn't fully settled.
-            // _renderDims is set synchronously inside RenderPage so it always matches the
-            // current page. dipW is zoom-stable: scaledMax scales with zoom while RenderPage
-            // divides by zoomFactor, so the two cancel out. Use dipW directly.
             int idx = PageList.SelectedIndex;
-            double dipW = (idx >= 0 && _renderDims.TryGetValue(idx, out var dimsW))
-                ? dimsW.w
-                : (PageImage.ActualWidth > 0 ? PageImage.ActualWidth : 1);
+            double dipW = GetPageDipSize(idx).w;
             if (dipW <= 0) return;
             // Two Page mode shows two pages side by side — each page gets roughly half
             // the viewport width (minus a small gap between pages).
@@ -1028,13 +1034,7 @@ namespace KillerPDF
 
             if (PageImage.Source is null) return;
             int idx = PageList.SelectedIndex;
-            // dipW/dipH are zoom-stable (see FitToWidth comment). Use them directly.
-            double dipW = (idx >= 0 && _renderDims.TryGetValue(idx, out var dimsP))
-                ? dimsP.w
-                : (PageImage.ActualWidth > 0 ? PageImage.ActualWidth : 1);
-            double dipH2 = (idx >= 0 && _renderDims.TryGetValue(idx, out var dimsP2))
-                ? dimsP2.h
-                : (PageImage.ActualHeight > 0 ? PageImage.ActualHeight : 1);
+            var (dipW, dipH2) = GetPageDipSize(idx);
             if (dipW <= 0 || dipH2 <= 0) return;
             double slotW2 = _viewMode == ViewMode.TwoPage ? (viewW - 12) / 2 : viewW;
             _fitMode = FitMode.Page;
