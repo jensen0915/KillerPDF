@@ -92,7 +92,7 @@ namespace KillerPDF
                 var wm = new StackPanel { Orientation = Orientation.Horizontal };
                 wm.Children.Add(new TextBlock { Text = "Killer", FontFamily = UiKit.UiFont, FontWeight = FontWeights.Bold, FontSize = 15.5, Foreground = R("TextPrimary") });
                 wm.Children.Add(new TextBlock { Text = "PDF", FontFamily = UiKit.UiFont, FontWeight = FontWeights.Bold, FontSize = 15.5, Foreground = R("AccentLogo") });
-                wm.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 3, ShadowDepth = 1, Direction = 270, Opacity = 0.6 };
+                // No DropShadowEffect on the text - it rasterizes and blurs the wordmark. Kept crisp.
                 titleBar.Child = wm;
             }
             else

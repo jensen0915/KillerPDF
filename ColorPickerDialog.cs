@@ -37,12 +37,7 @@ namespace KillerPDF
         // Shared with the annotate-bar palette: editing these swatches reconfigures the toolbar colors.
         private const string SavedKey = "UserSwatches";
         // First-run / Reset palette: 9 fixed slots, last one white.
-        private static readonly Color[] DefaultSwatches =
-        [
-            Color.FromRgb(0xE0, 0x3C, 0x3C), Color.FromRgb(0xE8, 0x7A, 0x1E), Color.FromRgb(0xF2, 0xC0, 0x1E),
-            Color.FromRgb(0x2E, 0xA5, 0x4C), Color.FromRgb(0x2E, 0x86, 0xDE), Color.FromRgb(0x8E, 0x5B, 0xD6),
-            Color.FromRgb(0xE0, 0x4A, 0x9A), Colors.Black, Colors.White
-        ];
+        private static readonly Color[] DefaultSwatches = UiKit.DefaultSwatches;
         private static SolidColorBrush R(string key) => (SolidColorBrush)Application.Current.Resources[key];
         public ColorPickerDialog(Window? owner, Color initial)
         {

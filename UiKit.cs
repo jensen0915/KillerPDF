@@ -43,6 +43,15 @@ namespace KillerPDF
         private static DropShadowEffect Shadow(double blur, double depth, double opacity)
             => new DropShadowEffect { Color = Colors.Black, BlurRadius = blur, ShadowDepth = depth, Direction = 270, Opacity = opacity };
 
+        // The default quick-color palette, shared by the annotate bars and the color picker's swatch row
+        // (the "UserSwatches" setting seeds from this). One source so the two can't drift.
+        public static readonly Color[] DefaultSwatches =
+        [
+            Color.FromRgb(0xE0, 0x3C, 0x3C), Color.FromRgb(0xE8, 0x7A, 0x1E), Color.FromRgb(0xF2, 0xC0, 0x1E),
+            Color.FromRgb(0x2E, 0xA5, 0x4C), Color.FromRgb(0x2E, 0x86, 0xDE), Color.FromRgb(0x8E, 0x5B, 0xD6),
+            Color.FromRgb(0xE0, 0x4A, 0x9A), Colors.Black, Colors.White
+        ];
+
         // ---- control factories -------------------------------------------------------------------
 
         // Themed checkbox: rounded box with an accent check mark when checked. Replaces the per-dialog
