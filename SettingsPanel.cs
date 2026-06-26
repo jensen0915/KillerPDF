@@ -391,6 +391,10 @@ namespace KillerPDF
         }
 
         private const double AccentRowHeight = 26;   // 18px swatch + 8px breathing room
+        // Expand and collapse MUST share one duration (and stay linear): when switching between neutral themes
+        // one row opens while another closes, and equal linear durations keep their heights summing to a
+        // constant, so the panel height never dips/jumps mid-animation.
+        private const double AccentRowSlideMs = 160;
 
         // Slides the picker row open/closed by animating its Height. Each call clears any in-flight
         // height animation first so rapid theme clicking can't leave a held animation that strands
@@ -406,13 +410,13 @@ namespace KillerPDF
                 {
                     row.Height = 0;
                     row.BeginAnimation(HeightProperty,
-                        new System.Windows.Media.Animation.DoubleAnimation(0, AccentRowHeight, TimeSpan.FromMilliseconds(170)));
+                        new System.Windows.Media.Animation.DoubleAnimation(0, AccentRowHeight, TimeSpan.FromMilliseconds(AccentRowSlideMs)));
                 }
                 else row.Height = AccentRowHeight;
             }
             else if (animate && row.Visibility == Visibility.Visible && row.ActualHeight > 0.5)
             {
-                var h = new System.Windows.Media.Animation.DoubleAnimation(AccentRowHeight, 0, TimeSpan.FromMilliseconds(150));
+                var h = new System.Windows.Media.Animation.DoubleAnimation(AccentRowHeight, 0, TimeSpan.FromMilliseconds(AccentRowSlideMs));
                 h.Completed += (_, __) => { row.BeginAnimation(HeightProperty, null); row.Height = 0; row.Visibility = Visibility.Collapsed; };
                 row.BeginAnimation(HeightProperty, h);
             }
