@@ -174,6 +174,7 @@ Vous pourrez désinstaller le programme à tout moment via « Ajouter ou supprim
 
     <!-- Keyboard shortcuts (remainder) -->
     <sys:String x:Key="Str_KS_About">Boîte de dialogue À propos</sys:String>
+    <sys:String x:Key="Str_KS_OnlineHelp">Guide complet et tutoriels en ligne</sys:String>
     <sys:String x:Key="Str_KS_Tools">OUTILS</sys:String>
     <sys:String x:Key="Str_KS_Paste">Coller image / texte</sys:String>
     <sys:String x:Key="Str_KS_MultiSelect">Ajouter à la sélection</sys:String>
@@ -331,6 +332,7 @@ Vous pourrez désinstaller le programme à tout moment via « Ajouter ou supprim
     <sys:String x:Key="Str_Drop_Separate">Ouvrir séparément</sys:String>
     <sys:String x:Key="Str_Drop_NothingOpenable">Aucun PDF ou image à ouvrir n'a été trouvé.</sys:String>
     <sys:String x:Key="Str_Drop_ManyTabs">Cela ouvrira {0} onglets séparés. Continuer ?</sys:String>
+    <sys:String x:Key="Str_Drop_TooMany">Ce dossier ou cette archive contient {0} fichiers. KillerPDF n'ouvrira que les {1} premiers. Continuer ?</sys:String>
     <sys:String x:Key="Str_Status_Merged">{0} fichiers fusionnés - pas encore enregistré</sys:String>
     <sys:String x:Key="Str_Drop_Merging">Fusion des fichiers...</sys:String>
     <sys:String x:Key="Str_Drop_MergeCancelled">Fusion annulée</sys:String>

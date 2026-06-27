@@ -13,6 +13,24 @@ namespace KillerPDF
     // for dialogs and tools. Tokens resolve from App.xaml's resource dictionary.
     internal static class UiKit
     {
+        // Mouse-wheel over ANY slider (on hover) nudges its value - one global class handler covers every
+        // slider in the app and all dialogs. Handled so the wheel doesn't also scroll an enclosing panel
+        // while the cursor is on the slider. Registered once when UiKit is first touched (early in startup).
+        static UiKit()
+        {
+            EventManager.RegisterClassHandler(typeof(Slider), UIElement.PreviewMouseWheelEvent,
+                new MouseWheelEventHandler(SliderWheelAdjust));
+        }
+
+        private static void SliderWheelAdjust(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is not Slider s || !s.IsEnabled) return;
+            double step = s.SmallChange > 0 ? s.SmallChange : (s.Maximum - s.Minimum) / 20.0;
+            if (step <= 0) return;
+            s.Value = Math.Max(s.Minimum, Math.Min(s.Maximum, s.Value + (e.Delta > 0 ? step : -step)));
+            e.Handled = true;
+        }
+
         // ---- token + theme accessors -------------------------------------------------------------
         public static FontFamily UiFont   => Res("UiFont",   _uiFallback);
         public static FontFamily MonoFont => Res("MonoFont", _monoFallback);

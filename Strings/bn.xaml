@@ -95,6 +95,7 @@
     <sys:String x:Key="Str_KS_Help">সহায়তা</sys:String>
     <sys:String x:Key="Str_KS_ThisList">এই শর্টকাট তালিকা</sys:String>
     <sys:String x:Key="Str_KS_About">সম্পর্কে ডায়ালগ</sys:String>
+    <sys:String x:Key="Str_KS_OnlineHelp">সম্পূর্ণ গাইড ও অনলাইন নির্দেশিকা</sys:String>
     <sys:String x:Key="Str_KS_Tools">টুল</sys:String>
     <sys:String x:Key="Str_KS_Paste">ছবি / টেক্সট পেস্ট করুন</sys:String>
     <sys:String x:Key="Str_KS_MultiSelect">নির্বাচনে যোগ করুন</sys:String>
@@ -302,6 +303,7 @@
     <sys:String x:Key="Str_Drop_Separate">আলাদাভাবে খুলুন</sys:String>
     <sys:String x:Key="Str_Drop_NothingOpenable">খোলার জন্য কোনো PDF বা ছবি পাওয়া যায়নি।</sys:String>
     <sys:String x:Key="Str_Drop_ManyTabs">এটি {0}টি আলাদা ট্যাব খুলবে। চালিয়ে যাবেন?</sys:String>
+    <sys:String x:Key="Str_Drop_TooMany">এই ফোল্ডার বা আর্কাইভে {0}টি ফাইল আছে। KillerPDF শুধু প্রথম {1}টি খুলবে। চালিয়ে যাবেন?</sys:String>
     <sys:String x:Key="Str_Status_Merged">{0}টি ফাইল একত্র করা হয়েছে - এখনও সংরক্ষণ করা হয়নি</sys:String>
     <sys:String x:Key="Str_Drop_Merging">ফাইল একত্র করা হচ্ছে...</sys:String>
     <sys:String x:Key="Str_Drop_MergeCancelled">একত্রীকরণ বাতিল করা হয়েছে</sys:String>

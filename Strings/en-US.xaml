@@ -109,6 +109,7 @@
     <sys:String x:Key="Str_KS_Help">HELP</sys:String>
     <sys:String x:Key="Str_KS_ThisList">This shortcut list</sys:String>
     <sys:String x:Key="Str_KS_About">About dialog</sys:String>
+    <sys:String x:Key="Str_KS_OnlineHelp">Full guide &amp; how-to online</sys:String>
     <sys:String x:Key="Str_KS_Tools">TOOLS</sys:String>
     <sys:String x:Key="Str_KS_Paste">Paste image / text</sys:String>
     <sys:String x:Key="Str_KS_MultiSelect">Add to selection</sys:String>
@@ -328,6 +329,7 @@ You can uninstall via Add/Remove Programs at any time.</sys:String>
     <sys:String x:Key="Str_Drop_Separate">Open separately</sys:String>
     <sys:String x:Key="Str_Drop_NothingOpenable">No PDFs or images were found to open.</sys:String>
     <sys:String x:Key="Str_Drop_ManyTabs">This will open {0} separate tabs. Continue?</sys:String>
+    <sys:String x:Key="Str_Drop_TooMany">This folder or archive has {0} files. KillerPDF will open only the first {1}. Continue?</sys:String>
     <sys:String x:Key="Str_Status_Merged">Merged {0} files - not yet saved</sys:String>
     <sys:String x:Key="Str_Drop_Merging">Merging files...</sys:String>
     <sys:String x:Key="Str_Drop_MergeCancelled">Merge cancelled</sys:String>

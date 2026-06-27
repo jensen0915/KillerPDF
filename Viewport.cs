@@ -178,10 +178,10 @@ namespace KillerPDF
                 // Fall back to the page-box estimate only the first time a page is laid out. Both are the same
                 // canonical render-dim space (longest side -> 2048), so annotation coordinates stay identical.
                 int rdW, rdH;
-                if (_renderDims.TryGetValue(i, out var cachedDims) && cachedDims.Item1 > 0 && cachedDims.Item2 > 0)
+                if (_renderDims.TryGetValue(i, out var cachedDims) && cachedDims.w > 0 && cachedDims.h > 0)
                 {
-                    rdW = cachedDims.Item1;
-                    rdH = cachedDims.Item2;
+                    rdW = cachedDims.w;
+                    rdH = cachedDims.h;
                 }
                 else
                 {
@@ -254,25 +254,40 @@ namespace KillerPDF
             // Capture per-page rotations on the UI thread before going async
             var rotations = new Dictionary<int, int>(_pageRotations);
 
+            var session = _active;
             await System.Threading.Tasks.Task.Run(() =>
             {
+                Docnet.Core.Readers.IDocReader? docReader = null;
                 try
                 {
-                    using var docReader = DocLib.Instance.GetDocReader(
-                        currentFile, new PageDimensions(renderW, renderW * 2));
-
                     for (int i = 0; i < pageCount; i++)
                     {
                         if (cts.IsCancellationRequested) return;
+                        int rot = rotations.TryGetValue(i, out int rr) ? rr : 0;
+
+                        // Cache hit: skip pdfium, just attach the cached bitmap to its slot.
+                        var cb = TryGetCachedRender(session, i, renderW, rot);
+                        if (cb != null)
+                        {
+                            int fic = i;
+                            Dispatcher.Invoke(() =>
+                            {
+                                if (cts.IsCancellationRequested || _viewMode != ViewMode.Continuous) return;
+                                SetContinuousSlot(fic, cb);
+                            });
+                            continue;
+                        }
+
+                        docReader ??= DocLib.Instance.GetDocReader(currentFile, new PageDimensions(renderW, renderW * 2));
                         using var pr = docReader.GetPageReader(i);
                         int w = pr.GetPageWidth();
                         int h = pr.GetPageHeight();
                         var raw = pr.GetImage();
                         if (w <= 0 || h <= 0 || raw is null) continue;
-                        if (rotations.TryGetValue(i, out int rot) && rot != 0)
+                        if (rot != 0)
                             (raw, w, h) = RotateBitmap(raw, w, h, rot);
 
-                        int fi = i, fw = w, fh = h;
+                        int fi = i, fw = w, fh = h, prot = rot;
                         byte[] bytes = raw;
                         if (cts.IsCancellationRequested) return;
                         // Use the window's own dispatcher, not Application.Current.Dispatcher: during app
@@ -281,69 +296,73 @@ namespace KillerPDF
                         {
                             if (cts.IsCancellationRequested || _viewMode != ViewMode.Continuous) return;
                             if (fi >= _continuousPanel.Children.Count) return;
-
-                            var slot = (Border)_continuousPanel.Children[fi];
-                            double dipW = slot.Width;
-                            double dipH = dipW * fh / fw;
-                            double dpiX = 96.0 * fw / dipW;
-                            double dpiY = 96.0 * fh / dipH;
-
-                            var bmp = new WriteableBitmap(fw, fh, dpiX, dpiY, PixelFormats.Bgra32, null);
-                            bmp.WritePixels(new Int32Rect(0, 0, fw, fh), bytes, fw * 4, 0);
-                            bmp.Freeze();
-
-                            if (slot.Child is Grid slotGrid && slotGrid.Children.Count > 0
-                                && slotGrid.Children[0] is Image pageImg)
-                            {
-                                pageImg.Source  = bmp;
-                                pageImg.Width   = dipW;
-                                pageImg.Height  = dipH;
-                                slot.Background = Brushes.White;
-
-                                // Size the slot and overlay from the ACTUAL rendered page so a
-                                // cropped page (which renders shorter than its MediaBox estimate)
-                                // fills its slot with no white bars. Mirrors single-page view.
-                                slot.Height = dipH;
-                                double maxF = Math.Max(fw, fh);
-                                int rdW = Math.Max(1, (int)Math.Round(2048.0 * fw / maxF));
-                                int rdH = Math.Max(1, (int)Math.Round(2048.0 * fh / maxF));
-                                _renderDims[fi] = (rdW, rdH);
-                                if (slotGrid.Children.Count > 1 && slotGrid.Children[1] is Canvas ov)
-                                {
-                                    ov.Width  = rdW;
-                                    ov.Height = rdH;
-                                    ov.LayoutTransform =
-                                        new System.Windows.Media.ScaleTransform(dipW / rdW, dipW / rdW);
-                                }
-
-                                // Slot heights are now exact; recompute scroll offsets from them.
-                                double yy = 0;
-                                for (int k = 0; k < _continuousPanel.Children.Count && k < _continuousTops.Count; k++)
-                                {
-                                    _continuousTops[k] = yy;
-                                    double hk = ((FrameworkElement)_continuousPanel.Children[k]).Height;
-                                    if (double.IsNaN(hk)) hk = 0;
-                                    yy += hk + 12;
-                                }
-
-                                // Pages render in order, so when the target page is reached every
-                                // page above it has its final height; re-scroll so a crop lands you
-                                // back on the same page instead of drifting to the next one.
-                                if (_continuousScrollTarget >= 0 && fi >= _continuousScrollTarget)
-                                {
-                                    int tgt = _continuousScrollTarget;
-                                    _continuousScrollTarget = -1;
-                                    Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
-                                        (Action)(() => ScrollContinuousToPage(tgt)));
-                                }
-
-                                RenderAllAnnotations(fi);
-                            }
+                            // Render at the natural continuous width (zoom is a LayoutTransform, so the bitmap
+                            // is zoom-independent and reusable). Square pixels via the matching dipH.
+                            int ddw = Math.Max(1, (int)Math.Round(targetW));
+                            int ddh = Math.Max(1, (int)Math.Round(targetW * fh / fw));
+                            var bmp = BuildScaledBitmap(fw, fh, bytes, ddw, ddh);
+                            CacheRender(session, fi, renderW, prot, bmp);
+                            SetContinuousSlot(fi, bmp);
                         });
                     }
                 }
                 catch { /* render cancelled or doc closed */ }
+                finally { docReader?.Dispose(); }
             }, cts.Token);
+        }
+
+        // Attaches a (cached or freshly built) page bitmap to its continuous slot and finalizes the slot /
+        // overlay sizes + scroll offsets. UI thread. Shared by the cache-hit and freshly-rendered paths.
+        private void SetContinuousSlot(int fi, System.Windows.Media.Imaging.BitmapSource bmp)
+        {
+            if (fi < 0 || fi >= _continuousPanel.Children.Count) return;
+            var slot = (Border)_continuousPanel.Children[fi];
+            int fw = bmp.PixelWidth, fh = bmp.PixelHeight;
+            double dipW = slot.Width;
+            double dipH = dipW * fh / fw;
+            if (slot.Child is not Grid slotGrid || slotGrid.Children.Count == 0 || slotGrid.Children[0] is not Image pageImg)
+                return;
+
+            pageImg.Source  = bmp;
+            pageImg.Width   = dipW;
+            pageImg.Height  = dipH;
+            slot.Background = Brushes.White;
+
+            // Size the slot and overlay from the ACTUAL rendered page so a cropped page (which renders
+            // shorter than its MediaBox estimate) fills its slot with no white bars.
+            slot.Height = dipH;
+            double maxF = Math.Max(fw, fh);
+            int rdW = Math.Max(1, (int)Math.Round(2048.0 * fw / maxF));
+            int rdH = Math.Max(1, (int)Math.Round(2048.0 * fh / maxF));
+            _renderDims[fi] = (rdW, rdH);
+            if (slotGrid.Children.Count > 1 && slotGrid.Children[1] is Canvas ov)
+            {
+                ov.Width  = rdW;
+                ov.Height = rdH;
+                ov.LayoutTransform = new System.Windows.Media.ScaleTransform(dipW / rdW, dipW / rdW);
+            }
+
+            // Slot heights are now exact; recompute scroll offsets from them.
+            double yy = 0;
+            for (int k = 0; k < _continuousPanel.Children.Count && k < _continuousTops.Count; k++)
+            {
+                _continuousTops[k] = yy;
+                double hk = ((FrameworkElement)_continuousPanel.Children[k]).Height;
+                if (double.IsNaN(hk)) hk = 0;
+                yy += hk + 12;
+            }
+
+            // Pages render in order, so when the target page is reached every page above it has its final
+            // height; re-scroll so a crop lands you back on the same page instead of drifting.
+            if (_continuousScrollTarget >= 0 && fi >= _continuousScrollTarget)
+            {
+                int tgt = _continuousScrollTarget;
+                _continuousScrollTarget = -1;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded,
+                    (Action)(() => ScrollContinuousToPage(tgt)));
+            }
+
+            RenderAllAnnotations(fi);
         }
 
         private void RenderPage(int pageIndex)
@@ -375,41 +394,57 @@ namespace KillerPDF
                     2048 * Math.Max(dpiScaleX, dpiScaleY) * Math.Max(1.0, _zoomLevel));
                 _lastRenderZoom = _zoomLevel;
 
-                using var docReader = DocLib.Instance.GetDocReader(_currentFile, new PageDimensions(scaledMax, scaledMax));
-                using var pageReader = docReader.GetPageReader(pageIndex);
+                int pgRot = _pageRotations.TryGetValue(pageIndex, out int pr0) ? pr0 : 0;
 
-                int width = pageReader.GetPageWidth();
-                int height = pageReader.GetPageHeight();
-                var rawBytes = pageReader.GetImage();
-
-                // Apply rotation: the temp file has /Rotate stripped so Docnet renders
-                // unrotated (no clipping); rotate the pixel buffer to match the visual.
-                if (_pageRotations.TryGetValue(pageIndex, out int pgRot) && pgRot != 0)
-                    (rawBytes, width, height) = RotateBitmap(rawBytes, width, height, pgRot);
-
-                if (width <= 0 || height <= 0 || rawBytes == null || rawBytes.Length == 0)
+                // Reuse this tab's cached bitmap for (page, resolution, rotation) if present; otherwise
+                // rasterize once and cache it. On a switch back to a recent tab this skips pdfium entirely.
+                int width, height;
+                System.Windows.Media.Imaging.BitmapSource bitmap;
+                var cached = TryGetCachedRender(_active, pageIndex, scaledMax, pgRot);
+                if (cached != null)
                 {
-                    PageImage.Source = null;
-                    SetStatus(string.Format(Loc("Str_PageRenderError"), pageIndex + 1));
-                    return;
+                    bitmap = cached;
+                    width  = cached.PixelWidth;
+                    height = cached.PixelHeight;
+                }
+                else
+                {
+                    using var docReader = DocLib.Instance.GetDocReader(_currentFile, new PageDimensions(scaledMax, scaledMax));
+                    using var pageReader = docReader.GetPageReader(pageIndex);
+                    width  = pageReader.GetPageWidth();
+                    height = pageReader.GetPageHeight();
+                    var rawBytes = pageReader.GetImage();
+                    // The temp file has /Rotate stripped so Docnet renders unrotated (no clipping); rotate
+                    // the pixel buffer to match the visual.
+                    if (pgRot != 0)
+                        (rawBytes, width, height) = RotateBitmap(rawBytes, width, height, pgRot);
+                    if (width <= 0 || height <= 0 || rawBytes == null || rawBytes.Length == 0)
+                    {
+                        PageImage.Source = null;
+                        SetStatus(string.Format(Loc("Str_PageRenderError"), pageIndex + 1));
+                        return;
+                    }
+                    // Bake the bitmap DPI from the canonical render-dim size (longest side -> 2048 DIP, the
+                    // SAME zoom-independent basis continuous and the secondary tiles use) so the extra pixels
+                    // display within a fixed DIP area regardless of zoom. LayoutTransform supplies the zoom.
+                    double bLongest = Math.Max(1, Math.Max(width, height));
+                    int bw = Math.Max(1, (int)Math.Round(2048.0 * width  / bLongest));
+                    int bh = Math.Max(1, (int)Math.Round(2048.0 * height / bLongest));
+                    var wb = new WriteableBitmap(width, height, 96.0 * width / bw, 96.0 * height / bh, PixelFormats.Bgra32, null);
+                    wb.WritePixels(new Int32Rect(0, 0, width, height), rawBytes, width * 4, 0);
+                    wb.Freeze();
+                    bitmap = wb;
+                    CacheRender(_active, pageIndex, scaledMax, pgRot, bitmap);
                 }
 
-                // Convert pixel dimensions to WPF DIPs so the annotation canvas and
-                // link overlays are sized in the same coordinate space that WPF uses for
-                // layout.  Divide by the zoom factor so the canvas size (and therefore the
-                // coordinate map used by DrawAnnotationsOnDocument) stays stable across
-                // zoom re-renders — the bitmap just gets more pixels per DIP.
-                // LayoutTransform handles the visual zoom, not the canvas dimensions.
-                double zoomFactor = Math.Max(1.0, _zoomLevel);
-                int dipW = (int)Math.Round(width  / dpiScaleX / zoomFactor);
-                int dipH = (int)Math.Round(height / dpiScaleY / zoomFactor);
+                // Canonical render-dim space: longest side -> 2048 DIP, identical to the continuous and
+                // secondary-tile paths. This is zoom-independent (aspect only), so the canvas/overlay size
+                // is byte-for-byte stable across every zoom re-render - no left-shift when re-sharpening,
+                // and annotation coordinates match across all view modes. LayoutTransform handles the zoom.
+                double longest = Math.Max(1, Math.Max(width, height));
+                int dipW = Math.Max(1, (int)Math.Round(2048.0 * width  / longest));
+                int dipH = Math.Max(1, (int)Math.Round(2048.0 * height / longest));
                 _renderDims[pageIndex] = (dipW, dipH);
-
-                // Scale bitmap DPI up so the extra pixels display within the same DIP area.
-                double bitmapDpiX = 96.0 * width  / dipW;
-                double bitmapDpiY = 96.0 * height / dipH;
-                var bitmap = new WriteableBitmap(width, height, bitmapDpiX, bitmapDpiY, PixelFormats.Bgra32, null);
-                bitmap.WritePixels(new Int32Rect(0, 0, width, height), rawBytes, width * 4, 0);
 
                 PageImage.Source = bitmap;
                 _annotationCanvas.Width  = dipW;
@@ -428,7 +463,17 @@ namespace KillerPDF
                 // inside RenderAdditionalPages doesn't wipe the overlays we just added.
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
                 {
-                    RenderAdditionalPages(pageIndex);
+                    // Only Grid/Two-Page lay out neighbour tiles. In Single mode RenderAdditionalPages would
+                    // snap the panel width to pageW + 12 (the inter-tile gap), nudging the lone page ~6px left
+                    // of centre - the shift seen a beat after a zoom-in, when the re-sharpen timer re-renders.
+                    // Match RefreshPageView's single-mode handling instead: no extra tiles, auto panel width.
+                    if (_viewMode == ViewMode.Grid || _viewMode == ViewMode.TwoPage)
+                        RenderAdditionalPages(pageIndex);
+                    else
+                    {
+                        ClearSecondaryPages();
+                        if (_pageContentPanel is not null) _pageContentPanel.Width = double.NaN;
+                    }
                     RenderPageLinks(pageIndex, dipW, dipH);
                 });
                 _renderedPrimaryPage = pageIndex;
@@ -570,36 +615,68 @@ namespace KillerPDF
             // until every page has been rendered.
             try
             {
+                var session = _active;
+                int tileBucket = (int)Math.Round(primaryDipW);   // tiles are sized to the primary width; key the cache by it
                 await System.Threading.Tasks.Task.Run(() =>
                 {
-                    using var docReader = DocLib.Instance.GetDocReader(currentFile, new PageDimensions(SecondaryMax, SecondaryMax));
-                    for (int i = primaryPageIdx + 1; i < limit; i++)
+                    Docnet.Core.Readers.IDocReader? docReader = null;
+                    try
                     {
-                        if (cts.IsCancellationRequested) break;
-                        using var pageReader = docReader.GetPageReader(i);
-                        int w = pageReader.GetPageWidth();
-                        int h = pageReader.GetPageHeight();
-                        var rawBytes = pageReader.GetImage();
-                        if (w <= 0 || h <= 0 || rawBytes is null) continue;
-                        if (secRotations.TryGetValue(i, out int rot))
-                            (rawBytes, w, h) = RotateBitmap(rawBytes, w, h, rot);
-
-                        int pi = i, pw = w, ph = h;
-                        byte[] bytes = rawBytes;
-                        try
+                        for (int i = primaryPageIdx + 1; i < limit; i++)
                         {
-                            Dispatcher.Invoke(() =>
+                            if (cts.IsCancellationRequested) break;
+                            int rot = secRotations.TryGetValue(i, out int rr) ? rr : 0;
+
+                            // Cache hit: skip pdfium entirely, just attach the cached tile bitmap.
+                            var cachedTile = TryGetCachedRender(session, i, tileBucket, rot);
+                            if (cachedTile != null)
                             {
-                                if (cts.IsCancellationRequested || _doc is null) return;
-                                if (_viewMode != ViewMode.Grid && _viewMode != ViewMode.TwoPage) return;
-                                AddSecondaryTile(pi, pw, ph, bytes, primaryDipW);
-                            });
+                                int pic = i;
+                                try
+                                {
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        if (cts.IsCancellationRequested || _doc is null) return;
+                                        if (_viewMode != ViewMode.Grid && _viewMode != ViewMode.TwoPage) return;
+                                        AddSecondaryTile(pic, cachedTile, primaryDipW);
+                                    });
+                                }
+                                catch (System.Threading.Tasks.TaskCanceledException) { break; }
+                                catch (OperationCanceledException) { break; }
+                                continue;
+                            }
+
+                            docReader ??= DocLib.Instance.GetDocReader(currentFile, new PageDimensions(SecondaryMax, SecondaryMax));
+                            using var pageReader = docReader.GetPageReader(i);
+                            int w = pageReader.GetPageWidth();
+                            int h = pageReader.GetPageHeight();
+                            var rawBytes = pageReader.GetImage();
+                            if (w <= 0 || h <= 0 || rawBytes is null) continue;
+                            if (rot != 0)
+                                (rawBytes, w, h) = RotateBitmap(rawBytes, w, h, rot);
+
+                            int pi = i, pw = w, ph = h, prot = rot;
+                            byte[] bytes = rawBytes;
+                            try
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    if (cts.IsCancellationRequested || _doc is null) return;
+                                    if (_viewMode != ViewMode.Grid && _viewMode != ViewMode.TwoPage) return;
+                                    int ddw = Math.Max(1, (int)Math.Round(primaryDipW));
+                                    int ddh = Math.Max(1, (int)Math.Round(primaryDipW * ph / pw));
+                                    var bmp = BuildScaledBitmap(pw, ph, bytes, ddw, ddh);
+                                    CacheRender(session, pi, tileBucket, prot, bmp);
+                                    AddSecondaryTile(pi, bmp, primaryDipW);
+                                });
+                            }
+                            // Dispatcher.Invoke throws when the dispatcher is shutting down (app closing) or
+                            // the render was cancelled; stop rendering cleanly instead of crashing.
+                            catch (System.Threading.Tasks.TaskCanceledException) { break; }
+                            catch (OperationCanceledException) { break; }
                         }
-                        // Dispatcher.Invoke throws when the dispatcher is shutting down (app closing) or
-                        // the render was cancelled; stop rendering cleanly instead of crashing.
-                        catch (System.Threading.Tasks.TaskCanceledException) { break; }
-                        catch (OperationCanceledException) { break; }
                     }
+                    finally { docReader?.Dispose(); }
                 }, cts.Token);
             }
             catch { return; }
@@ -609,15 +686,21 @@ namespace KillerPDF
         /// Builds one secondary-page tile (image + annotation overlay + links) and appends it
         /// to the page content panel. Must run on the UI thread.
         /// </summary>
-        private void AddSecondaryTile(int pi, int w, int h, byte[] rawBytes, double primaryDipW)
+        // Builds a frozen bitmap sized so its baked DPI displays it at (dipW x dipH) DIPs. Shared by the
+        // tile and the render cache so a cached tile bitmap reuses the exact same geometry.
+        private static System.Windows.Media.Imaging.BitmapSource BuildScaledBitmap(int w, int h, byte[] rawBytes, int dipW, int dipH)
         {
+            var wb = new WriteableBitmap(w, h, 96.0 * w / Math.Max(1, dipW), 96.0 * h / Math.Max(1, dipH), PixelFormats.Bgra32, null);
+            wb.WritePixels(new Int32Rect(0, 0, w, h), rawBytes, w * 4, 0);
+            wb.Freeze();
+            return wb;
+        }
+
+        private void AddSecondaryTile(int pi, System.Windows.Media.Imaging.BitmapSource bitmap, double primaryDipW)
+        {
+            int w = bitmap.PixelWidth, h = bitmap.PixelHeight;
             int pageDipW = (int)Math.Round(primaryDipW);
             int pageDipH = (int)Math.Round(primaryDipW * h / w);
-            double bitmapDpiX = 96.0 * w / pageDipW;
-            double bitmapDpiY = 96.0 * h / pageDipH;
-
-            var bitmap = new WriteableBitmap(w, h, bitmapDpiX, bitmapDpiY, PixelFormats.Bgra32, null);
-            bitmap.WritePixels(new Int32Rect(0, 0, w, h), rawBytes, w * 4, 0);
 
             // This page already has a tile: swap just the bitmap (same logical size, crisper pixels).
             // No clear, no reflow - so the grid/spread never jumps or blinks.

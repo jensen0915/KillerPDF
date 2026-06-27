@@ -35,6 +35,8 @@ namespace KillerPDF
             // the reload and stay selectable/movable; they are re-rendered after the doc reopens.
             if (!keepAnnotations) _annotations.Clear();
             _renderDims.Clear();
+            InvalidateRenderCache(_active);   // pages changed pixels / order: drop this tab's cached bitmaps
+            _renderedPrimaryPage = -1;        // force a re-render after reload even if the same page stays selected (e.g. rotate)
             ClearSelection();
             MarkDirty();
             var doc = _doc;

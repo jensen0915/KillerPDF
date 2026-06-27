@@ -4,7 +4,7 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.5.9] - 2026-06-25
+## [1.6.0] - 2026-06-27
 
 ### Added
 - Tabbed documents: open several PDFs at once, each restoring its page, zoom, and view mode. Drag tabs to re-order.
@@ -18,8 +18,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 - Page-number stamping from the right-click menu (start value, format, position, size) as one undo.
 - Drop a folder or .zip archive onto the window to open the PDFs and images inside, choosing to merge them into one PDF or open each in its own tab.
 - Document Info dialog (F12): view and edit a PDF's title, author, subject, keywords, and creator metadata.
-- Recent files: a dropdown by Open (last 10) and on the start screen, plus a Save / Save As dropdown.
-- Keyboard shortcuts for tools, views, and panels (F1 shortcuts list, F2 About, Ctrl+V paste, Esc to close, F5-F8 view modes, F11 fullscreen...); the overlay lists them all.
+- Recent files: a dropdown by Open (last 10) and on the start screen, plus a Save / Save As dropdown; each entry carries its real Windows file-type icon.
+- Keyboard shortcuts for tools, views, and panels (F1 shortcuts list, F2 About, Ctrl+V paste, Esc to close, F5-F8 view modes, F11 fullscreen...); the overlay lists them all and links to the full online guide.
+- Full-screen mode (F11): hides all chrome so only the document fills the monitor, with a black fade in and out.
 - Per-field font size while filling text fields, baked into the saved PDF.
 - One-click update from the About dialog when a newer release exists.
 - Toolbar style picker: small or large icons, text beside, under, or only.

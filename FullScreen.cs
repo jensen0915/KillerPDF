@@ -12,7 +12,8 @@ namespace KillerPDF
     public partial class MainWindow
     {
         private bool _fullScreen;
-        private GridLength _fsTitleRow, _fsFooterRow, _fsSidebarCol;
+        private GridLength _fsTitleRow, _fsFooterRow, _fsSidebarCol, _fsSplitterCol;
+        private double _fsSidebarMin;
         private WindowState _fsPrevState;
         private bool _fsPrevTopmost;
         private ResizeMode _fsPrevResize;
@@ -74,10 +75,18 @@ namespace KillerPDF
             {
                 _fsTitleRow   = RootClipGrid.RowDefinitions[0].Height;
                 _fsFooterRow  = RootClipGrid.RowDefinitions[4].Height;
-                _fsSidebarCol = SidebarCol.Width;
+                _fsSidebarCol  = _sidebarCol.Width;
+                _fsSidebarMin  = _sidebarCol.MinWidth;
+                _fsSplitterCol = MainContentGrid.ColumnDefinitions[1].Width;
                 RootClipGrid.RowDefinitions[0].Height = new GridLength(0);
                 RootClipGrid.RowDefinitions[4].Height = new GridLength(0);
-                SidebarCol.Width = new GridLength(0);
+                // Collapse the ACTUAL sidebar column (_sidebarCol), which ApplySidebarSide repoints to DocCol
+                // when the sidebar is on the right. MinWidth must drop to 0 too (it floors the width to 24
+                // otherwise) and the splitter column (col 1) collapses, so the document fills the whole screen
+                // with no leftover strip on either side, regardless of side or sidebar width.
+                _sidebarCol.MinWidth = 0;
+                _sidebarCol.Width = new GridLength(0);
+                MainContentGrid.ColumnDefinitions[1].Width = new GridLength(0);
                 DocPaneBorder.Background = new SolidColorBrush(Color.FromRgb(0x26, 0x26, 0x26));   // dark-gray backdrop
 
                 // Cover the whole monitor with explicit bounds. A maximized window is clamped to the work
@@ -86,20 +95,36 @@ namespace KillerPDF
                 _fsPrevState = WindowState;
                 _fsPrevTopmost = Topmost;
                 _fsPrevResize = ResizeMode;
-                if (WindowState == WindowState.Maximized) WindowState = WindowState.Normal;
                 _fsPrevLeft = Left; _fsPrevTop = Top; _fsPrevW = Width; _fsPrevH = Height;
+
+                // Read the target monitor while still on it (before any WindowState change). Set the target
+                // bounds FIRST, then drop to Normal: WPF restores to the just-set bounds, so the window lands
+                // straight on this monitor instead of momentarily restoring to its old normal rect on another
+                // screen (the "flash to another monitor"). Re-apply bounds after Normal to be certain.
+                // Paint the window background black for the grow. When the window jumps from its small
+                // rect to the full monitor, the newly-exposed area is filled by the window background
+                // until the black cover re-lays-out over it. Black (instead of the gray BgDark) makes
+                // that exposed edge match the cover, so entering no longer flashes a gray border the way
+                // it did - shrinking on exit exposes nothing, which is why exit already looked clean.
+                // Restored to BgDark on exit.
+                Background = Brushes.Black;
 
                 var b = CurrentMonitorBoundsDip();
                 Topmost = true;
                 ResizeMode = ResizeMode.NoResize;
+                Left = b.Left; Top = b.Top; Width = b.Width; Height = b.Height;
+                if (WindowState == WindowState.Maximized) WindowState = WindowState.Normal;
                 Left = b.Left; Top = b.Top; Width = b.Width; Height = b.Height;
             }
             else
             {
                 RootClipGrid.RowDefinitions[0].Height = _fsTitleRow;
                 RootClipGrid.RowDefinitions[4].Height = _fsFooterRow;
-                SidebarCol.Width = _fsSidebarCol;
+                _sidebarCol.MinWidth = _fsSidebarMin;
+                _sidebarCol.Width = _fsSidebarCol;
+                MainContentGrid.ColumnDefinitions[1].Width = _fsSplitterCol;
                 DocPaneBorder.SetResourceReference(Border.BackgroundProperty, "BgCanvas");
+                SetResourceReference(BackgroundProperty, "BgDark");   // undo the black grow-backdrop
 
                 // Drop topmost and restore the pre-full-screen window placement. Restore the normal bounds
                 // first (so WPF's remembered restore rect is correct) then re-maximize if it was maximized.

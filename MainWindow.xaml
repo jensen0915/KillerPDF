@@ -34,9 +34,6 @@
         <!-- Brush keys come from Application.Resources (theme dicts) via DynamicResource.
              Only non-color styles live here. -->
 
-        <!-- Floors the scrollbar thumb's proportional size so it stays grabbable on long docs. -->
-        <local:ThumbViewportFloorConverter x:Key="ThumbFloor"/>
-
         <!-- Close button's top-right corner: rounded to match the window when floating, squared
              when maximized/snapped. Updated in UpdateWindowChrome alongside the frame corners. -->
         <CornerRadius x:Key="ChromeCloseCorner">0,7,0,0</CornerRadius>
@@ -367,104 +364,8 @@
             </Setter>
         </Style>
 
-        <!-- Thin green scrollbar -->
-        <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Width" Value="12"/>
-            <Setter Property="MinWidth" Value="12"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid>
-                            <Track x:Name="PART_Track" IsDirectionReversed="True"
-                                   Minimum="{TemplateBinding Minimum}"
-                                   Maximum="{TemplateBinding Maximum}"
-                                   Value="{TemplateBinding Value}">
-                                <!-- Reactive thumb with a minimum-length floor. ViewportSize is fed through
-                                     ThumbViewportFloorConverter, which raises it just enough that the Track's
-                                     proportional thumb never falls below the floor. Because the Track sizes the
-                                     thumb AND the repeat buttons from this one value, there is no MinHeight
-                                     overflow for the increase button to paint over. The buttons still enable
-                                     click-to-page. -->
-                                <Track.ViewportSize>
-                                    <MultiBinding Converter="{StaticResource ThumbFloor}" ConverterParameter="64">
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="ViewportSize"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Maximum"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Minimum"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="ActualWidth"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="ActualHeight"/>
-                                        <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Orientation"/>
-                                    </MultiBinding>
-                                </Track.ViewportSize>
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" IsTabStop="False">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.DecreaseRepeatButton>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" IsTabStop="False">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.IncreaseRepeatButton>
-                                <Track.Thumb>
-                                    <!-- No MinHeight/MinWidth here on purpose: the thumb's minimum length is
-                                         enforced upstream via the Track's floored ViewportSize (see above), so
-                                         the thumb's rendered size always equals the slot the Track gives it.
-                                         A MinHeight here would overflow that slot and be covered by the
-                                         increase button - the original tiny-scrollbar bug. -->
-                                    <Thumb x:Name="ScrollThumb">
-                                        <Thumb.Style>
-                                            <Style TargetType="Thumb">
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Thumb">
-                                                            <Border x:Name="thumbBorder"
-                                                                    Background="{DynamicResource BgScrollThumb}"
-                                                                    CornerRadius="3"
-                                                                    Margin="4,0"/>
-                                                            <ControlTemplate.Triggers>
-                                                                <!-- Horizontal bar: keep the thumb thin on the vertical axis instead -->
-                                                                <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType={x:Type ScrollBar}}}" Value="Horizontal">
-                                                                    <Setter TargetName="thumbBorder" Property="Margin" Value="0,4"/>
-                                                                </DataTrigger>
-                                                                <!-- Fatten + highlight whenever the mouse is anywhere over the scrollbar.
-                                                                     Only the thumb's margin changes, so the reserved width stays constant
-                                                                     and the page does not reflow/re-render on hover. -->
-                                                                <!-- Only react over the thumb itself, not anywhere along the track. -->
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="thumbBorder" Property="Background" Value="{DynamicResource ScrollThumbHover}"/>
-                                                                    <Setter TargetName="thumbBorder" Property="Margin" Value="2,2"/>
-                                                                    <Setter TargetName="thumbBorder" Property="Effect">
-                                                                        <Setter.Value>
-                                                                            <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="0" Opacity="0.3"/>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </Thumb.Style>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Style.Triggers>
-                <Trigger Property="Orientation" Value="Horizontal">
-                    <Setter Property="Height" Value="12"/>
-                    <Setter Property="MinHeight" Value="12"/>
-                    <Setter Property="Width" Value="Auto"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+        <!-- The themed ScrollBar style + ThumbFloor converter now live at app scope (App.xaml) so every
+             dialog window inherits the same scrollbar instead of the gray system default. -->
 
         <!-- Themed slider (size/opacity bars): groove + thumb that match the scrollbar palette.
              OverridesDefaultStyle so none of WPF's default blue track/selection can show through. -->
@@ -837,6 +738,9 @@
             <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
             <Setter Property="FontFamily" Value="Consolas"/>
             <Setter Property="FontSize" Value="13"/>
+            <!-- Set on the ItemsControl so the ListBoxItem default FindAncestor binding resolves; silences the benign "Data Error 4 ... HorizontalContentAlignment" spam during virtualization. -->
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
         </Style>
         <Style TargetType="ListBoxItem">
             <Setter Property="Padding" Value="8,6"/>
@@ -1457,7 +1361,8 @@
                                                 MaxWidth="200"
                                                 HorizontalAlignment="Center">
                                             <Image Source="{Binding Thumbnail}"
-                                                   Stretch="Uniform"/>
+                                                   Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
                                         </Border>
                                         <TextBlock Text="{Binding Label}"
                                                    FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI"
@@ -1529,7 +1434,7 @@
                             <Button Click="DocInfo_Click"
                                     Cursor="Hand" FocusVisualStyle="{x:Null}"
                                     ToolTip="{DynamicResource Str_TT_DocInfo}"
-                                    Width="24" Height="24" Padding="0" Margin="0,0,0,6">
+                                    Width="24" Height="24" Padding="0" Margin="1,0,0,6">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border Background="Transparent">
@@ -1747,7 +1652,7 @@
                             </Border>
 
                             <!-- Recent files sidebar (populated in code-behind; hidden when empty) -->
-                            <Border x:Name="RecentFilesBox" Grid.Column="1" Width="280" Visibility="Collapsed"
+                            <Border x:Name="RecentFilesBox" Grid.Column="1" Width="340" Visibility="Collapsed"
                                     Background="{DynamicResource BgRecentPanel}"
                                     BorderBrush="{DynamicResource PaneBorder}" BorderThickness="1,0,0,0">
                                 <Grid>
@@ -1875,7 +1780,7 @@
                     </Button>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <TextBlock x:Name="VersionLabel" Text="v1.5.9"
+                    <TextBlock x:Name="VersionLabel" Text="v1.6.0"
                                Foreground="{DynamicResource TextFooter}" FontFamily="Consolas"
                                FontSize="10" VerticalAlignment="Center" Margin="0,0,12,0"
                                Cursor="Hand" ToolTip="{DynamicResource Str_TT_About}"
@@ -2505,6 +2410,11 @@
                             <DockPanel Margin="0,0,0,4"><TextBlock Text="Ctrl+V" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_Paste}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
                             <DockPanel Margin="0,0,0,4"><TextBlock Text="Delete" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_DeleteAnnot}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
                             <DockPanel Margin="0,0,0,0"><TextBlock Text="Enter / Escape" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_ConfirmCancel}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
+
+                            <TextBlock Text="{DynamicResource Str_KS_Help}" Foreground="{DynamicResource Accent}"
+                                       FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" FontWeight="SemiBold" Margin="0,12,0,4"/>
+                            <DockPanel Margin="0,0,0,4"><TextBlock Text="F1 / Ctrl+?" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_ThisList}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
+                            <DockPanel Margin="0,0,0,0"><TextBlock Text="F2" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_About}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
                         </StackPanel>
 
                         <!-- Right column -->
@@ -2539,13 +2449,12 @@
                             <DockPanel Margin="0,0,0,4"><TextBlock Text="Enter / Shift+Enter" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_NextPrevResult}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
                             <DockPanel Margin="0,0,0,4"><TextBlock Text="Ctrl+A" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_SelectAll}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
                             <DockPanel Margin="0,0,0,0"><TextBlock Text="Shift+Click" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_MultiSelect}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
-
-                            <TextBlock Text="{DynamicResource Str_KS_Help}" Foreground="{DynamicResource Accent}"
-                                       FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" FontWeight="SemiBold" Margin="0,12,0,4"/>
-                            <DockPanel Margin="0,0,0,4"><TextBlock Text="F1 / Ctrl+?" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_ThisList}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
-                            <DockPanel Margin="0,0,0,0"><TextBlock Text="F2" FontFamily="Consolas" FontSize="11" Foreground="{DynamicResource TextSecondary}" Width="120"/><TextBlock Text="{DynamicResource Str_KS_About}" FontSize="{DynamicResource Str_KS_FontSize}" Foreground="{DynamicResource TextPrimary}"/></DockPanel>
                         </StackPanel>
                     </Grid>
+                    <TextBlock HorizontalAlignment="Right" Margin="0,14,0,0" FontFamily="Consolas" FontSize="11">
+                        <Hyperlink Click="OnlineHelp_Click" Foreground="{DynamicResource Accent}"
+                                   ToolTip="https://pdf.killertools.net/help.html"><Run Text="{DynamicResource Str_KS_OnlineHelp}"/></Hyperlink>
+                    </TextBlock>
                 </StackPanel>
                 </Grid>
                 </Border>

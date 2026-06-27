@@ -312,5 +312,12 @@ namespace KillerPDF
             Set(ToolCropBtn, "Str_TT_CropTool", 8);
             Set(_toolRotateBtn, "Str_TT_RotateTool", 9);
         }
+
+        // Opens the online help / how-to page in the user's default browser.
+        private void OnlineHelp_Click(object sender, RoutedEventArgs e)
+        {
+            try { Process.Start(new ProcessStartInfo("https://pdf.killertools.net/help.html") { UseShellExecute = true }); }
+            catch { }
+        }
     }
 }

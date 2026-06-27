@@ -35,7 +35,13 @@ namespace KillerPDF
 
             var page = _doc.Pages[pageIdx];
             var (pwpt, phpt) = EffectivePageSize(page);
-            var win = new StampWindow(this, src, pwpt, phpt, _doc.PageCount, pageIdx, _docStampSpec);
+            var win = new StampWindow(this, src, pwpt, phpt, _doc.PageCount, pageIdx, _docStampSpec,
+                idx =>   // page-render callback for the preview stepper
+                {
+                    var s = RenderPageBitmap(idx, 1100, BurnPageAnnotationsToTemp(idx));
+                    var (w, h) = EffectivePageSize(_doc!.Pages[idx]);
+                    return (s, w, h);
+                });
             win.ShowDialog();
             if (win.Applied) ApplyStampSpec(win.Result);
         }
@@ -168,7 +174,7 @@ namespace KillerPDF
             {
                 if (string.IsNullOrEmpty(spec.WmText)) return;
                 double fontCanvas = spec.WmFontPt * rdH / Math.Max(1, phpt);
-                var tb = new TextBlock { Text = spec.WmText, FontFamily = UiKit.UiFont, FontWeight = FontWeights.Bold, FontSize = Math.Max(1, fontCanvas), Foreground = new SolidColorBrush(spec.WmColor), Opacity = spec.WmOpacity, IsHitTestVisible = false };
+                var tb = new TextBlock { Text = spec.WmText, FontFamily = new FontFamily(string.IsNullOrWhiteSpace(spec.WmFont) ? "Segoe UI" : spec.WmFont), FontWeight = FontWeights.Bold, FontSize = Math.Max(1, fontCanvas), Foreground = new SolidColorBrush(spec.WmColor), Opacity = spec.WmOpacity, IsHitTestVisible = false };
                 var sz = MeasureEl(tb);
                 w = sz.Width; h = sz.Height;
                 el = tb;
@@ -341,7 +347,8 @@ namespace KillerPDF
             else
             {
                 if (string.IsNullOrEmpty(spec.WmText)) return;
-                font = new XFont("Segoe UI", Math.Max(1, spec.WmFontPt), XFontStyle.Bold);
+                try { font = new XFont(string.IsNullOrWhiteSpace(spec.WmFont) ? "Segoe UI" : spec.WmFont, Math.Max(1, spec.WmFontPt), XFontStyle.Bold); }
+                catch { font = new XFont("Segoe UI", Math.Max(1, spec.WmFontPt), XFontStyle.Bold); }
                 var size = gfx.MeasureString(spec.WmText, font);
                 w = size.Width; h = size.Height;
             }

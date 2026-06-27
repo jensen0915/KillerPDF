@@ -82,9 +82,10 @@ namespace KillerPDF
                         if (idx >= 0) RenderPage(idx);
                     }));
             }
-            // WM_NCHITTEST is no longer handled here: WindowChrome.ResizeBorderThickness now provides
-            // native edge/corner resize. WmNcHitTest / IsOverScrollBar are retained (unused) for now and
-            // will be removed in the chrome-code cleanup pass once the migration is verified.
+            // WM_NCHITTEST is handled natively by WindowChrome.ResizeBorderThickness. The document scrollbar
+            // is kept grabbable over the right resize band via WindowChrome.IsHitTestVisibleInChrome on the
+            // ScrollBar style (App.xaml), which is the WindowChrome-native way to exempt an element from the
+            // resize border - no manual hit-test override (that fought WindowChrome and killed scrollbar clicks).
             return IntPtr.Zero;
         }
 

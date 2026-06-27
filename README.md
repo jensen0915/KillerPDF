@@ -20,6 +20,8 @@ KillerPDF is what I wanted: local-only, portable, no account, no telemetry. The 
 - Full-text search across the whole document with highlighting; drag-select to copy text
 - Outline/bookmark navigation and clickable links, including internal cross-references and TOC back-links
 - Zoom presets with scroll-wheel sync; Fit to Width and Fit Page re-apply on resize
+- Full-screen mode (F11) hides all chrome so only the document fills the screen
+- Recent files on the start screen and Open menu, each with its real Windows file-type icon
 
 ### Annotate & edit
 
@@ -63,7 +65,7 @@ KillerPDF is what I wanted: local-only, portable, no account, no telemetry. The 
 - Six themes - Dark, Light, Black, Blood, Greed, Cyanotic - with per-theme accent colors, switchable live
 - Toolbar style (icon size, text placement) and a resizable sidebar that docks left or right
 - Localized UI in 8 languages (English, Spanish, Traditional and Simplified Chinese, German, French, Turkish, Bengali); contribute via `Strings/TRANSLATING.md`
-- Full keyboard shortcut overlay (Ctrl+?)
+- Full keyboard shortcut overlay (Ctrl+?) with a link to the online guide
 
 ### App & files
 
@@ -106,7 +108,7 @@ winget install killerpdf
 ```
 
 - Prebuilt binary: <https://github.com/SteveTheKiller/KillerPDF/releases/latest/download/KillerPDF.exe>
-- Source (GPL3 corresponding source for this release): <https://github.com/SteveTheKiller/KillerPDF/releases/download/v1.5.1/KillerPDF-1.6.0-src.zip>
+- Source (GPL3 corresponding source for this release): <https://github.com/SteveTheKiller/KillerPDF/releases/download/v1.6.0/KillerPDF-1.6.0-src.zip>
 
 ## Build from source
 

@@ -95,6 +95,7 @@
     <sys:String x:Key="Str_KS_Help">YARDIM</sys:String>
     <sys:String x:Key="Str_KS_ThisList">Bu kısayol listesi</sys:String>
     <sys:String x:Key="Str_KS_About">Hakkında penceresi</sys:String>
+    <sys:String x:Key="Str_KS_OnlineHelp">Tam kılavuz ve çevrimiçi rehber</sys:String>
     <sys:String x:Key="Str_KS_Tools">ARAÇLAR</sys:String>
     <sys:String x:Key="Str_KS_Paste">Görsel / metin yapıştır</sys:String>
     <sys:String x:Key="Str_KS_MultiSelect">Seçime ekle</sys:String>
@@ -302,6 +303,7 @@ Bu işlem uygulamayı %LocalAppData%\KillerPDF konumuna kopyalar ve bir Başlat 
     <sys:String x:Key="Str_Drop_Separate">Ayrı ayrı aç</sys:String>
     <sys:String x:Key="Str_Drop_NothingOpenable">Açılacak PDF veya görüntü bulunamadı.</sys:String>
     <sys:String x:Key="Str_Drop_ManyTabs">Bu, {0} ayrı sekme açacak. Devam edilsin mi?</sys:String>
+    <sys:String x:Key="Str_Drop_TooMany">Bu klasör veya arşiv {0} dosya içeriyor. KillerPDF yalnızca ilk {1} tanesini açacak. Devam edilsin mi?</sys:String>
     <sys:String x:Key="Str_Status_Merged">{0} dosya birleştirildi - henüz kaydedilmedi</sys:String>
     <sys:String x:Key="Str_Drop_Merging">Dosyalar birleştiriliyor...</sys:String>
     <sys:String x:Key="Str_Drop_MergeCancelled">Birleştirme iptal edildi</sys:String>

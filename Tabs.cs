@@ -42,6 +42,11 @@ namespace KillerPDF
 
             public Dictionary<int, List<PageAnnotation>> Annotations = [];
             public Dictionary<int, (int w, int h)> RenderDims = [];
+            // LRU render cache: rasterized page bitmaps keyed by (page, size-bucket, rotation). Lets a
+            // switch back to a recent tab reuse the bitmaps instead of re-running pdfium. Concurrent because
+            // the continuous/secondary streamers read it from a background thread. Cleared on edits that change
+            // a page's pixels or page order, and dropped entirely when the tab falls out of the LRU window.
+            public readonly System.Collections.Concurrent.ConcurrentDictionary<(int page, int bucket, int rot), System.Windows.Media.Imaging.BitmapSource> RenderCache = new();
             public Dictionary<int, int> PageRotations = [];
             public Dictionary<int, string> FormTextValues = [];
             public Dictionary<int, bool> FormCheckValues = [];
@@ -171,7 +176,43 @@ namespace KillerPDF
             _undoStack        = s.UndoStack;
             _allSearchRects   = s.AllSearchRects;
             _searchResultPages = s.SearchResultPages;
+            TouchRenderLru(s);   // this tab is now active: keep its render cache, evict tabs beyond the window
         }
+
+        // ── LRU render-bitmap cache ───────────────────────────────────────────────────────────────────
+        // Keeps the rasterized page bitmaps of the most-recent few tabs so switching back skips pdfium and
+        // fills instantly. The render paths (single / secondary tiles / continuous) check the active tab's
+        // cache before rasterizing and store the frozen bitmap after building it.
+        private readonly List<DocumentSession> _renderLru = [];
+        private const int RenderCacheTabCap = 3;
+
+        // Background-thread safe: a cached frozen bitmap for this render, or null (the caller must rasterize).
+        private static System.Windows.Media.Imaging.BitmapSource? TryGetCachedRender(DocumentSession? s, int page, int bucket, int rot)
+            => (s != null && s.RenderCache.TryGetValue((page, bucket, rot), out var b)) ? b : null;
+
+        private static void CacheRender(DocumentSession? s, int page, int bucket, int rot, System.Windows.Media.Imaging.BitmapSource bmp)
+        {
+            if (s == null) return;
+            if (bmp.CanFreeze && !bmp.IsFrozen) bmp.Freeze();
+            s.RenderCache[(page, bucket, rot)] = bmp;
+        }
+
+        // Mark a tab most-recently-used; drop the bitmap caches of tabs that fall outside the LRU window.
+        private void TouchRenderLru(DocumentSession? s)
+        {
+            if (s == null) return;
+            _renderLru.Remove(s);
+            _renderLru.Add(s);
+            while (_renderLru.Count > RenderCacheTabCap)
+            {
+                var old = _renderLru[0];
+                _renderLru.RemoveAt(0);
+                old.RenderCache.Clear();
+            }
+        }
+
+        // Drop a tab's cached bitmaps after an edit that changes page pixels or page order.
+        private void InvalidateRenderCache(DocumentSession? s) => s?.RenderCache.Clear();
 
         // Make sure there is always at least one session, adopting whatever is currently live.
         private void EnsureInitialSession()
@@ -370,6 +411,12 @@ namespace KillerPDF
             if (_active != null) CaptureSessionState(_active);
             _active = target;
             ApplySessionState(target);
+            // Hide the document content while the new tab renders and restores its scroll position, then fade
+            // it in. This masks the rebuild and the "loads at the top then snaps to my place" jump - the user
+            // only sees the final, correctly-scrolled view fade in. PageContentGrid is the parent of BOTH the
+            // single/grid panel and the continuous panel, so one fade covers every view mode.
+            PageContentGrid.BeginAnimation(UIElement.OpacityProperty, null);
+            PageContentGrid.Opacity = 0;
             if (target.Doc == null && target.DeferredPath != null)
             {
                 MaterializeDeferred(target);
@@ -380,6 +427,26 @@ namespace KillerPDF
                 RenderActiveSession();
                 RestyleActiveTab();     // already loaded: restyle in place, no strip rebuild (no flicker)
             }
+            FadeInDocContent();
+        }
+
+        // Fade the document pane content back in after a switch. Queued at ContextIdle so it runs AFTER the
+        // scroll-position restore (also ContextIdle, queued earlier by RenderActiveSession) - the snap to
+        // position happens while hidden, so it's never seen. Always lands at full opacity.
+        private void FadeInDocContent()
+        {
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle, (Action)(() =>
+            {
+                var fade = new System.Windows.Media.Animation.DoubleAnimation(
+                    0, 1, new Duration(TimeSpan.FromMilliseconds(140)))
+                { EasingFunction = new System.Windows.Media.Animation.QuadraticEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut } };
+                fade.Completed += (_, _) =>
+                {
+                    PageContentGrid.BeginAnimation(UIElement.OpacityProperty, null);
+                    PageContentGrid.Opacity = 1;
+                };
+                PageContentGrid.BeginAnimation(UIElement.OpacityProperty, fade);
+            }));
         }
 
         // Load a restored-but-deferred tab's PDF the first time it is viewed (lazy tabs). The session
@@ -445,6 +512,8 @@ namespace KillerPDF
 
             int idx = _sessions.IndexOf(s);
             _sessions.Remove(s);
+            _renderLru.Remove(s);    // don't pin a closed tab's render cache in the LRU list
+            s.RenderCache.Clear();
 
             if (_sessions.Count == 0)
             {
@@ -520,7 +589,7 @@ namespace KillerPDF
         // ============================================================
 
         private readonly List<(DocumentSession s, FrameworkElement btn, double natW)> _tabButtonList = [];
-        private readonly Dictionary<DocumentSession, FrameworkElement> _tabButtonCache = new();
+        private readonly Dictionary<DocumentSession, FrameworkElement> _tabButtonCache = [];
         private System.Windows.Threading.DispatcherTimer? _tabReflowTimer;
         private bool _reflowingTabs;
 
@@ -606,7 +675,7 @@ namespace KillerPDF
             }
 
             // Place buttons on the strip in order without a full clear, then reflow widths / overflow.
-            SetTabStripChildren(_tabButtonList.Select(t => t.btn).ToList());
+            SetTabStripChildren([.. _tabButtonList.Select(t => t.btn)]);
             UpdateTabStripFade();
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)ReflowTabs);
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)UpdateFooterFade);
@@ -660,7 +729,7 @@ namespace KillerPDF
                 {
                     double w = Math.Min(maxTab, viewport / n);
                     foreach (var (_, btn, _) in _tabButtonList) { btn.Width = w; TrimTabLabel(btn); }
-                    SetTabStripChildren(_tabButtonList.Select(t => t.btn).ToList());
+                    SetTabStripChildren([.. _tabButtonList.Select(t => t.btn)]);
                     return;
                 }
 

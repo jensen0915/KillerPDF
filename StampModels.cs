@@ -26,6 +26,7 @@ namespace KillerPDF
         public bool    WmEnabled;
         public bool    WmIsImage;              // false = text, true = image
         public string  WmText    = "DRAFT";
+        public string  WmFont    = "Segoe UI";
         public double  WmFontPt  = 64;
         public Color   WmColor   = Color.FromRgb(0x88, 0x88, 0x88);
         public double  WmOpacity = 0.25;       // 0..1

@@ -21,10 +21,16 @@ namespace KillerPDF
         public bool Applied { get; private set; }
         public StampSpec Result { get; private set; }
 
-        private readonly BitmapSource _pageSrc;
-        private readonly double _pageWpt, _pageHpt;
-        private readonly int _pageCount, _pageIndex;
+        private BitmapSource _pageSrc;
+        private double _pageWpt, _pageHpt;
+        private readonly int _pageCount;
+        private int _pageIndex;
         private readonly StampSpec _spec;
+        // Renders an arbitrary page for the preview stepper: returns that page's bitmap + size in points.
+        private readonly Func<int, (BitmapSource? src, double wpt, double hpt)>? _pageProvider;
+        private TextBlock _pageNavLabel = null!;
+        private Button _prevArrow = null!, _nextArrow = null!;
+        private System.Windows.Threading.DispatcherTimer? _navRenderTimer;
 
         private readonly Image _preview = new()
         {
@@ -34,7 +40,7 @@ namespace KillerPDF
             Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 14, ShadowDepth = 3, Direction = 270, Opacity = 0.4 }
         };
         private readonly Canvas _overlay = new() { IsHitTestVisible = false, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        private Border _previewArea = null!;
+        private FrameworkElement _previewArea = null!;
         private Button _applyBtn = null!;
         private readonly System.Windows.Threading.DispatcherTimer _previewTimer;
 
@@ -51,7 +57,7 @@ namespace KillerPDF
         private CheckBox _wmEnable = null!;
         private RadioButton _wmTextRadio = null!, _wmImageRadio = null!;
         private TextBox _wmText = null!, _wmSize = null!, _wmRange = null!;
-        private ComboBox _wmPos = null!;
+        private ComboBox _wmPos = null!, _wmFont = null!;
         private Slider _wmAngle = null!, _wmOpacity = null!, _wmScale = null!;
         private Border _wmSwatch = null!;
         private Color _wmColor;
@@ -74,13 +80,15 @@ namespace KillerPDF
         ];
 
         public StampWindow(Window owner, BitmapSource pageSrc, double pageWpt, double pageHpt,
-                           int pageCount, int pageIndex, StampSpec? existing)
+                           int pageCount, int pageIndex, StampSpec? existing,
+                           Func<int, (BitmapSource? src, double wpt, double hpt)>? pageProvider = null)
         {
             _pageSrc = pageSrc;
             _pageWpt = pageWpt;
             _pageHpt = pageHpt;
             _pageCount = pageCount;
             _pageIndex = pageIndex;
+            _pageProvider = pageProvider;
             _spec = existing?.Clone() ?? new StampSpec { NumbersEnabled = true };
             Result = _spec;
 
@@ -165,15 +173,38 @@ namespace KillerPDF
             previewWrap.SetResourceReference(Border.BackgroundProperty, "BgCanvas");
             previewWrap.SetResourceReference(Border.BorderBrushProperty, "PaneBorder");
 
-            var previewGrid = new Grid();
-            AddGrain(previewGrid, owner, 0.05, cornerRadius: 0);
+            // The page image (row 0) and the stepper (row 1) live in separate rows so the stepper sits
+            // BELOW the page instead of overlapping it - same row layout as the print preview.
+            var previewLayout = new Grid();
+            previewLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            previewLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var imageHost = new Grid();
+            AddGrain(imageHost, owner, 0.05, cornerRadius: 0);
             RenderOptions.SetBitmapScalingMode(_preview, BitmapScalingMode.HighQuality);
             _preview.Source = _pageSrc;
-            previewGrid.Children.Add(_preview);
-            previewGrid.Children.Add(_overlay);
-            previewWrap.Child = previewGrid;
-            _previewArea = previewWrap;
-            previewWrap.SizeChanged += (_, _2) => { SizePreviewImage(); Schedule(); };
+            imageHost.Children.Add(_preview);
+            imageHost.Children.Add(_overlay);
+            Grid.SetRow(imageHost, 0);
+            previewLayout.Children.Add(imageHost);
+            previewWrap.Child = previewLayout;
+            _previewArea = imageHost;   // size the page against the image row only, never the stepper row
+            // Page stepper: the wheel over the preview (or the arrows) walks pages so you can preview the
+            // stamp on any page - the per-page number and range checks update as you go. Only when the caller
+            // supplies a page provider and there's more than one page.
+            if (_pageProvider != null && _pageCount > 1)
+            {
+                var nav = BuildPageNav();
+                Grid.SetRow(nav, 1);
+                previewLayout.Children.Add(nav);
+                previewWrap.PreviewMouseWheel += (_, e) =>
+                {
+                    int notches = Math.Max(1, Math.Abs(e.Delta) / 120);
+                    StepPage(e.Delta < 0 ? notches : -notches);
+                    e.Handled = true;
+                };
+            }
+            _previewArea.SizeChanged += (_, _2) => { SizePreviewImage(); Schedule(); };
             root.Children.Add(previewWrap);
 
             Content = DialogChrome.Frame(this, Owner, "KillerPDF - " + S("Str_Stamp_Suffix"), () => { Applied = false; Close(); }, root);
@@ -278,6 +309,16 @@ namespace KillerPDF
             _wmText.Margin = new Thickness(0, 0, 0, 8);
             _wmText.TextChanged += (_, _2) => Schedule();
             _wmTextPanel.Children.Add(_wmText);
+
+            var wmFontRow = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, 8) };
+            wmFontRow.Children.Add(new TextBlock { Text = S("Str_Bar_Font"), Foreground = R("TextSecondary"), FontFamily = UiKit.UiFont, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+            _wmFont = new ComboBox { Width = 188, Height = 26, MaxDropDownHeight = 320, VerticalAlignment = VerticalAlignment.Center };
+            if (_darkCombo != null) _wmFont.Style = _darkCombo; else { _wmFont.Background = R("BgCanvas"); _wmFont.Foreground = R("TextPrimary"); }
+            foreach (var fn in MainWindow.SystemFontNames) _wmFont.Items.Add(fn);
+            _wmFont.SelectedItem = _spec.WmFont;
+            _wmFont.SelectionChanged += (_, _2) => Schedule();
+            wmFontRow.Children.Add(_wmFont);
+            _wmTextPanel.Children.Add(wmFontRow);
             _wmTextPanel.Children.Add(SliderBoxRow(S("Str_Stamp_FontSize"), 12, 200, _spec.WmFontPt, out _, out _wmSize));
             _wmTextPanel.Children.Add(ColorRow(S("Str_Stamp_Color"), _wmColor, out _wmSwatch, c => { _wmColor = c; Schedule(); }));
             _wmBody.Children.Add(_wmTextPanel);
@@ -479,6 +520,91 @@ namespace KillerPDF
         }
 
         // ---------- preview ----------
+        // ---------- Preview page stepper ----------
+        private FrameworkElement BuildPageNav()
+        {
+            _prevArrow = MakeNavArrow("", () => GoToPage(_pageIndex - 1));   // ChevronLeft
+            _nextArrow = MakeNavArrow("", () => GoToPage(_pageIndex + 1));   // ChevronRight
+            _pageNavLabel = new TextBlock
+            {
+                FontFamily = UiKit.UiFont, FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 12, 0)
+            };
+            _pageNavLabel.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 6, 0, 8)
+            };
+            row.Children.Add(_prevArrow);
+            row.Children.Add(_pageNavLabel);
+            row.Children.Add(_nextArrow);
+            UpdatePageNav();
+            return row;
+        }
+
+        // Same chrome as the print preview stepper (UiKit.Make), so the two windows share one button style.
+        private Button MakeNavArrow(string glyph, Action onClick)
+        {
+            var b = UiKit.Make(glyph, false);
+            b.FontFamily = UiKit.IconFont;
+            b.FontSize = 12;
+            b.Click += (_, _2) => onClick();
+            return b;
+        }
+
+        // Button clicks step one page and render immediately.
+        private void GoToPage(int idx)
+        {
+            if (_pageProvider == null) return;
+            idx = Math.Max(0, Math.Min(_pageCount - 1, idx));
+            if (idx == _pageIndex) return;
+            _pageIndex = idx;
+            UpdatePageNav();
+            RenderCurrentPage();
+        }
+
+        // Wheel stepping advances the page number (and arrow states) instantly and defers the heavy page
+        // render until the wheel settles, so a fast flick scrolls quickly instead of blocking on each
+        // page's rasterization.
+        private void StepPage(int delta)
+        {
+            if (_pageProvider == null) return;
+            int idx = Math.Max(0, Math.Min(_pageCount - 1, _pageIndex + delta));
+            if (idx == _pageIndex) return;
+            _pageIndex = idx;
+            UpdatePageNav();
+            _navRenderTimer ??= MakeNavRenderTimer();
+            _navRenderTimer.Stop();
+            _navRenderTimer.Start();
+        }
+
+        private System.Windows.Threading.DispatcherTimer MakeNavRenderTimer()
+        {
+            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(90) };
+            t.Tick += (_, _2) => { t.Stop(); RenderCurrentPage(); };
+            return t;
+        }
+
+        private void RenderCurrentPage()
+        {
+            if (_pageProvider == null) return;
+            var (src, wpt, hpt) = _pageProvider(_pageIndex);
+            if (src == null) return;
+            _pageSrc = src; _pageWpt = wpt; _pageHpt = hpt;
+            _preview.Source = src;
+            RenderPreview();
+        }
+
+        private void UpdatePageNav()
+        {
+            if (_pageNavLabel == null) return;
+            _pageNavLabel.Text = string.Format(S("Str_PageOf"), _pageIndex + 1, _pageCount);
+            _prevArrow.IsEnabled = _pageIndex > 0;
+            _nextArrow.IsEnabled = _pageIndex < _pageCount - 1;
+        }
+
         private void SizePreviewImage()
         {
             if (_previewArea == null) return;
@@ -540,7 +666,7 @@ namespace KillerPDF
                 else if (_wmImageRadio.IsChecked != true && _wmText.Text.Length > 0)
                 {
                     double fpx = ReadDouble(_wmSize, 64) * pxPerPt;
-                    var tb = new TextBlock { Text = _wmText.Text, FontFamily = UiKit.UiFont, FontWeight = FontWeights.Bold, FontSize = Math.Max(6, fpx), Foreground = new SolidColorBrush(_wmColor), Opacity = _wmOpacity.Value / 100.0 };
+                    var tb = new TextBlock { Text = _wmText.Text, FontFamily = new FontFamily(_wmFont.SelectedItem as string ?? "Segoe UI"), FontWeight = FontWeights.Bold, FontSize = Math.Max(6, fpx), Foreground = new SolidColorBrush(_wmColor), Opacity = _wmOpacity.Value / 100.0 };
                     var sz = Measure(tb);
                     PlaceRotated(tb, sz.Width, sz.Height, _wmPos.SelectedIndex, pw, ph, mx, my, _wmAngle.Value);
                 }
@@ -651,6 +777,7 @@ namespace KillerPDF
             _numColor = d.NumColor; _numSwatch.Background = new SolidColorBrush(d.NumColor);
             _wmText.Text = d.WmText;
             _wmSize.Text = d.WmFontPt.ToString("0");
+            _wmFont.SelectedItem = d.WmFont;
             _wmColor = d.WmColor; _wmSwatch.Background = new SolidColorBrush(d.WmColor);
             _wmAngle.Value = d.WmAngle;
             _wmOpacity.Value = d.WmOpacity * 100;
@@ -673,6 +800,7 @@ namespace KillerPDF
             _spec.WmIsImage = _wmImageRadio.IsChecked == true;
             _spec.WmText = _wmText.Text;
             _spec.WmFontPt = ReadDouble(_wmSize, 64);
+            _spec.WmFont = _wmFont.SelectedItem as string ?? "Segoe UI";
             _spec.WmColor = _wmColor;
             _spec.WmOpacity = _wmOpacity.Value / 100.0;
             _spec.WmAngle = _wmAngle.Value;

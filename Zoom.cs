@@ -83,8 +83,28 @@ namespace KillerPDF
             // Otherwise let the ScrollViewer scroll naturally.
         }
 
+        // Walks up the visual tree from the press's hit element to see if it landed on the scrollbar
+        // (thumb, track, or repeat buttons). Used to exempt scrollbar presses from pane pan/marquee/crop.
+        private static bool PressIsOnScrollBar(MouseButtonEventArgs e)
+        {
+            DependencyObject? d = e.OriginalSource as DependencyObject;
+            while (d is not null)
+            {
+                if (d is System.Windows.Controls.Primitives.ScrollBar) return true;
+                d = d is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+                    ? System.Windows.Media.VisualTreeHelper.GetParent(d)
+                    : LogicalTreeHelper.GetParent(d);
+            }
+            return false;
+        }
+
         private void PagePreviewPanel_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
+            // A press that lands on the document scrollbar must reach the scrollbar itself (thumb drag,
+            // track paging). The pan/crop/marquee handling below otherwise claims the press first and sets
+            // e.Handled, so the thumb could never be grabbed. Let scrollbar presses fall through untouched.
+            if (PressIsOnScrollBar(e)) return;
+
             bool spaceDown = Keyboard.IsKeyDown(Key.Space);
             if (e.ChangedButton == MouseButton.Middle ||
                 (e.ChangedButton == MouseButton.Left && spaceDown))

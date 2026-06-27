@@ -66,16 +66,14 @@ namespace KillerPDF
             var f = UiKit.Field();
             f.Text = value ?? "";
             f.Margin = new Thickness(0, 0, 0, 8);
-            if (wrap)
-            {
-                // Long free-text values (e.g. keyword lists) wrap to a few visible lines instead of scrolling
-                // off the right. Enter does not add newlines - it stays a single metadata string.
-                f.TextWrapping = TextWrapping.Wrap;
-                f.AcceptsReturn = false;
-                f.Height = 50;
-                f.VerticalContentAlignment = VerticalAlignment.Top;
-                f.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-            }
+            // Every field wraps and grows with its content up to a cap, then scrolls - so long titles,
+            // subjects, or keyword lists aren't cramped on a single line. Enter is not a newline (each value
+            // stays a single metadata string). The `wrap` hint just gives the long-form fields more room.
+            f.TextWrapping = TextWrapping.Wrap;
+            f.AcceptsReturn = false;
+            f.VerticalContentAlignment = VerticalAlignment.Top;
+            f.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            f.MaxHeight = wrap ? 110 : 72;   // grow up to ~5 lines (keywords) / ~3 lines (others), then scroll
             host.Children.Add(f);
             return f;
         }

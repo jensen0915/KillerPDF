@@ -116,7 +116,7 @@ namespace KillerPDF
 
         // ----- Drag/drop of folders, archives, and multiple files ----------------------------
 
-        private static readonly string[] DropImageExt = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff" };
+        private static readonly string[] DropImageExt = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff"];
         private static bool IsPdfPath(string p)      => p.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase);
         private static bool IsImagePath(string p)    => DropImageExt.Any(e => p.EndsWith(e, StringComparison.OrdinalIgnoreCase));
         private static bool IsOpenablePath(string p) => IsPdfPath(p) || IsImagePath(p);
@@ -158,13 +158,25 @@ namespace KillerPDF
                 return;
             }
 
+            // Guard against a folder/archive holding a huge number of files: opening or merging them all
+            // would exhaust memory. Cap to a sane maximum, opening only the first N (name-sorted) after asking.
+            const int MaxDropFiles = 50;
+            if (found.Count > MaxDropFiles)
+            {
+                var proceed = KillerDialog.Show(this,
+                    string.Format(Loc("Str_Drop_TooMany"), found.Count, MaxDropFiles),
+                    "KillerPDF", MessageBoxButton.OKCancel);
+                if (proceed != MessageBoxResult.OK) { CleanupDirs(tempDirs); return; }
+                found = found.GetRange(0, MaxDropFiles);
+            }
+
             // A single dropped file (no folder/zip): open it directly, as before. Temp from a single-file
             // zip is kept for the session since the opened doc references it.
             if (!expanded && found.Count == 1) { OpenDropped(found[0]); return; }
 
             int choice = KillerDialog.ShowChoices(this,
                 string.Format(Loc("Str_Drop_Prompt"), found.Count),
-                new[] { Loc("Str_Drop_Merge"), Loc("Str_Drop_Separate"), Loc("Str_Stamp_Cancel") },
+                [Loc("Str_Drop_Merge"), Loc("Str_Drop_Separate"), Loc("Str_Stamp_Cancel")],
                 accentIndex: 0);
 
             if (choice == 0)
@@ -184,7 +196,7 @@ namespace KillerPDF
         private void OpenDropped(string path)
         {
             if (IsPdfPath(path)) OpenInNewTab(path);
-            else OpenImagesAsImportedTab(new[] { path }, Path.GetFileName(path));
+            else OpenImagesAsImportedTab([path], Path.GetFileName(path));
         }
 
         private void OpenSeparately(List<string> found)
@@ -198,7 +210,7 @@ namespace KillerPDF
             foreach (var f in found)
             {
                 if (IsPdfPath(f)) OpenInNewTab(f);
-                else OpenImagesAsImportedTab(new[] { f }, Path.GetFileName(f));
+                else OpenImagesAsImportedTab([f], Path.GetFileName(f));
             }
         }
 
@@ -313,7 +325,7 @@ namespace KillerPDF
 
         private static string? ExtractZipToTemp(string zipPath)
         {
-            string dir = Path.Combine(Path.GetTempPath(), "KillerPDF-zip-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            string dir = Path.Combine(Path.GetTempPath(), "KillerPDF-zip-" + Guid.NewGuid().ToString("N")[..8]);
             try { Directory.CreateDirectory(dir); ZipFile.ExtractToDirectory(zipPath, dir); return dir; }
             catch { try { Directory.Delete(dir, true); } catch { } return null; }
         }

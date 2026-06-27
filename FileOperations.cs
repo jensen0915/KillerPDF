@@ -826,7 +826,7 @@ namespace KillerPDF
                     {
                         Content = "",
                         FontFamily = UiKit.IconFont,
-                        FontSize = 9,
+                        FontSize = 11,
                         Width = 18, Height = 18,
                         VerticalAlignment = VerticalAlignment.Center,
                         Margin = new Thickness(0),
@@ -850,12 +850,28 @@ namespace KillerPDF
                     // so the X sits near the edge instead of floating in whitespace.
                     // Negative right margin overlaps the template's empty InputGestureText column
                     // (it reserves ~24px), so the X lands near the real right edge instead of floating.
-                    var hdr = new Grid { Margin = new Thickness(0, 0, -24, 0) };
-                    hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                    var nameText = new TextBlock { Text = System.IO.Path.GetFileName(path), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
-                    Grid.SetColumn(nameText, 0);
-                    Grid.SetColumn(rmBtn, 1);
+                    // Real file-type icon (left), filename (fills), X (right).
+                    var fileIcon = new Image
+                    {
+                        Source              = GetShellIcon(path),
+                        Width               = 18,
+                        Height              = 18,
+                        VerticalAlignment   = VerticalAlignment.Center,
+                        Margin              = new Thickness(0, 0, 8, 0),
+                        Stretch             = Stretch.Uniform,
+                        SnapsToDevicePixels = true
+                    };
+                    RenderOptions.SetBitmapScalingMode(fileIcon, BitmapScalingMode.HighQuality);
+                    fileIcon.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 4, ShadowDepth = 2, Direction = 270, Opacity = TryFindResource("IconShadowOpacity") is double so2 ? so2 : 0.5 };
+                    var hdr = new Grid { Width = 348, Margin = new Thickness(0, 0, -24, 0) };
+                    hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                    // icon
+                    hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // name
+                    hdr.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                    // remove X
+                    var nameText = new TextBlock { Text = System.IO.Path.GetFileName(path), TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
+                    Grid.SetColumn(fileIcon, 0);
+                    Grid.SetColumn(nameText, 1);
+                    Grid.SetColumn(rmBtn, 2);
+                    hdr.Children.Add(fileIcon);
                     hdr.Children.Add(nameText);
                     hdr.Children.Add(rmBtn);
                     item.Header = hdr;
@@ -870,6 +886,52 @@ namespace KillerPDF
             menu.PlacementTarget = (UIElement)sender;
             menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
             menu.IsOpen = true;
+        }
+
+        // ---- File-type (shell) icons for the Recent list ----
+        // Cached per extension. Uses SHGFI_USEFILEATTRIBUTES so the icon resolves from the extension alone -
+        // works even when the file is missing, and never touches the file on disk.
+        private static readonly Dictionary<string, ImageSource?> _shellIconCache = new(System.StringComparer.OrdinalIgnoreCase);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct SHFILEINFO
+        {
+            public IntPtr hIcon;
+            public int iIcon;
+            public uint dwAttributes;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]  public string szTypeName;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
+
+        private static ImageSource? GetShellIcon(string path)
+        {
+            string ext = System.IO.Path.GetExtension(path) ?? "";
+            if (_shellIconCache.TryGetValue(ext, out var hit)) return hit;
+
+            const uint SHGFI_ICON = 0x000000100, SHGFI_LARGEICON = 0x000000000, SHGFI_USEFILEATTRIBUTES = 0x000000010;
+            const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+            ImageSource? src = null;
+            try
+            {
+                var info = new SHFILEINFO();
+                IntPtr res = SHGetFileInfo("file" + ext, FILE_ATTRIBUTE_NORMAL, ref info,
+                    (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES);
+                if (res != IntPtr.Zero && info.hIcon != IntPtr.Zero)
+                {
+                    src = Imaging.CreateBitmapSourceFromHIcon(info.hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    src.Freeze();
+                    DestroyIcon(info.hIcon);
+                }
+            }
+            catch { /* no icon available - the row simply shows none */ }
+            _shellIconCache[ext] = src;
+            return src;
         }
 
         // Fills the empty-state "Recent" list with clickable filenames (hidden when there are none).
@@ -961,11 +1023,30 @@ namespace KillerPDF
                     PopulateRecentFilesList();
                 };
 
+                // Real Windows file-type icon for this extension (left of the text).
+                var icon = new Image
+                {
+                    Source              = GetShellIcon(path),
+                    Width               = 32,
+                    Height              = 32,
+                    VerticalAlignment   = VerticalAlignment.Center,
+                    Margin              = new Thickness(0, 0, 10, 0),
+                    Stretch             = Stretch.Uniform,
+                    Opacity             = exists ? 1.0 : 0.45,   // dim missing files' icons, matching the text
+                    SnapsToDevicePixels = true
+                };
+                RenderOptions.SetBitmapScalingMode(icon, BitmapScalingMode.HighQuality);
+                icon.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = System.Windows.Media.Colors.Black, BlurRadius = 4, ShadowDepth = 2, Direction = 270, Opacity = TryFindResource("IconShadowOpacity") is double so ? so : 0.5 };
+                stack.VerticalAlignment = VerticalAlignment.Center;
+
                 var rowGrid = new Grid();
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                Grid.SetColumn(stack, 0);
-                Grid.SetColumn(del, 1);
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                    // icon
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // text
+                rowGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                    // remove X
+                Grid.SetColumn(icon, 0);
+                Grid.SetColumn(stack, 1);
+                Grid.SetColumn(del, 2);
+                rowGrid.Children.Add(icon);
                 rowGrid.Children.Add(stack);
                 rowGrid.Children.Add(del);
 

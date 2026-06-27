@@ -110,7 +110,7 @@ namespace KillerPDF
         private bool _textUnderline;
         // Installed font-family names, sorted, computed once (the text bar rebuilds often).
         private static List<string>? _systemFontNamesCache;
-        private static List<string> SystemFontNames => _systemFontNamesCache ??=
+        internal static List<string> SystemFontNames => _systemFontNamesCache ??=
             [.. System.Windows.Media.Fonts.SystemFontFamilies
                 .Select(f => f.Source).Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct().OrderBy(s => s, StringComparer.OrdinalIgnoreCase)];

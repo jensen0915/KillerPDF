@@ -95,6 +95,7 @@
     <sys:String x:Key="Str_KS_Help">说明</sys:String>
     <sys:String x:Key="Str_KS_ThisList">此快速键清单</sys:String>
     <sys:String x:Key="Str_KS_About">关于对话框</sys:String>
+    <sys:String x:Key="Str_KS_OnlineHelp">完整指南和在线教程</sys:String>
     <sys:String x:Key="Str_KS_Tools">工具</sys:String>
     <sys:String x:Key="Str_KS_Paste">粘贴图片／文本</sys:String>
     <sys:String x:Key="Str_KS_MultiSelect">加入选取</sys:String>
@@ -302,6 +303,7 @@
     <sys:String x:Key="Str_Drop_Separate">分别打开</sys:String>
     <sys:String x:Key="Str_Drop_NothingOpenable">未找到可打开的 PDF 或图片。</sys:String>
     <sys:String x:Key="Str_Drop_ManyTabs">这将打开 {0} 个单独的标签页。是否继续？</sys:String>
+    <sys:String x:Key="Str_Drop_TooMany">此文件夹或压缩包包含 {0} 个文件。KillerPDF 只会打开前 {1} 个。是否继续？</sys:String>
     <sys:String x:Key="Str_Status_Merged">已合并 {0} 个文件 - 尚未保存</sys:String>
     <sys:String x:Key="Str_Drop_Merging">正在合并文件...</sys:String>
     <sys:String x:Key="Str_Drop_MergeCancelled">已取消合并</sys:String>

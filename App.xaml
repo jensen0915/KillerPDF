@@ -70,6 +70,99 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+
+            <!-- Thin themed scrollbar. App scope (not just MainWindow) so every dialog window inherits
+                 it instead of falling back to the default gray system scrollbar. The thumb colors come
+                 from the active theme (BgScrollThumb / ScrollThumbHover). -->
+            <local:ThumbViewportFloorConverter x:Key="ThumbFloor"/>
+            <Style TargetType="ScrollBar">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Width" Value="12"/>
+                <Setter Property="MinWidth" Value="12"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid>
+                                <Track x:Name="PART_Track" IsDirectionReversed="True"
+                                       Minimum="{TemplateBinding Minimum}"
+                                       Maximum="{TemplateBinding Maximum}"
+                                       Value="{TemplateBinding Value}">
+                                    <!-- Reactive thumb with a minimum-length floor. ViewportSize is fed through
+                                         ThumbViewportFloorConverter, which raises it just enough that the Track's
+                                         proportional thumb never falls below the floor. -->
+                                    <Track.ViewportSize>
+                                        <MultiBinding Converter="{StaticResource ThumbFloor}" ConverterParameter="64">
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="ViewportSize"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Maximum"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Minimum"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="ActualWidth"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="ActualHeight"/>
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Orientation"/>
+                                        </MultiBinding>
+                                    </Track.ViewportSize>
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" IsTabStop="False">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" IsTabStop="False">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb x:Name="ScrollThumb">
+                                            <Thumb.Style>
+                                                <Style TargetType="Thumb">
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Thumb">
+                                                                <Border x:Name="thumbBorder"
+                                                                        Background="{DynamicResource BgScrollThumb}"
+                                                                        CornerRadius="3"
+                                                                        Margin="4,0"/>
+                                                                <ControlTemplate.Triggers>
+                                                                    <!-- Horizontal bar: keep the thumb thin on the vertical axis instead -->
+                                                                    <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType={x:Type ScrollBar}}}" Value="Horizontal">
+                                                                        <Setter TargetName="thumbBorder" Property="Margin" Value="0,4"/>
+                                                                    </DataTrigger>
+                                                                    <!-- Highlight + fatten while hovering the thumb itself (keeps the press/drag reliable;
+                                                                         binding this to the whole bar's IsMouseOver made the thumb shrink on mouse-down and
+                                                                         dropped the grab). -->
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="thumbBorder" Property="Background" Value="{DynamicResource ScrollThumbHover}"/>
+                                                                        <Setter TargetName="thumbBorder" Property="Margin" Value="2,2"/>
+                                                                        <Setter TargetName="thumbBorder" Property="Effect">
+                                                                            <Setter.Value>
+                                                                                <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="0" Opacity="0.3"/>
+                                                                            </Setter.Value>
+                                                                        </Setter>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </Thumb.Style>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="Orientation" Value="Horizontal">
+                        <Setter Property="Height" Value="12"/>
+                        <Setter Property="MinHeight" Value="12"/>
+                        <Setter Property="Width" Value="Auto"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
