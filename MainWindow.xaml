@@ -2453,7 +2453,7 @@
                     </Grid>
                     <TextBlock HorizontalAlignment="Right" Margin="0,14,0,0" FontFamily="Consolas" FontSize="11">
                         <Hyperlink Click="OnlineHelp_Click" Foreground="{DynamicResource Accent}"
-                                   ToolTip="https://pdf.killertools.net/help.html"><Run Text="{DynamicResource Str_KS_OnlineHelp}"/></Hyperlink>
+                                   ToolTip="https://killerpdf.net/help.html"><Run Text="{DynamicResource Str_KS_OnlineHelp}"/></Hyperlink>
                     </TextBlock>
                 </StackPanel>
                 </Grid>

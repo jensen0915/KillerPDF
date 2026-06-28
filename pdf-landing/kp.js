@@ -86,7 +86,8 @@
     function dragClamp(v) {
       var vw = window.innerWidth, pw = pill.offsetWidth, pad = 6, left = 8, right = vw - 8;
       var f = document.querySelector('.frame-shadow');
-      if (f) { var fr = f.getBoundingClientRect(); if (fr.width > 0) { left = fr.left + pad; right = fr.right - pad; } }
+      // Extra inset on the right so the pill clears the content scrollbar at its max position.
+      if (f) { var fr = f.getBoundingClientRect(); if (fr.width > 0) { left = fr.left + pad; right = fr.right - pad - 12; } }
       var centerLeft = vw / 2 - pw / 2, min = left - centerLeft, max = right - pw - centerLeft;
       if (min > max) return 0;
       return Math.max(min, Math.min(max, v));
@@ -104,6 +105,8 @@
       if (!dragging) return; dragging = false; document.body.style.userSelect = '';
     });
     window.addEventListener('resize', function () { dragDx = dragClamp(dragDx); pill.style.transform = 'translateX(' + dragDx + 'px)'; });
+    // Default position: top-right corner, nearest the theme picker (still draggable from there).
+    requestAnimationFrame(function () { dragDx = dragClamp(1e6); pill.style.transform = 'translateX(' + dragDx + 'px)'; });
   }
   function showAccentBar() { if (accentBar && NEUTRAL.indexOf(root.getAttribute('data-theme')) >= 0) { accentBar.classList.add('show'); if (accToggle) accToggle.setAttribute('aria-expanded', 'true'); } }
   function hideAccentBar() { if (accentBar) { accentBar.classList.remove('show'); if (accToggle) accToggle.setAttribute('aria-expanded', 'false'); } }

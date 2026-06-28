@@ -6,10 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="darkreader-lock">
 <title>KillerPDF - Technical</title>
+<link rel="canonical" href="https://killerpdf.net/technical.html">
 <meta name="description" content="A deep technical explanation of how KillerPDF renders, zooms, and stays robust.">
 <link rel="icon" type="image/x-icon" href="kp-icon.ico">
 <script defer src="https://koya.thekiller.net/script.js" data-website-id="4036b11d-f6c0-4254-b448-933d3e38b0cb"></script>
-<link rel="stylesheet" href="kp.css">
+<link rel="stylesheet" href="kp.css?v=5">
 <style>
 .page-hero { text-align: center; padding: 44px 16px 8px; }
 .page-hero .wm-logo { height: clamp(46px, 8vw, 76px); width: auto; margin: 0 auto 8px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.55)); }
@@ -19,7 +20,7 @@
 .diagram { margin: 20px 0 6px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--modal); }
 .diagram svg { width: 100%; height: auto; display: block; }
 .diagram figcaption { font-size: 12.5px; line-height: 1.55; color: var(--muted); margin-top: 10px; }
-@media (min-width: 901px){ .shell { grid-template-columns: 268px 1fr; } .frame-shadow { left: 268px; right: 0; } }
+@media (min-width: 901px){ .shell { grid-template-columns: 268px 1fr; } .frame-shadow { left: 268px; right: 0; border-left: 1px solid var(--dragline); border-right: 0; } }
 .sb-tabs .on { border-bottom: 0; }
 .outline { padding: 8px 0; overflow-y: auto; flex: 1; }
 .outline a { display: block; padding: 8px 16px 8px 18px; font-size: 13px; color: var(--text2); border-left: 2px solid transparent; }
@@ -87,6 +88,7 @@
 <div class="sb-tabs"><span class="on">Technical</span></div>
 <nav class="outline">
 <a href="#stack" class="on">Tech stack</a>
+<a href="#install">Install &amp; data</a>
 <a href="#arch">Architecture</a>
 <a href="#coords">Coordinate space</a>
 <a href="#annots">Annotation model</a>
@@ -94,7 +96,6 @@
 <a href="#zoom">Zoom &amp; interaction</a>
 <a href="#saving">Saving &amp; reload</a>
 <a href="#robust">Robustness</a>
-<a href="#install">Install &amp; data</a>
 <a href="#i18n">Localization</a>
 <a href="#specs">Constants</a>
 </nav>
@@ -105,12 +106,12 @@
 <section class="page-hero">
 <span class="page-title">The Tech of</span>
 <img class="wm-logo" src="brand/killerpdf-logo-dark-green.svg" alt="KillerPDF">
-<p>How KillerPDF works under the hood - for the nerds.</p>
+<p>A plain-English look at how KillerPDF works under the hood, with the deeper detail kept for the nerds who want it.</p>
 </section>
 
 <div class="tech-sec" id="stack">
 <h2>Tech stack</h2>
-<p>KillerPDF is a native Windows app - no Electron, no browser engine, no runtime to install. It leans on a small set of focused libraries, each doing one job:</p>
+<p>KillerPDF is a native Windows app. There is no Electron, no browser engine, and no runtime to install. It relies on a small set of focused libraries, each handling one job:</p>
 <table class="spec-table"><tr><th>Component</th><th>Library</th></tr>
 <tr><td>UI</td><td>WPF on .NET Framework 4.8 (net48), x64, custom window chrome</td></tr>
 <tr><td>Rendering</td><td>PDFium via Docnet.Core 2.6 - every page bitmap and thumbnail</td></tr>
@@ -122,15 +123,38 @@
 </table>
 </div>
 
+<div class="tech-sec" id="install">
+<h2>Install, folders &amp; data</h2>
+<p>KillerPDF is portable first - the single exe runs from anywhere with nothing to install. Installing is opt-in, per-user, and needs no administrator rights: it never writes to Program Files or HKLM.</p>
+<h3 id="what-the-installer-does">What the installer does</h3>
+<p>It copies the running exe to <code>%LOCALAPPDATA%\Programs\KillerPDF\</code>, drops a Start Menu shortcut (and an optional desktop one), registers itself as a per-user PDF handler, and writes an Add/Remove Programs entry so Windows can uninstall it cleanly. Uninstalling (<code>KillerPDF.exe /uninstall</code>) removes the folder, shortcuts, and registry keys.</p>
+<h3 id="where-things-live">Where things live</h3>
+<table class="spec-table"><tr><th>Location</th><th>Holds</th></tr>
+<tr><td><code>%LOCALAPPDATA%\Programs\KillerPDF\</code></td><td>the installed exe and its PDF-file icon</td></tr>
+<tr><td><code>%LOCALAPPDATA%\KillerPDF\Temp\</code></td><td>session working files - decrypted copies, repaired files, rotation snapshots</td></tr>
+<tr><td><code>%LOCALAPPDATA%\KillerPDF\tessdata\</code></td><td>OCR language data (see below)</td></tr>
+<tr><td><code>%LOCALAPPDATA%\KillerPDF\ocr\&lt;version&gt;\x64\</code></td><td>OCR native engine libraries</td></tr>
+<tr><td><code>%LOCALAPPDATA%\KillerPDF\Logs\</code></td><td>crash logs</td></tr>
+<tr><td><code>HKCU\Software\KillerPDF\Settings</code></td><td>your settings - in the registry, not a file</td></tr>
+</table>
+<p>Everything sits under <code>%LOCALAPPDATA%</code> on purpose: it is per-user (no admin), user-private, and not indexed by Windows Search - so temporary copies of your documents never surface in search or another account.</p>
+<h3 id="where-ocr-files-go">Where OCR files go</h3>
+<p>OCR is bundled in the exe but unpacks on first use. The Tesseract <b>native libraries</b> extract to a per-version cache at <code>%LOCALAPPDATA%\KillerPDF\ocr\&lt;version&gt;\x64\</code> (version-stamped, so an update gets fresh binaries). The <b>language data</b> lives in <code>%LOCALAPPDATA%\KillerPDF\tessdata\</code>: English ships inside the exe and is written there the first time you OCR, and any extra languages you pick are downloaded into that same folder. It is version-independent, so downloaded languages survive app updates. Both are read from these locations on every OCR run.</p>
+<h3 id="temp-files">Temp files</h3>
+<p>Working files are written as <code>killerpdf_&lt;tag&gt;_&lt;guid&gt;.pdf</code> and tracked for the session. They are deleted when you close the app; anything a crash leaves behind is swept on the next launch (both the current Temp folder and the legacy <code>%TEMP%</code> location). Files still open in another instance are skipped and cleared later.</p>
+<h3 id="clear-all-data">Clear all data</h3>
+<p>The <b>Clear all Data</b> link in the About window wipes everything KillerPDF has stored: the registry settings, the downloaded OCR languages and native cache, and the temp folder. It is best-effort - anything locked by the running session (a loaded native DLL, say) is skipped and clears on the next restart. Your actual PDFs are never touched.</p>
+</div>
+
 <div class="tech-sec" id="arch">
 <h2>Architecture</h2>
-<p>The entire UI is one <b>partial class MainWindow</b> decomposed across roughly forty source files - about 27,000 lines of C# on WPF / .NET Framework 4.8. Dialogs are standalone classes; cross-cutting work lives under <code>Services/</code>.</p>
+<p>The whole interface is built as one large class (<b>MainWindow</b>) split across roughly forty source files, about 27,000 lines of C# on WPF and .NET Framework 4.8. Each pop-up dialog is its own class, and shared background work lives under <code>Services/</code>.</p>
 <h3 id="two-render-pipelines">Two render pipelines</h3>
-<p>Single, Two-Page and Grid render into a primary tile via <b>RenderPage(idx)</b>; Continuous owns a separate path where <b>RenderContinuousPages</b> streams page bitmaps on a background thread. RenderPage is guarded to no-op in Continuous, so it can't repoint overlays at the hidden primary tile.</p>
+<p>KillerPDF draws pages in two different ways depending on the view you are in. Single, Two-Page and Grid views draw into one main tile (<b>RenderPage</b>). Continuous scrolling uses a separate path (<b>RenderContinuousPages</b>) that streams page images in the background as you scroll. RenderPage is deliberately switched off during Continuous so the two systems never fight over the same tile.</p>
 <h3 id="per-tab-sessions-an-lru-cache">Per-tab sessions &amp; an LRU cache</h3>
-<p>Each open document is a <b>DocumentSession</b> holding its zoom, fit and view mode, grid columns, tool, page, scroll offsets, and the per-document dictionaries (annotations, render dims, rotations, form values, undo stack). Switching tabs re-points the live fields at the session by reference. Each session also carries a frozen-bitmap <b>RenderCache</b> keyed by <code>(page, size-bucket, rotation)</code>, so returning to a recent tab skips PDFium entirely; whole-tab caches evict beyond the three most recent.</p>
+<p>Each open document is a <b>DocumentSession</b> that remembers its own zoom, fit and view mode, grid columns, current tool, page, and scroll position, along with its per-document data (annotations, page sizes, rotations, form values, and undo history). Switching tabs simply points the app back at that session. Each session also keeps a cache of already-drawn page images, so flipping back to a recent tab is instant and skips the renderer entirely. To keep memory in check, only the three most recently used tabs hold on to that cache.</p>
 <h3 id="canvas-overlay-maps">Canvas &amp; overlay maps</h3>
-<p>Annotations never paint onto a fixed surface - they paint onto whichever overlay <code>_pages</code> currently points at. Two maps plus one hard invariant keep that straight.</p>
+<p>Annotations are not drawn onto one fixed layer. They are drawn onto whichever page layer is currently active, which a map called <code>_pages</code> keeps track of. Two maps and one strict rule keep that pointing at the right place.</p>
 <figure class="diagram">
 <svg viewBox="0 0 740 412" xmlns="http://www.w3.org/2000/svg">
 <defs>
@@ -176,13 +200,13 @@
 <h2>The coordinate space</h2>
 <p>Two numbers describe every page: where things <b>are</b> (zoom-independent) and how many pixels we <b>draw</b> (zoom-dependent). Keeping them separate is what makes annotations stay put while text stays crisp.</p>
 <h3 id="render-dim-space">1. Render-dim space</h3>
-<p>Every page is normalised so its longest side is exactly 2048 device-independent units. Annotation coordinates are stored here, identical at every zoom and across all four pipelines.</p>
+<p>Every page is scaled to a standard internal size whose longest side is exactly 2048 units (counted independently of screen pixels). Annotation positions are stored in this fixed space, so they stay identical at every zoom level and in every view mode.</p>
 <div class="codeblock">maxDim = max(pageWidthPt, pageHeightPt)<br>rdW = round(2048 &times; pageWidthPt  / maxDim)<br>rdH = round(2048 &times; pageHeightPt / maxDim)   <span class="cm">// longest side -&gt; 2048</span></div>
 <h3 id="decoupled-bitmap-resolution">2. Decoupled bitmap resolution</h3>
 <p>The bitmap rasterises at a resolution that follows display DPI and zoom, so a page magnified 3&times; is drawn from 3&times; the pixels rather than upscaled. The 6144&nbsp;px ceiling bounds memory.</p>
 <div class="codeblock">scaledMax = min( 6144,  int( 2048 &times; max(dpiScaleX, dpiScaleY) &times; max(1.0, zoom) ) )</div>
 <h3 id="the-coordinate-y-flip">3. The coordinate Y-flip</h3>
-<p>PDF uses a bottom-left origin in points; WPF canvases a top-left origin in DIP. Every mark crosses that boundary:</p>
+<p>PDF measures positions from the bottom-left corner of the page, while the screen measures from the top-left. So every mark has to be flipped top-to-bottom when it is drawn:</p>
 <div class="codeblock">sx = renderW / pdfW      sy = renderH / pdfH<br>canvasX = left &times; sx<br>canvasY = renderH - top &times; sy   <span class="cm">// flip the vertical axis</span></div>
 <figure class="diagram">
 <svg viewBox="0 0 740 300" xmlns="http://www.w3.org/2000/svg">
@@ -283,7 +307,7 @@
 
 <div class="tech-sec" id="saving">
 <h2>Saving &amp; the temp-reload dance</h2>
-<p>Saving never mutates the document on screen. KillerPDF writes a clean, annotation-free snapshot, burns <b>stamps first, then annotations</b> into a copy of it, then reopens that clean copy - so the next save starts from a pristine base and can never double-burn what it already flattened.</p>
+<p>Saving never changes the document you are looking at. KillerPDF writes a clean copy with no annotations, then permanently bakes in <b>stamps first, then annotations</b>, and reopens that fresh copy. Starting from a clean base every time means it can never accidentally bake the same thing in twice.</p>
 <h3 id="why-structural-edits-reload">Why structural edits reload</h3>
 <p>Rotation, page operations and decryption route through <b>SaveTempAndReload</b>. It zeroes every page's <code>/Rotate</code> entry before writing, because Docnet (PDFium) sizes the page bitmap from the <i>unrotated</i> MediaBox - leave the rotation in and the rendered content clips. The file is written flat, reopened in Modify mode, and the rotations are re-applied in memory so the page still reads right.</p>
 </div>
@@ -306,29 +330,6 @@
 <p>UNC shares and the WSL <code>\\wsl$</code> 9P filesystem sometimes hand back partial reads, which the parser sees as a truncated file. Before opening anything on a network path, KillerPDF copies it to a local temp with a single read-to-EOF, then opens the complete copy - while keeping your original path for display and Save.</p>
 <h3 id="repair-works-on-a-copy">Repair works on a copy</h3>
 <p>When recovery falls through to a repair, the file is piped through PDFium, which has aggressive error recovery and rewrites a correct cross-reference table into a brand-new file. The original on disk is never touched. Repaired copies can lose bookmarks, forms and other interactive features, and the dialog says so before proceeding.</p>
-</div>
-
-<div class="tech-sec" id="install">
-<h2>Install, folders &amp; data</h2>
-<p>KillerPDF is portable first - the single exe runs from anywhere with nothing to install. Installing is opt-in, per-user, and needs no administrator rights: it never writes to Program Files or HKLM.</p>
-<h3 id="what-the-installer-does">What the installer does</h3>
-<p>It copies the running exe to <code>%LOCALAPPDATA%\Programs\KillerPDF\</code>, drops a Start Menu shortcut (and an optional desktop one), registers itself as a per-user PDF handler, and writes an Add/Remove Programs entry so Windows can uninstall it cleanly. Uninstalling (<code>KillerPDF.exe /uninstall</code>) removes the folder, shortcuts, and registry keys.</p>
-<h3 id="where-things-live">Where things live</h3>
-<table class="spec-table"><tr><th>Location</th><th>Holds</th></tr>
-<tr><td><code>%LOCALAPPDATA%\Programs\KillerPDF\</code></td><td>the installed exe and its PDF-file icon</td></tr>
-<tr><td><code>%LOCALAPPDATA%\KillerPDF\Temp\</code></td><td>session working files - decrypted copies, repaired files, rotation snapshots</td></tr>
-<tr><td><code>%LOCALAPPDATA%\KillerPDF\tessdata\</code></td><td>OCR language data (see below)</td></tr>
-<tr><td><code>%LOCALAPPDATA%\KillerPDF\ocr\&lt;version&gt;\x64\</code></td><td>OCR native engine libraries</td></tr>
-<tr><td><code>%LOCALAPPDATA%\KillerPDF\Logs\</code></td><td>crash logs</td></tr>
-<tr><td><code>HKCU\Software\KillerPDF\Settings</code></td><td>your settings - in the registry, not a file</td></tr>
-</table>
-<p>Everything sits under <code>%LOCALAPPDATA%</code> on purpose: it is per-user (no admin), user-private, and not indexed by Windows Search - so temporary copies of your documents never surface in search or another account.</p>
-<h3 id="where-ocr-files-go">Where OCR files go</h3>
-<p>OCR is bundled in the exe but unpacks on first use. The Tesseract <b>native libraries</b> extract to a per-version cache at <code>%LOCALAPPDATA%\KillerPDF\ocr\&lt;version&gt;\x64\</code> (version-stamped, so an update gets fresh binaries). The <b>language data</b> lives in <code>%LOCALAPPDATA%\KillerPDF\tessdata\</code>: English ships inside the exe and is written there the first time you OCR, and any extra languages you pick are downloaded into that same folder. It is version-independent, so downloaded languages survive app updates. Both are read from these locations on every OCR run.</p>
-<h3 id="temp-files">Temp files</h3>
-<p>Working files are written as <code>killerpdf_&lt;tag&gt;_&lt;guid&gt;.pdf</code> and tracked for the session. They are deleted when you close the app; anything a crash leaves behind is swept on the next launch (both the current Temp folder and the legacy <code>%TEMP%</code> location). Files still open in another instance are skipped and cleared later.</p>
-<h3 id="clear-all-data">Clear all data</h3>
-<p>The <b>Clear all Data</b> link in the About window wipes everything KillerPDF has stored: the registry settings, the downloaded OCR languages and native cache, and the temp folder. It is best-effort - anything locked by the running session (a loaded native DLL, say) is skipped and clears on the next restart. Your actual PDFs are never touched.</p>
 </div>
 
 <div class="tech-sec" id="i18n">

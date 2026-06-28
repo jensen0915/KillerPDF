@@ -61,7 +61,7 @@ namespace KillerPDF
                 Foreground = (System.Windows.Media.Brush)FindResource("AccentLogo")
             });
             logoHl.Click += (_, _) =>
-                Process.Start(new ProcessStartInfo("https://pdf.killertools.net") { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo("https://killerpdf.net") { UseShellExecute = true });
             AboutLogoBlock.Inlines.Add(logoHl);
 
             // Tagline block

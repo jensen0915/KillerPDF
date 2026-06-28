@@ -6,22 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="darkreader-lock">
 <title>KillerPDF - Free, open-source PDF editor for Windows</title>
+<link rel="canonical" href="https://killerpdf.net/">
 <meta name="description" content="One exe. Install or run portable - no account, no subscription, no telemetry. Local PDF editor. GPLv3.">
 <link rel="icon" type="image/x-icon" href="kp-icon.ico">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://pdf.killertools.net/">
+<meta property="og:url" content="https://killerpdf.net/">
 <meta property="og:title" content="KillerPDF - Free, open-source PDF editor for Windows">
 <meta property="og:description" content="One exe. Install or run portable - no account, no subscription, no telemetry. Local PDF editor. GPLv3.">
-<meta property="og:image" content="https://pdf.killertools.net/og-image.png">
+<meta property="og:image" content="https://killerpdf.net/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="KillerPDF - Free, open-source PDF editor for Windows">
 <meta name="twitter:description" content="One exe. Install or run portable - no account, no subscription, no telemetry. Local PDF editor. GPLv3.">
-<meta name="twitter:image" content="https://pdf.killertools.net/og-image.png">
+<meta name="twitter:image" content="https://killerpdf.net/og-image.png">
 <script defer src="https://koya.thekiller.net/script.js" data-website-id="4036b11d-f6c0-4254-b448-933d3e38b0cb"></script>
-<link rel="stylesheet" href="kp.css">
+<link rel="stylesheet" href="kp.css?v=5">
 <style>
 /* ---- Page-specific (landing) ---- */
 .content-inner { max-width: 1100px; margin: 0 auto; padding: 0 28px 50px; }
@@ -30,7 +31,7 @@
 .hero { padding: 48px 0 30px; text-align: center; }
 .hero .wm-logo { height: clamp(54px, 10vw, 104px); margin: 0 auto; filter: drop-shadow(0 4px 7px rgba(0,0,0,0.5)); }
 .hero .tagline { margin: 20px auto 0; max-width: 600px; font-size: 16px; color: var(--text2); }
-.hero-grid { display: flex; flex-wrap: wrap; gap: 30px 40px; align-items: center; margin: 38px auto 0; max-width: 980px; text-align: left; }
+.hero-grid { display: flex; flex-wrap: wrap; gap: 30px 40px; align-items: center; justify-content: center; margin: 38px auto 0; max-width: 980px; text-align: left; }
 
 /* Terminal (flat, no glow) */
 .terminal { background: #161616; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 36px rgba(0,0,0,0.45); flex: 0 1 auto; width: max-content; max-width: 100%; }
@@ -48,7 +49,7 @@
 @keyframes blink { 50% { opacity: 0; } }
 
 /* Download CTA (flat) */
-.hero-cta { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; flex: 1 1 260px; }
+.hero-cta { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; flex: 0 1 360px; }
 .cta-row { display: flex; flex-direction: column; gap: 12px; align-items: center; width: 100%; }
 .download-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 360px; background: var(--btn); color: var(--btn-text); font-size: 15px; font-weight: 700; padding: 14px 28px; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); transition: filter 0.15s, transform 0.1s, box-shadow 0.15s; }
 .download-btn:hover { filter: brightness(1.4); transform: translateY(-1px); box-shadow: 0 12px 28px rgba(0,0,0,0.5); color: var(--btn-text); }
@@ -58,7 +59,7 @@
 .gh-btn:hover { background: color-mix(in srgb, var(--text) 16%, transparent); color: var(--accent); }
 .gh-btn svg { width: 18px; height: 18px; fill: currentColor; }
 .hero-blurbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 980px; margin: 28px auto 0; text-align: left; }
-.blurb h3 { font-family: Consolas, monospace; font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 7px; text-shadow: 0 1px 1px rgba(0,0,0,0.55), 0 2px 7px rgba(0,0,0,0.4); }
+.blurb h3 { font-family: 'TypewriterHead', 'Courier New', monospace; font-size: 15px; font-weight: normal; letter-spacing: .5px; color: var(--accent); margin-bottom: 7px; text-shadow: 0 2px 5px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.5); }
 .blurb p { font-size: 13.5px; color: var(--muted); line-height: 1.55; }
 .blurb-list { list-style: none; }
 .blurb-list li { font-size: 13.5px; color: var(--muted); line-height: 1.5; padding-left: 16px; position: relative; margin-bottom: 5px; }
@@ -67,11 +68,12 @@
 
 /* Features */
 .features { padding: 40px 0 24px; }
-.features h2 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 26px; }
+.features h2 { font-family: 'TypewriterHead', 'Courier New', monospace; font-size: 24px; font-weight: normal; letter-spacing: .5px; color: var(--text); text-align: center; margin-bottom: 26px; }
 .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 .feature-card { background: var(--modal) url('grain.png') repeat; background-size: 256px 256px; border: 1px solid var(--border); border-top: 2px solid var(--tab-edge); border-radius: 6px; padding: 18px 20px; transition: transform 0.12s, box-shadow 0.12s; }
 .feature-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,0.4); }
-.feature-card h3 { font-family: Consolas, monospace; font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--accent); }
+.feature-card h3 { font-family: 'TypewriterHead', 'Courier New', monospace; font-size: 15px; font-weight: normal; letter-spacing: .5px; margin-bottom: 8px; color: var(--accent); text-shadow: 0 2px 5px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.5); }
+html[data-theme="light"] .blurb h3, html[data-theme="light"] .feature-card h3 { text-shadow: none; }
 .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.55; }
 .feature-card code { display: inline-block; margin-top: 4px; background: var(--panel); padding: 2px 7px; border-radius: 4px; font-family: Consolas, monospace; font-size: 12px; color: var(--text); white-space: nowrap; }
 
@@ -90,9 +92,16 @@
   .terminal-body { font-size: 12px; }
   .hero-blurbs { grid-template-columns: 1fr; gap: 22px; }
   .feature-grid { grid-template-columns: 1fr; }
-  .hero-cta { align-items: center; text-align: center; }
-  .sb-thumbs { flex-direction: row; overflow-x: auto; }
-  .sb-thumb { min-width: 150px; }
+  .hero-cta { flex: 0 0 auto; order: 1; align-items: center; text-align: center; }
+  .hero-info { order: 0; }
+  .sb-thumbs { flex-direction: row; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .sb-thumb { flex: 0 0 auto; width: 240px; min-width: 240px; }
+}
+@media (max-width: 560px) {
+  .hero { padding: 28px 0 22px; }
+  .hero .tagline { font-size: 15px; }
+  .features { padding: 28px 0 18px; }
+  .features h2 { font-size: 20px; margin-bottom: 20px; }
 }
 </style>
 </head>
@@ -222,7 +231,7 @@
 <div class="lightbox" id="lightbox" hidden><img id="lightboxImg" src="" alt="KillerPDF screenshot"></div>
 <div class="egg-toast" id="eggToast"></div>
 
-<script src="kp.js"></script>
+<script src="kp.js?v=3"></script>
 <script>
 (function () {
   var SHOTS = [];

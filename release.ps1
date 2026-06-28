@@ -180,7 +180,7 @@ if (-not $SkipSign) {
             /td  sha256 `
             @certArgs `
             /d   "KillerPDF" `
-            /du  "https://pdf.killertools.net" `
+            /du  "https://killerpdf.net" `
             /v   $exe
 
         if ($LASTEXITCODE -eq 0) {
