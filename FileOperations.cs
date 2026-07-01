@@ -176,13 +176,19 @@ namespace KillerPDF
             return false;
         }
 
+        // True for recoverable PdfSharpCore read/parse failures that our repair path
+        // (import-rebuild / PDFium round-trip) can usually fix. Named for the original xref case,
+        // but now also covers other parser-level errors surfaced when reopening a saved temp.
         private static bool IsXRefException(Exception ex) =>
             ex.Message.IndexOf("XRef", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("cross-reference", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("trailer", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("Invalid PDF file", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("startxref", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            ex.Message.IndexOf("Unexpected token", StringComparison.OrdinalIgnoreCase) >= 0;
+            ex.Message.IndexOf("Unexpected token", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            // #106: "Cannot retrieve stream length." - a stream whose /Length is indirect or broken.
+            ex.Message.IndexOf("stream length", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            ex.Message.IndexOf("File streams are not yet implemented", StringComparison.OrdinalIgnoreCase) >= 0;
 
         // True for UNC paths (\\server\share, \\wsl$\..., \\wsl.localhost\...) and mapped
         // network drives. Such files are copied locally before opening to avoid 9P short reads.
@@ -1399,14 +1405,22 @@ namespace KillerPDF
             CommitActiveTextBox();
             var dlg = new SaveFileDialog { Filter = "PDF files|*.pdf", Title = "Save PDF as",
                                            CheckFileExists = false, CheckPathExists = true };
+            // Seed the dialog from the last real save location. Guard every path call: on .NET Framework
+            // Path.GetDirectoryName("") throws ArgumentException ("path is not of a legal form"), so a merged
+            // or imported doc (where _originalFile is null) would crash Save before the dialog opened (#112).
             string? seed = _originalFile ?? _currentFile;
-            if (!string.IsNullOrEmpty(seed))
+            try
             {
-                dlg.FileName = System.IO.Path.GetFileName(seed);
-                var seedDir = System.IO.Path.GetDirectoryName(_originalFile ?? "");
-                if (!string.IsNullOrEmpty(seedDir) && System.IO.Directory.Exists(seedDir))
-                    dlg.InitialDirectory = seedDir;
+                if (!string.IsNullOrWhiteSpace(seed))
+                    dlg.FileName = System.IO.Path.GetFileName(seed);
+                if (!string.IsNullOrWhiteSpace(_originalFile))
+                {
+                    var seedDir = System.IO.Path.GetDirectoryName(_originalFile);
+                    if (!string.IsNullOrEmpty(seedDir) && System.IO.Directory.Exists(seedDir))
+                        dlg.InitialDirectory = seedDir;
+                }
             }
+            catch { /* malformed seed path - just open the dialog with its defaults */ }
             if (dlg.ShowDialog(this) != true) return;
             try
             {

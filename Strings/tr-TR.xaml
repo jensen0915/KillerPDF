@@ -146,6 +146,9 @@ Bu işlem uygulamayı %LocalAppData%\KillerPDF konumuna kopyalar ve bir Başlat 
     <sys:String x:Key="Str_Dlg_FailedOpen">PDF açılamadı:
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">{0} açık belgeniz var. Uygulamadan çıkarken KillerPDF hepsini kapatsın mı?</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">1 açık belgeniz var. Uygulamadan çıkarken KillerPDF onu kapatsın mı?</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">Seçimimi hatırla</sys:String>
 
 
     <!-- ── Tema adları ───────────────────────────────────────────────── -->

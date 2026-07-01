@@ -146,6 +146,9 @@
     <sys:String x:Key="Str_Dlg_FailedOpen">PDF খুলতে ব্যর্থ হয়েছে:
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">আপনার {0}টি নথি খোলা আছে। অ্যাপ বন্ধ করার সময় KillerPDF কি সেগুলি সব বন্ধ করে দেবে?</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">আপনার 1টি নথি খোলা আছে। অ্যাপ বন্ধ করার সময় KillerPDF কি সেটি বন্ধ করে দেবে?</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">আমার পছন্দ মনে রাখুন</sys:String>
 
 
     <!-- ── Theme names ────────────────────────────────────────────────── -->

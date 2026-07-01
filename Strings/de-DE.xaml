@@ -146,6 +146,9 @@ Sie können das Programm jederzeit über „Programme hinzufügen oder entfernen
     <sys:String x:Key="Str_Dlg_FailedOpen">PDF konnte nicht geöffnet werden:
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">Sie haben {0} geöffnete Dokumente. Soll KillerPDF sie alle schließen, wenn Sie die App beenden?</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">Sie haben 1 geöffnetes Dokument. Soll KillerPDF es schließen, wenn Sie die App beenden?</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">Meine Auswahl merken</sys:String>
 
 
     <!-- ── Theme names ────────────────────────────────────────────────── -->

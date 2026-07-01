@@ -146,6 +146,9 @@
     <sys:String x:Key="Str_Dlg_FailedOpen">无法打开 PDF：
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">您有 {0} 个打开的文档。退出应用时是否让 KillerPDF 全部关闭？</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">您有 1 个打开的文档。退出应用时是否让 KillerPDF 将其关闭？</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">记住我的选择</sys:String>
 
 
     <!-- ── Theme names ────────────────────────────────────────────────── -->

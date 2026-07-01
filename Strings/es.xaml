@@ -146,6 +146,9 @@ Puede desinstalarla en cualquier momento desde Agregar o quitar programas.</sys:
     <sys:String x:Key="Str_Dlg_FailedOpen">Error al abrir PDF:
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">Tienes {0} documentos abiertos. ¿Quieres que KillerPDF los cierre todos al salir de la aplicación?</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">Tienes 1 documento abierto. ¿Quieres que KillerPDF lo cierre al salir de la aplicación?</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">Recordar mi elección</sys:String>
 
 
     <!-- ── Theme names ────────────────────────────────────────────────── -->

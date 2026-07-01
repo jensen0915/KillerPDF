@@ -475,25 +475,38 @@ namespace KillerPDF
                 }
                 App.SetSetting("FitMode",   _fitMode.ToString());
                 App.SetSetting("ZoomLevel", _zoomLevel.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                if (_currentFile is not null)
-                    App.SetSetting("LastFile", _currentFile);
+                // #105: honor the "remember open files" privacy choice. Unset or "1" = remember
+                // (default, preserves prior behavior); "0" = forget the session so nothing persists.
+                bool rememberFiles = App.GetSetting("RememberOpenFiles") != "0";
+                if (rememberFiles)
+                {
+                    if (_currentFile is not null)
+                        App.SetSetting("LastFile", _currentFile);
+                    else
+                        App.RemoveSetting("LastFile");
+                    // Remember every open tab so the whole session restores next launch. Manually-closed
+                    // tabs are already gone from _sessions, so they won't come back (Issue #75 still holds).
+                    var openFiles = _sessions
+                        .Select(ss => ss.OriginalFile)
+                        .Where(f => !string.IsNullOrEmpty(f) && System.IO.File.Exists(f))
+                        .Distinct()
+                        .ToList();
+                    if (openFiles.Count > 0)
+                        App.SetSetting("OpenTabs", string.Join("|", openFiles!));
+                    else
+                        App.RemoveSetting("OpenTabs");
+                    if (_active?.OriginalFile is { Length: > 0 } af && System.IO.File.Exists(af))
+                        App.SetSetting("ActiveTab", af);
+                    else
+                        App.RemoveSetting("ActiveTab");
+                }
                 else
+                {
+                    // Privacy: drop any remembered session so no file paths linger on disk.
                     App.RemoveSetting("LastFile");
-                // Remember every open tab so the whole session restores next launch. Manually-closed
-                // tabs are already gone from _sessions, so they won't come back (Issue #75 still holds).
-                var openFiles = _sessions
-                    .Select(ss => ss.OriginalFile)
-                    .Where(f => !string.IsNullOrEmpty(f) && System.IO.File.Exists(f))
-                    .Distinct()
-                    .ToList();
-                if (openFiles.Count > 0)
-                    App.SetSetting("OpenTabs", string.Join("|", openFiles!));
-                else
                     App.RemoveSetting("OpenTabs");
-                if (_active?.OriginalFile is { Length: > 0 } af && System.IO.File.Exists(af))
-                    App.SetSetting("ActiveTab", af);
-                else
                     App.RemoveSetting("ActiveTab");
+                }
                 PersistToolSettings();
                 // The active tab may not have been captured yet at exit; persist its view state directly.
                 if (_active != null)

@@ -160,6 +160,9 @@ You can uninstall via Add/Remove Programs at any time.</sys:String>
     <sys:String x:Key="Str_Dlg_FailedOpen">Failed to open PDF:
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">You have {0} open documents. Would you like KillerPDF to close them all when you quit the app?</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">You have 1 open document. Would you like KillerPDF to close it when you quit the app?</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">Remember my choice</sys:String>
 
 
     <!-- ── Theme names ────────────────────────────────────────────────── -->

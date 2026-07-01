@@ -132,6 +132,9 @@ Vous pourrez désinstaller le programme à tout moment via « Ajouter ou supprim
     <sys:String x:Key="Str_Dlg_FailedOpen">Impossible d'ouvrir le PDF :
 {0}</sys:String>
     <sys:String x:Key="Str_Dlg_AppTitle">KillerPDF</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocs">Vous avez {0} documents ouverts. Voulez-vous que KillerPDF les ferme tous lorsque vous quittez l'application ?</sys:String>
+    <sys:String x:Key="Str_Dlg_CloseAllDocsOne">Vous avez 1 document ouvert. Voulez-vous que KillerPDF le ferme lorsque vous quittez l'application ?</sys:String>
+    <sys:String x:Key="Str_Dlg_RememberChoice">Mémoriser mon choix</sys:String>
 
     <!-- Theme names -->
     <sys:String x:Key="Str_Theme_Dark">Sombre</sys:String>

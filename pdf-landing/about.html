@@ -10,7 +10,7 @@
 <meta name="description" content="About KillerPDF and its maker, Steve the Killer - a field tech who got tired of Adobe.">
 <link rel="icon" type="image/x-icon" href="kp-icon.ico">
 <script defer src="https://koya.thekiller.net/script.js" data-website-id="4036b11d-f6c0-4254-b448-933d3e38b0cb"></script>
-<link rel="stylesheet" href="kp.css?v=5">
+<link rel="stylesheet" href="kp.css?v=9">
 <style>
 .page-hero { text-align: center; padding: 44px 16px 8px; }
 .page-hero .wm-logo { height: clamp(46px, 8vw, 76px); width: auto; margin: 0 auto 8px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.55)); }
@@ -22,6 +22,17 @@
 .outline a:hover { color: var(--text); background: color-mix(in srgb, var(--accent) 8%, transparent); filter: none; }
 .outline a.on { color: var(--accent); border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--sidebar)); }
 @media (max-width: 900px) { .outline { display:flex; flex-direction:row; flex-wrap:wrap; padding:8px; gap:4px; } .outline a { border-left:0; border-radius:5px; padding:6px 10px; } .outline a.on { border-left:0; } }
+/* Also try (cross-promo): chrome follows the page theme, wordmark swaps light/dark */
+.also-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 4px; }
+.also-card { display: flex; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; transition: background 0.15s; }
+.also-card:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); filter: none; }
+.also-icon { width: 46px; height: 46px; border-radius: 9px; flex-shrink: 0; }
+.also-body { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0; }
+.also-wm { height: 30px; width: auto; display: block; }
+.also-wm.light { display: none; }
+html[data-theme="light"] .also-wm.dark { display: none; }
+html[data-theme="light"] .also-wm.light { display: block; }
+.also-tag { font-size: 12.5px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -118,6 +129,20 @@
 </div>
 </div>
 
+<div class="about-card" id="also">
+<h2>Also try...</h2>
+<div class="also-grid">
+<a class="also-card" href="https://killerscan.net" target="_blank" rel="noopener">
+<img class="also-icon" src="brand/ks-icon.png" alt="KillerScan" width="46" height="46">
+<span class="also-body">
+<img class="also-wm dark" src="brand/killerscan-wordmark-dark.png" alt="KillerScan">
+<img class="also-wm light" src="brand/killerscan-wordmark-light.png" alt="KillerScan">
+<span class="also-tag">Open-source network scanner for Windows</span>
+</span>
+</a>
+</div>
+</div>
+
 </div>
 </div>
 <aside class="sidebar">
@@ -126,6 +151,7 @@
 <a href="#maker" class="on">The maker</a>
 <a href="#app">The app</a>
 <a href="#contact">Contact &amp; links</a>
+<a href="#also">Also try...</a>
 </nav>
 </aside>
 </div>
