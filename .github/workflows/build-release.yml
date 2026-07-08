@@ -1,0 +1,78 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create/update, e.g. v1.6.2-cjk-fix"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet restore KillerPDF.csproj -r win-x64
+          dotnet publish KillerPDF.csproj /p:PublishProfile=FolderProfile1 -c Release --no-restore
+
+      - name: Write checksums
+        shell: pwsh
+        run: |
+          $publishDir = "bin\Release\net48\publish"
+          $lines = [System.Collections.Generic.List[string]]::new()
+          $files = @(Get-Item (Join-Path $publishDir "KillerPDF.exe"))
+          $files += @(Get-ChildItem $publishDir -Filter "KillerPDF-*-src.zip" -ErrorAction SilentlyContinue)
+          foreach ($item in $files) {
+            $hash = (Get-FileHash $item.FullName -Algorithm SHA256).Hash
+            $lines.Add("$($item.Name) $hash")
+          }
+          [System.IO.File]::WriteAllLines((Join-Path $publishDir "SHA256SUMS.txt"), $lines)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: KillerPDF-release
+          path: |
+            bin/Release/net48/publish/KillerPDF.exe
+            bin/Release/net48/publish/KillerPDF-*-src.zip
+            bin/Release/net48/publish/SHA256SUMS.txt
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: KillerPDF ${{ github.event.inputs.tag || github.ref_name }}
+          body: |
+            This fork build focuses on Chinese / CJK PDF annotation fixes.
+
+            Changes:
+            - Fixed Chinese / CJK text garbling when saving annotations into PDF.
+            - Fixed CJK text rendering in print preview / flattened output.
+            - Improved password-protected PDF opening.
+            - Added `Save Flattened PDF...` path for PDFs that Edge's built-in Adobe viewer renders as blank after normal Save.
+            - Updated README with CJK and Edge/Adobe compatibility notes.
+
+            For Edge/Adobe blank-page compatibility, use:
+            Save > Save Flattened PDF...
+          files: |
+            bin/Release/net48/publish/KillerPDF.exe
+            bin/Release/net48/publish/KillerPDF-*-src.zip
+            bin/Release/net48/publish/SHA256SUMS.txt

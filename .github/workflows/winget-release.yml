@@ -11,6 +11,7 @@ on:
 
 jobs:
   submit:
+    if: github.repository == 'SteveTheKiller/KillerPDF'
     runs-on: windows-latest
     steps:
       - name: Install Komac
