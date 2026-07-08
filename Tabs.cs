@@ -24,6 +24,7 @@ namespace KillerPDF
             public PdfDocument? Doc;
             public string? CurrentFile;
             public string? OriginalFile;
+            public bool EdgeAdobeFragilePdf;
             // Set on a restored tab that hasn't been loaded yet (lazy tabs): Doc stays null until the
             // user first switches to it, so startup doesn't render every reopened PDF.
             public string? DeferredPath;
@@ -75,6 +76,7 @@ namespace KillerPDF
             s.Doc            = _doc;
             s.CurrentFile    = _currentFile;
             s.OriginalFile   = _originalFile;
+            s.EdgeAdobeFragilePdf = _edgeAdobeFragilePdf;
             s.ZoomLevel      = _zoomLevel;
             s.LastRenderZoom = _lastRenderZoom;
             s.Fit            = _fitMode;
@@ -157,6 +159,7 @@ namespace KillerPDF
             _doc            = s.Doc;
             _currentFile    = s.CurrentFile;
             _originalFile   = s.OriginalFile;
+            _edgeAdobeFragilePdf = s.EdgeAdobeFragilePdf;
             // The cached PDFium link handle belongs to the file we're switching AWAY from. This is the one
             // chokepoint every active-doc swap funnels through (tab switch, close-tab, close-all), so drop
             // it here and it can never outlive its document; the next link extraction reopens it lazily for

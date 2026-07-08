@@ -4,6 +4,12 @@ Free and open-source PDF editor for Windows. View, annotate, OCR, merge, split, 
 
 Landing page is hosted at [KillerPDF.net](https://killerpdf.net)
 
+## Notes for this fork/build
+
+This build focuses on fixing Chinese / CJK text handling when annotations are saved, flattened, or shown in print preview. CJK text annotations are rasterized through WPF before being burned into the PDF, avoiding garbled glyphs from PdfSharpCore's vector text path.
+
+For PDFs that Edge's built-in Adobe viewer shows as a blank page after normal Save, use **Save > Save Flattened PDF...**. That output rasterizes each page and is intended for maximum viewer compatibility; text in the flattened output is no longer selectable.
+
 ## Why this exists
 
 I hate Adobe. Acrobat is bloated, wants a subscription to do basic things, and phones home constantly. Most of the "free" alternatives are either ad-riddled, cloud-based, or rebrands of the same PDF engine sold under three different names.
@@ -57,7 +63,7 @@ KillerPDF is what I wanted: local-only, portable, no account, no telemetry. The 
 ### Output
 
 - Print with annotations flattened, a real in-app preview, and scale / position / margins / pages-per-sheet / color / two-sided options, rendered at 300 DPI
-- Save Flattened PDF: rasterize every page into a fully uneditable document
+- Save Flattened PDF: rasterize every page into a fully uneditable document, useful for Edge/Adobe viewer compatibility when a source PDF uses fragile image/mask structures
 - Document Info: view and edit title, author, subject, keywords, and creator metadata
 
 ### Customize
@@ -72,6 +78,7 @@ KillerPDF is what I wanted: local-only, portable, no account, no telemetry. The 
 - Single portable Windows EXE, ~14.62 MB, no runtime install
 - Self-installs per-user to %LOCALAPPDATA% (no UAC), registers as a PDF handler with a branded file icon, and uninstalls cleanly via Add/Remove Programs
 - Opens password-protected PDFs (prompts instead of erroring) and repairs damaged ones
+- Preserves editable text for normal PDFs, while warning when Edge/Adobe-compatible flattened output is safer
 - Local-only: no account, no telemetry, no phone-home
 
 ## Screenshots

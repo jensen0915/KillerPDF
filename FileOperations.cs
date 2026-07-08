@@ -49,6 +49,13 @@ namespace KillerPDF
                 catch { srcPath = path; }
             }
 
+            _edgeAdobeFragilePdf = PdfSourceCompatibility.ShouldNormalizeBeforeEditing(srcPath);
+            if (_edgeAdobeFragilePdf)
+            {
+                StripEncryptionAndOpen(srcPath, path, markDirty: false, busyMessage: "Opening PDF...");
+                return;
+            }
+
             try
             {
                 if (_doc is not null) { _doc.Close(); _doc = null; }
@@ -91,22 +98,8 @@ namespace KillerPDF
             {
                 string? pw = PromptForPassword(path);
                 if (pw is null) return;
-                try
-                {
-                    if (_doc is not null) { _doc.Close(); _doc = null; }
-                    _doc = PdfReader.Open(srcPath, pw, PdfDocumentOpenMode.Modify);
-                    // Save a decrypted temp copy so Docnet can render without needing the password
-                    var tempDec = App.MakeTempFile("dec");
-                    _doc.Save(tempDec);
-                    _doc.Close();
-                    _doc = PdfReader.Open(tempDec, PdfDocumentOpenMode.Modify);
-                    _currentFile = tempDec;
-                    FinishOpenFile(path, tempDec);
-                }
-                catch (Exception ex2)
-                {
-                    KillerDialog.Show(this, string.Format(Loc("Str_Dlg_FailedOpen"), ex2.Message), Loc("Str_Dlg_AppTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                StripEncryptionAndOpen(srcPath, path, password: pw, busyMessage: "Opening protected PDF...");
+                return;
             }
             catch (Exception ex) when (IsXRefException(ex))
             {
@@ -214,6 +207,7 @@ namespace KillerPDF
         {
             _currentFile = workingPath;
             _originalFile = displayPath;
+            _edgeAdobeFragilePdf = _edgeAdobeFragilePdf || PdfSourceCompatibility.ShouldNormalizeBeforeEditing(displayPath);
             FileNameLabel.Text = System.IO.Path.GetFileName(displayPath);
             _annotations.Clear();
             _continuousLinks.Clear();   // drop the previous document's cached link rects
@@ -356,7 +350,7 @@ namespace KillerPDF
         /// removed. Returns true on success. Falls back gracefully if PDFium is unavailable.
         /// PDFium is already initialised by Docnet; no separate init call is needed.
         /// </summary>
-        private static bool TryPdfiumStripEncryption(string sourcePath, string destPath)
+        private static bool TryPdfiumStripEncryption(string sourcePath, string destPath, string? password = null)
         {
             try
             {
@@ -364,7 +358,7 @@ namespace KillerPDF
                 // so force it now before we call PDFium P/Invoke directly.
                 try { _ = DocLib.Instance; } catch { }
 
-                var doc = FPDF_LoadDocument(sourcePath, null);
+                var doc = FPDF_LoadDocument(sourcePath, password);
                 if (doc == IntPtr.Zero) return false;
                 try
                 {
@@ -564,7 +558,7 @@ namespace KillerPDF
 
         // Strips a PDF's encryption on a background thread (so the window doesn't freeze), then opens the
         // clean copy. Mirrors TryRepairAndOpen; finalizes the tab via FinalizeAsyncOpen.
-        private async void StripEncryptionAndOpen(string srcPath, string displayPath, bool markDirty = true, string busyMessage = "Opening PDF...")
+        private async void StripEncryptionAndOpen(string srcPath, string displayPath, bool markDirty = true, string busyMessage = "Opening PDF...", string? password = null)
         {
             _asyncOpenPending = true;
             var ct = BeginCancellableOp("operation");
@@ -574,12 +568,21 @@ namespace KillerPDF
                 if (_doc is not null) { _doc.Close(); _doc = null; }
                 var repairedPath = App.MakeTempFile("repaired");
                 bool ok = await System.Threading.Tasks.Task.Run(() =>
-                    TryPdfiumStripEncryption(srcPath, repairedPath) || TryImportRepairToPath(srcPath, repairedPath));
+                    TryPdfiumStripEncryption(srcPath, repairedPath, password)
+                    || (password is null && TryImportRepairToPath(srcPath, repairedPath)));
                 if (ct.IsCancellationRequested) { HideBusyOverlay(busy); _asyncOpenPending = false; SetStatus("Cancelled"); EndCancellableOp(); return; }
                 if (!ok)
                 {
                     HideBusyOverlay(busy);
-                    TryRepairAndOpen(srcPath);   // re-registers the cancellable op; repair finalizes the tab
+                    if (password is null)
+                    {
+                        TryRepairAndOpen(srcPath);   // re-registers the cancellable op; repair finalizes the tab
+                        return;
+                    }
+                    _asyncOpenPending = false;
+                    KillerDialog.Show(this, "Could not open the protected PDF. The password may be incorrect, or this PDF uses an unsupported security mode.",
+                        "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
+                    EndCancellableOp();
                     return;
                 }
                 _doc = PdfReader.Open(repairedPath, PdfDocumentOpenMode.Modify);
@@ -1099,6 +1102,8 @@ namespace KillerPDF
             {
                 menu.Items.Add(MakeMenuItem(Loc("Str_Menu_Save"), (_, _) => SaveInPlace(), "Ctrl+S"));
                 menu.Items.Add(MakeMenuItem(Loc("Str_Menu_SaveAs"), (s2, e2) => SaveAs_Click(s2, e2), "Ctrl+Shift+S"));
+                menu.Items.Add(MakeMenuItem("Save Flattened PDF...", (s2, e2) => SaveFlattened_Click(s2, e2)));
+                menu.Items.Add(new Separator());
                 menu.Items.Add(MakeMenuItem(Loc("Str_Menu_CompressZip"), (s2, e2) => CompressToZip_Click(s2, e2)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(MakeMenuItem(Loc("Str_Lbl_DigitalSig"), (_, _) => OpenSignDialog()));
@@ -1342,6 +1347,7 @@ namespace KillerPDF
             // (e.g. a repaired temp-backed open), fall back to Save As.
             if (string.IsNullOrEmpty(_originalFile)) { SaveAs_Click(this, new RoutedEventArgs()); return; }
             CommitActiveTextBox();
+            if (!ConfirmEdgeFragileVectorSave()) return;
             string saveTarget = _originalFile!;
             try
             {
@@ -1350,6 +1356,7 @@ namespace KillerPDF
                 // Always strip link annotation borders regardless of user annotation count
                 // so mailto/URI links don't appear as strikethrough lines in other viewers.
                 StripLinkAnnotationBorders(_doc);
+                StripInvalidPdfXMetadata(_doc);
 
                 if (hasAnnotations)
                 {
@@ -1427,12 +1434,14 @@ namespace KillerPDF
             }
             catch { /* malformed seed path - just open the dialog with its defaults */ }
             if (dlg.ShowDialog(this) != true) return;
+            if (!ConfirmEdgeFragileVectorSave()) return;
             try
             {
                 bool hasAnnotations = _annotations.Values.Any(list => list.Count > 0);
                 WriteFormValuesToDocument();
                 // Always strip link annotation borders regardless of user annotation count.
                 StripLinkAnnotationBorders(_doc);
+                StripInvalidPdfXMetadata(_doc);
 
                 if (hasAnnotations)
                 {
@@ -1476,6 +1485,15 @@ namespace KillerPDF
             }
         }
 
+        private bool ConfirmEdgeFragileVectorSave()
+        {
+            if (!_edgeAdobeFragilePdf) return true;
+            KillerDialog.Show(this,
+                "This PDF uses image/mask structures that Edge's Adobe PDF viewer shows as a blank page after normal Save.\n\nUse Save > Save Flattened PDF... for an Edge-compatible copy.",
+                "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
         private async void SaveFlattened_Click(object sender, RoutedEventArgs e)
         {
             if (_doc is null || _currentFile is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
@@ -1492,6 +1510,7 @@ namespace KillerPDF
             {
                 var tempClean  = App.MakeTempFile("clean");
                 var tempBurned = App.MakeTempFile("burned");
+                StripInvalidPdfXMetadata(_doc);
                 _doc.Save(tempClean);
                 DrawStampsOnDocument();
                 DrawAnnotationsOnDocument();
@@ -1516,6 +1535,7 @@ namespace KillerPDF
             else
             {
                 var temp = App.MakeTempFile("src");
+                StripInvalidPdfXMetadata(_doc);
                 _doc.Save(temp);
                 sourcePath = temp;
             }
@@ -1694,6 +1714,7 @@ namespace KillerPDF
             if (hasAnnotations || _docStampSpec is not null)
             {
                 var tempClean = App.MakeTempFile("clean");
+                StripInvalidPdfXMetadata(_doc);
                 _doc.Save(tempClean);   // UI-thread snapshot of the current doc (just serialization)
                 // Snapshot the data the burn needs so the background thread reads no live UI state.
                 var annotsSnap = _annotations.ToDictionary(kv => kv.Key, kv => new List<PageAnnotation>(kv.Value));

@@ -26,6 +26,7 @@ namespace KillerPDF
         private PdfDocument? _doc;
         private string? _currentFile;
         private string? _originalFile;  // user's real file path; survives temp swaps from crop/rotate, used by Save
+        private bool _edgeAdobeFragilePdf;
         private Point _dragStartPoint;
 
         // Zoom

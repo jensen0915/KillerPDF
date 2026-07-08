@@ -2540,6 +2540,7 @@ namespace KillerPDF
             // Strip link annotation borders so they don't render as colored rectangles
             // (e.g. strikethrough-like lines) in other PDF viewers.
             StripLinkAnnotationBorders(doc);
+            StripInvalidPdfXMetadata(doc);
 
             foreach (var kvp in annotations)
             {
@@ -2566,7 +2567,23 @@ namespace KillerPDF
                             double tboxY = ta.Position.Y * sy;
                             double tboxW = ta.Width * sx;
                             double tboxH = ta.Height * sy;
-                            // Background fill (whiteout) first, behind the text.
+                            if (TextAnnotationRasterizer.ContainsCjk(ta.Content))
+                            {
+                                bool rasterized = false;
+                                try
+                                {
+                                    var png = TextAnnotationRasterizer.RenderToPng(ta);
+                                    using var img = XImage.FromStream(() => new System.IO.MemoryStream(png));
+                                    gfx.DrawImage(img, tboxX, tboxY, Math.Max(1, tboxW), Math.Max(1, tboxH));
+                                    rasterized = true;
+                                }
+                                catch
+                                {
+                                    // ponytail: keep export alive; failed raster falls back to the old vector path below.
+                                }
+                                if (rasterized) break;
+                            }
+                            // Background fill (whiteout) first, behind vector text. Raster text includes it.
                             if (ta.HasFill)
                             {
                                 var fc = ta.GetFill();

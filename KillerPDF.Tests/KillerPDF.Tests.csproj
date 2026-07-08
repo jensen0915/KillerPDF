@@ -22,10 +22,16 @@
     </PackageReference>
     <PackageReference Include="PdfPig" Version="0.1.14" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\Models\EditingTypes.cs" Link="Models\EditingTypes.cs" />
+    <Compile Include="..\PdfSourceCompatibility.cs" Link="PdfSourceCompatibility.cs" />
+    <Compile Include="..\TextAnnotationRasterizer.cs" Link="TextAnnotationRasterizer.cs" />
     <Compile Include="..\Services\SignatureStore.cs" Link="Services\SignatureStore.cs" />
     <Compile Include="..\Services\SearchService.cs" Link="Services\SearchService.cs" />
   </ItemGroup>

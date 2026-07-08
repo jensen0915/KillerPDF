@@ -570,6 +570,16 @@ namespace KillerPDF
             }
         }
 
+        private static void StripInvalidPdfXMetadata(PdfDocument doc)
+        {
+            // ponytail: PDFsharp can preserve PDF/X labels after dropping required OutputIntents;
+            // Edge's Adobe viewer may then treat the ordinary edited PDF as broken PDF/X.
+            doc.Info.Elements.Remove("/GTS_PDFXVersion");
+            doc.Info.Elements.Remove("/GTS_PDFXConformance");
+            doc.Info.Elements.Remove("/Trapped");
+            doc.Internals.Catalog.Elements.Remove("/OutputIntents");
+        }
+
         /// <summary>
         /// Records a page's link rectangles for the tiled views (continuous, grid, two-page). No
         /// clickable overlay is created: in the tiled layout a per-link overlay swallows the click
