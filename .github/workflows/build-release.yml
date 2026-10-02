@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create/update, e.g. v1.6.2-cjk-fix"
+        description: "Release tag to create/update, e.g. v1.6.2-signature-fix"
         required: true
 
 permissions:
@@ -61,14 +61,19 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: KillerPDF ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            This fork build focuses on Chinese / CJK PDF annotation fixes.
+            This fork build includes native handwriting input for signatures and Chinese / CJK PDF annotation fixes.
 
             Changes:
+            - Replaced mouse-only signature drawing with WPF native ink input.
+            - Preserved tap strokes and kept pen widths consistent between drawing and saved signatures.
+            - Disabled press-and-hold and flick gestures on the signature pad.
             - Fixed Chinese / CJK text garbling when saving annotations into PDF.
             - Fixed CJK text rendering in print preview / flattened output.
             - Improved password-protected PDF opening.
             - Added `Save Flattened PDF...` path for PDFs that Edge's built-in Adobe viewer renders as blank after normal Save.
             - Updated README with CJK and Edge/Adobe compatibility notes.
+
+            Signature input remains fixed-width. Automated checks passed locally; physical stylus testing is still pending.
 
             For Edge/Adobe blank-page compatibility, use:
             Save > Save Flattened PDF...

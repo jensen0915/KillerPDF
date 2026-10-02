@@ -589,12 +589,7 @@ namespace KillerPDF
                 CornerRadius = new CornerRadius(4),
                 Height = 170
             };
-            var drawCanvas = new Canvas
-            {
-                Background = Brushes.White,
-                ClipToBounds = true,
-                Cursor = Cursors.Pen
-            };
+            var drawCanvas = new SignatureInkCanvas();
             canvasBorder.Child = drawCanvas;
 
             // Placeholder text
@@ -608,56 +603,13 @@ namespace KillerPDF
                 FontSize = 18,
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(placeholder, 18);
-            Canvas.SetTop(placeholder, 14);
+            InkCanvas.SetLeft(placeholder, 18);
+            InkCanvas.SetTop(placeholder, 14);
             drawCanvas.Children.Add(placeholder);
 
-            // Drawing state
-            var strokes = new List<List<Point>>();
-            List<Point>? currentStroke = null;
-            Polyline? currentPoly = null;
-            double penWidth = 2.5;   // medium; set by the pen-width selector below
-
-            drawCanvas.MouseLeftButtonDown += (s, e) =>
-            {
-                if (placeholder.Visibility == Visibility.Visible)
-                    placeholder.Visibility = Visibility.Collapsed;
-                currentStroke = [];
-                var pos = e.GetPosition(drawCanvas);
-                currentStroke.Add(pos);
-                currentPoly = new Polyline
-                {
-                    Stroke = Brushes.Black,
-                    StrokeThickness = penWidth,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round
-                };
-                currentPoly.Points.Add(pos);
-                drawCanvas.Children.Add(currentPoly);
-                drawCanvas.CaptureMouse();
-            };
-
-            drawCanvas.MouseMove += (s, e) =>
-            {
-                if (currentStroke is null || currentPoly is null) return;
-                var pos = e.GetPosition(drawCanvas);
-                pos.X = Math.Max(0, Math.Min(drawCanvas.ActualWidth, pos.X));
-                pos.Y = Math.Max(0, Math.Min(drawCanvas.ActualHeight, pos.Y));
-                currentStroke.Add(pos);
-                currentPoly.Points.Add(pos);
-            };
-
-            drawCanvas.MouseLeftButtonUp += (s, e) =>
-            {
-                if (currentStroke is not null && currentStroke.Count > 1)
-                    strokes.Add(currentStroke);
-                else if (currentPoly is not null)
-                    drawCanvas.Children.Remove(currentPoly);
-                currentStroke = null;
-                currentPoly = null;
-                drawCanvas.ReleaseMouseCapture();
-            };
+            double penWidth = 4.5;
+            drawCanvas.PreviewStylusDown += (_, _) => placeholder.Visibility = Visibility.Collapsed;
+            drawCanvas.PreviewMouseLeftButtonDown += (_, _) => placeholder.Visibility = Visibility.Collapsed;
 
             contentArea.Children.Add(canvasBorder);
 
@@ -691,7 +643,7 @@ namespace KillerPDF
                     FontFamily = UiKit.UiFont,
                     FontSize = 11
                 };
-                pb.Click += (s2, e2) => { penWidth = ww; RefreshPen(); };
+                pb.Click += (s2, e2) => { penWidth = ww; drawCanvas.SetPenWidth(ww); RefreshPen(); };
                 penBtns.Add(pb);
                 penRow.Children.Add(pb);
             }
@@ -708,16 +660,14 @@ namespace KillerPDF
             clearBtn.Margin = new Thickness(0, 0, 8, 0);
             clearBtn.Click += (s, e) =>
             {
-                strokes.Clear();
-                drawCanvas.Children.Clear();
+                drawCanvas.Strokes.Clear();
                 placeholder.Visibility = Visibility.Visible;
-                drawCanvas.Children.Add(placeholder);
             };
 
             var saveBtn = UiKit.Make(Loc("Str_Sig_SaveSig"), accent: true);
             saveBtn.Click += (s, e) =>
             {
-                if (strokes.Count == 0)
+                if (drawCanvas.Strokes.Count == 0)
                 {
                     KillerDialog.Show(this, "Draw a signature first.", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
@@ -734,9 +684,9 @@ namespace KillerPDF
                     CanvasHeight = ch,
                     Name = $"{(kind == SignatureKind.Initials ? "Initials" : "Signature")} {_signatureStore.Signatures.Count(x => x.Kind == kind) + 1}"
                 };
-                foreach (var stroke in strokes)
+                foreach (var stroke in drawCanvas.Strokes)
                 {
-                    var sPts = stroke.Select(p => new SerializablePoint { X = p.X, Y = p.Y }).ToList();
+                    var sPts = stroke.StylusPoints.Select(p => new SerializablePoint { X = p.X, Y = p.Y }).ToList();
                     saved.Strokes.Add(sPts);
                 }
                 _signatureStore.Add(saved);
