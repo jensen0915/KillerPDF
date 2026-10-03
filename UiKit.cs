@@ -240,7 +240,7 @@ namespace KillerPDF
         {
             Text       = text,
             FontFamily = UiFont,
-            FontSize   = 11,
+            FontSize   = 12,
             Foreground = Brush("TextSecondary"),
             Margin     = new Thickness(0, 0, 0, 2)
         };
@@ -298,8 +298,9 @@ namespace KillerPDF
                 BorderThickness = new Thickness(border == null ? 0 : 1),
                 Cursor = Cursors.Hand,
                 FontFamily = UiFont,
-                FontSize = 12,
-                FocusVisualStyle = null,
+                FontSize = 14,
+                MinHeight = 36,
+                FocusVisualStyle = Application.Current?.TryFindResource("OfficeFocus") as Style,
                 Template = ButtonTemplate(),
             };
             btn.MouseEnter += (_, _) => { btn.Background = hoverBg; btn.Foreground = hoverFg; };

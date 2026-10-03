@@ -1,116 +1,54 @@
-# KillerPDF 專案狀態交接
+# KillerPDF 微調版與 GitHub 發佈說明
 
-更新日期：2026-07-22
+更新日期：2026-10-03
 
-## 目前狀態
+## 來源與開源原則
 
-- 本機專案路徑：`D:\_codex_\KillerPDF`
-- Git remote：`https://github.com/jensen0915/KillerPDF.git`
-- 目前分支：`main`
-- 目前狀態：`main` 已同步到 `origin/main`
-- 最近相關提交：
-  - `781558a Add GitHub release build workflow`
-  - `f2bc1a7 Fix CJK PDF text and Edge compatibility`
+本分支在原開源專案 [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF) 基礎上延續修改，由 [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF) 保存本次微調。原作者與貢獻者的成果、署名及原有授權資訊均保留。
 
-## 這版主要修正
+本次 `1.6.3-office-ux` 針對台灣辦公文件的閱讀、填寫、手寫簽名、儲存及列印流程做後續微調，依舊沿用 **GNU GPLv3**，提供對應原始碼與建置方式。這是衍生修改版，不是上游官方發佈；完整授權文字見 [LICENSE](LICENSE)，本次不修改授權內容。
 
-這版主要是為了解決 KillerPDF 在 PDF 儲存、列印預覽、匯出時遇到中文 / CJK 文字顯示亂碼的問題。
+## 目前已完成
 
-已完成的重點：
+- 程式優化與本機封裝完成：`bin/OfficeUX/KillerPDF.exe`，產品版本 `1.6.3-office-ux`、檔案版本 `1.6.3.0`。
+- 同資料夾提供對應原始碼 `KillerPDF-1.6.3-office-ux-src.zip`、專案 `LICENSE`、`PDFium-LICENSE.txt`、`SHA256SUMS.txt`、操作說明及驗證報告。
+- 40 項自動測試、原生 InkCanvas 簽名回歸及 PDF／WPF 整合檢查通過；實筆、注音／倉頡、實體列印及 Edge／Adobe Reader 人工驗收仍待進行。
+- 舊版 EXE 保留於 `bin/Release/net48/publish` 與 `bin/SignatureTest`。
+- 使用方式見 [OFFICE_UX.md](OFFICE_UX.md)，完整驗證範圍與限制見 [OFFICE_UX_VALIDATION.md](OFFICE_UX_VALIDATION.md)。
 
-- CJK 文字註解改用 WPF 字型 fallback 先 rasterize 成 PNG，再寫回 PDF，避免 `PDFsharp` 在中文、日文、韓文等字元上缺字或亂碼。
-- 一般英文 / ASCII 文字仍維持原本 vector text 輸出。
-- 開啟需要密碼的 PDF 時，輸入 owner password 後會先透過 PDFium 解密到暫存檔，再進入可修改狀態。
-- 偵測 Edge 內建 Adobe PDF viewer 可能顯示空白的來源 PDF，包含 Microsoft Print to PDF、Skia/PDF、HeadlessChrome、部分 PDF/X metadata。
-- 對可能讓 Edge/Adobe 顯示空白的 PDF，正常 Save / Save As 會提示改用：
-  - `File > Save Flattened PDF...`
-- `Save Flattened PDF...` 會輸出 Edge 相容的扁平化 PDF。
-- README 已補充此 fork/build 的用途與中文顯示修正說明。
+本版以 `46f2081` 為基礎，程式與文件透過本分支的 `main` 提交與推送；Git 提交紀錄可用於確認版本。推送原始碼不會自動建立本版的 tag 或 GitHub Release，EXE 仍需依下方步驟另外發佈。
 
-## GitHub Actions
+## 後續在 GitHub 發佈
 
-已新增 `.github/workflows/build-release.yml`。
+現有 [Build Release 工作流程](.github/workflows/build-release.yml) 可由 `v*` tag 或手動執行觸發。執行後會實際建立或更新 GitHub Release，請在確認要發佈時操作。
 
-觸發方式：
+1. 檢查並提交本次需要的程式、文件與測試檔案，推送到自己的 fork。仍在本機、尚未提交的修改不會出現在 GitHub 建置中。
+2. 開啟 GitHub 專案的 **Actions → Build Release → Run workflow**，選擇包含上述變更的分支，輸入新的 tag，例如 `v1.6.3-office-ux`。
+3. 等待工作流程成功，再到自己 fork 的 [Releases](https://github.com/jensen0915/KillerPDF/releases) 檢查 tag、提交版本及說明是否正確。
+4. 確認附件包含 `KillerPDF.exe`、對應版本的原始碼 ZIP、`SHA256SUMS.txt`、`LICENSE` 與 `PDFium-LICENSE.txt`；確認原始碼 ZIP 包含本次修改及建置腳本。
 
-- 推 tag：
-  ```powershell
-  git tag v1.6.2-cjk-fix
-  git push origin v1.6.2-cjk-fix
-  ```
-- 或到 GitHub：
-  - `Actions`
-  - `Build Release`
-  - `Run workflow`
-  - 輸入 tag，例如 `v1.6.2-cjk-fix`
-
-Actions 會做的事：
-
-- 在 GitHub Windows runner 上 build KillerPDF。
-- 產生 release 用的 `KillerPDF.exe`。
-- 產生 `SHA256SUMS.txt`。
-- 建立或更新 GitHub Release，並上傳檔案。
-
-另外也調整了既有 workflow：
-
-- `.github/workflows/chocolatey-release.yml`
-- `.github/workflows/winget-release.yml`
-
-這兩個 workflow 只會在 upstream repo `SteveTheKiller/KillerPDF` 執行，避免 fork 自己發 release 時因權限或套件發布設定失敗。
-
-## 本機已產生 EXE
-
-目前本機已 build 出：
-
-```text
-D:\_codex_\KillerPDF\bin\Release\net48\publish\KillerPDF.exe
-```
-
-SHA256：
-
-```text
-A33811D6D2409EEF3C34A8D786D0351E0A786AB77C2C12848A989E69C0A876ED
-```
-
-## 已執行驗證
-
-- `dotnet test KillerPDF.Tests\KillerPDF.Tests.csproj --no-restore`
-  - 結果：21 tests passed
-- `dotnet build KillerPDF.sln --no-restore -p:OutputPath=bin\CodexVerify\`
-  - 結果：build passed
-  - 備註：有既有 Costura / Fody warning
-- `dotnet publish KillerPDF.csproj /p:PublishProfile=FolderProfile1 -c Release`
-  - 結果：publish succeeded，EXE 已產生
-  - 備註：sandbox 內 nuget vulnerability data 無法取得，所以出現 NU1900 warning；source bundle script 也因 git safe.directory 提示過 warning，但 EXE 已正常產生
-
-## 後續建議操作
-
-如果要建立 GitHub Release，建議使用 tag 觸發 Actions：
+也可以在提交並推送分支後，用 tag 觸發：
 
 ```powershell
-git tag v1.6.2-cjk-fix
-git push origin v1.6.2-cjk-fix
+git tag v1.6.3-office-ux
+git push origin v1.6.3-office-ux
 ```
 
-推完後到 GitHub repository 的：
+以上是後續操作說明，本次未執行。手動工作流程使用所選分支的提交建置；請使用尚未存在的新 tag，避免既有 tag 指向舊提交而附件來自另一版本。
 
-```text
-Actions > Build Release
-```
+## 工作流程實際內容
 
-確認 workflow 成功，再到：
+- 在 Windows runner 使用 .NET 8 SDK，以 `FolderProfile1` 發佈 .NET Framework 4.8／win-x64 程式。
+- 輸出至 `bin/Release/net48/publish`，並產生對應版本的原始碼 ZIP。
+- 保留建置輸出的 PDFium 授權為 `PDFium-LICENSE.txt`，另外附上專案的 GPLv3 `LICENSE`。
+- 計算 EXE 與原始碼 ZIP 的 SHA-256，將檔案與兩份授權文件上傳為 `KillerPDF-release` Actions artifact 及 GitHub Release 附件。
+- Release 說明包含本次辦公流程微調、上游來源、GNU GPLv3、對應原始碼及人工驗收限制。
+- 此工作流程負責建置與發佈，**不會重跑完整測試**；發佈前須完成需要的測試與驗收。
+- Chocolatey 與 WinGet 工作流程仍僅在原上游 `SteveTheKiller/KillerPDF` 執行。
 
-```text
-Releases
-```
+## 下載與回報管道
 
-確認是否出現對應 tag 的 release 與 `KillerPDF.exe`。
+- 本分支版本：[jensen0915/KillerPDF Releases](https://github.com/jensen0915/KillerPDF/releases)。
+- 本分支問題回報：[jensen0915/KillerPDF Issues](https://github.com/jensen0915/KillerPDF/issues)。
 
-如果換帳號或換新 Codex task，建議先檢查：
-
-```powershell
-git status --short --branch
-git log -3 --oneline
-```
-
-再確認 GitHub Actions / Releases 是否已經跑完。
+目前程式內建更新檢查及部分問題回報連結仍指向原上游；本次文件更新不會改變程式內的目的地。需要本分支微調版時，請使用本分支的 Release。README 中的 WinGet／Chocolatey 安裝方式對應原上游版本。

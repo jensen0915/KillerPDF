@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create/update, e.g. v1.6.2-signature-fix"
+        description: "Release tag to create/update, e.g. v1.6.3-office-ux"
         required: true
 
 permissions:
@@ -32,6 +32,12 @@ jobs:
           dotnet restore KillerPDF.csproj -r win-x64
           dotnet publish KillerPDF.csproj /p:PublishProfile=FolderProfile1 -c Release --no-restore
 
+      - name: Include license notices
+        shell: pwsh
+        run: |
+          Copy-Item -LiteralPath "bin/Release/net48/publish/LICENSE" -Destination "bin/Release/net48/publish/PDFium-LICENSE.txt"
+          Copy-Item -LiteralPath "LICENSE" -Destination "bin/Release/net48/publish/LICENSE" -Force
+
       - name: Write checksums
         shell: pwsh
         run: |
@@ -53,6 +59,8 @@ jobs:
             bin/Release/net48/publish/KillerPDF.exe
             bin/Release/net48/publish/KillerPDF-*-src.zip
             bin/Release/net48/publish/SHA256SUMS.txt
+            bin/Release/net48/publish/PDFium-LICENSE.txt
+            LICENSE
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
@@ -61,23 +69,28 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: KillerPDF ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            This fork build includes native handwriting input for signatures and Chinese / CJK PDF annotation fixes.
+            ## 後續微調版 / Follow-up refinement
 
-            Changes:
-            - Replaced mouse-only signature drawing with WPF native ink input.
-            - Preserved tap strokes and kept pen widths consistent between drawing and saved signatures.
-            - Disabled press-and-hold and flick gestures on the signature pad.
-            - Fixed Chinese / CJK text garbling when saving annotations into PDF.
-            - Fixed CJK text rendering in print preview / flattened output.
-            - Improved password-protected PDF opening.
-            - Added `Save Flattened PDF...` path for PDFs that Edge's built-in Adobe viewer renders as blank after normal Save.
-            - Updated README with CJK and Edge/Adobe compatibility notes.
+            這是在原開源 KillerPDF 基礎上延續修改的一版，針對台灣辦公文件的閱讀、填寫、簽名與寄回流程做後續微調。
+            主要整理工具列與繁中用語，改善手寫簽名操作，並修正中文表單及儲存／列印輸出的內容完整性。
 
-            Signature input remains fixed-width. Automated checks passed locally; physical stylus testing is still pending.
+            本分支依舊沿用 GNU GPLv3，保留原作者與貢獻者的署名及授權資訊，並提供包含本次修改的對應原始碼與建置方式。
+            感謝原專案 [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF)；這是衍生微調版，不是上游官方發佈。
 
-            For Edge/Adobe blank-page compatibility, use:
-            Save > Save Flattened PDF...
+            This is a follow-up refinement of the original open-source KillerPDF for everyday office documents and Traditional Chinese workflows.
+            It improves task organization and signatures, preserves Chinese form values, and shares complete snapshots across save, print, and compatible export.
+            The fork continues under GNU GPLv3, retains upstream attribution and license notices, and provides corresponding source and build instructions.
+
+            Download the matching `KillerPDF-*-src.zip` with the EXE; the original license is included in the source archive and attached as `LICENSE`.
+            PDFium's third-party notices are preserved separately in `PDFium-LICENSE.txt`.
+            See `OFFICE_UX.md` and `OFFICE_UX_VALIDATION.md` in the source archive for usage, locally completed checks, and pending manual acceptance.
+            Physical stylus, IME, printer, and Edge/Adobe Reader acceptance remain pending. This workflow builds and publishes; it does not rerun the full test suite.
+
+            For an image-based compatibility copy, use **File → Export compatible PDF copy / 檔案 → 匯出相容 PDF 副本**.
+            Text in that copy is not selectable and its form fields are no longer editable; the working document stays open with its current unsaved state.
           files: |
             bin/Release/net48/publish/KillerPDF.exe
             bin/Release/net48/publish/KillerPDF-*-src.zip
             bin/Release/net48/publish/SHA256SUMS.txt
+            bin/Release/net48/publish/PDFium-LICENSE.txt
+            LICENSE

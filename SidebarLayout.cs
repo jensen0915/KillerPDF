@@ -47,7 +47,7 @@ namespace KillerPDF
                 _sidebarCol = sidebarColDef;
                 // Toggle strip faces the document: right edge of the sidebar.
                 sbContentCol.Width = new GridLength(1, GridUnitType.Star);
-                sbToggleCol.Width  = new GridLength(24, GridUnitType.Pixel);
+                sbToggleCol.Width  = new GridLength(36, GridUnitType.Pixel);
                 Grid.SetColumn(sbContent, 0);
                 Grid.SetColumn(sbToggle, 1);
             }
@@ -66,7 +66,7 @@ namespace KillerPDF
                 _sidebarCol = docColDef;
                 // Toggle strip faces the document: left edge of the sidebar (inner column 0). The
                 // inner column defs are fixed in position, so size them by position, not by name.
-                sbContentCol.Width = new GridLength(24, GridUnitType.Pixel);   // inner col 0 -> toggle
+                sbContentCol.Width = new GridLength(36, GridUnitType.Pixel);   // inner col 0 -> toggle
                 sbToggleCol.Width  = new GridLength(1, GridUnitType.Star);     // inner col 1 -> content
                 Grid.SetColumn(sbToggle, 0);
                 Grid.SetColumn(sbContent, 1);

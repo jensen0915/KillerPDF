@@ -43,6 +43,7 @@ namespace KillerPDF
             ClearSelection();
             MarkDirty();
             var doc = _doc;
+            var formKeys = CaptureFormWidgetKeys();
             int selectedIdx = PageList.SelectedIndex;
 
             // Capture page rotations, then strip them from the document before saving.
@@ -98,6 +99,7 @@ namespace KillerPDF
                 _doc = PdfReader.Open(tempPath, PdfDocumentOpenMode.Modify);
             }
             _currentFile = tempPath;
+            RestoreFormWidgetKeys(formKeys);
 
             // Restore rotations in the reopened in-memory doc so saves, form fields,
             // and all other operations see the correct rotation values.

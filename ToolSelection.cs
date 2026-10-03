@@ -60,7 +60,9 @@ namespace KillerPDF
             CommitActiveTextBox();
             ClearTextSelection();
             if (tool != EditTool.Draw) HideBrushPreview();   // drop the brush cursor when leaving Draw
+            _officeTextPreset = null;
             _currentTool = tool;
+            UpdateOfficeTaskForTool(tool);
 
             var map = new (Button btn, EditTool t)[]
             {
@@ -162,7 +164,7 @@ namespace KillerPDF
             if (_sidebarCollapsed)
             {
                 // Save current width before collapsing so expand restores it.
-                if (_sidebarCol.ActualWidth > 24)
+                if (_sidebarCol.ActualWidth > 36)
                 {
                     if (_sidebarShowingOutlines)
                         _savedOutlinesWidth = Math.Min(_sidebarCol.ActualWidth, SidebarMaxOutlines);
@@ -171,8 +173,8 @@ namespace KillerPDF
                 }
                 _sidebarToggleBtn.ToolTip = Loc("Str_TT_ExpandSidebar");
                 _sidebarBorder.Visibility = Visibility.Collapsed;
-                _sidebarCol.Width = new GridLength(24);
-                _sidebarCol.MinWidth = 24;
+                _sidebarCol.Width = new GridLength(36);
+                _sidebarCol.MinWidth = 36;
                 // Splitter stays enabled so the user can grab it and drag the sidebar back open.
             }
             else
@@ -270,8 +272,8 @@ namespace KillerPDF
             _sidebarToggleBtn.ToolTip = Loc("Str_TT_ExpandSidebar");
             _sidebarBorder.Visibility = Visibility.Collapsed;
             SidebarContentPanel.Visibility = Visibility.Visible;   // reset so the next border-show has content
-            _sidebarCol.Width = new GridLength(24);
-            _sidebarCol.MinWidth = 24;
+            _sidebarCol.Width = new GridLength(36);
+            _sidebarCol.MinWidth = 36;
             UpdateSidebarToggleGlyph();   // splitter stays enabled so it can be dragged back open
         }
     }

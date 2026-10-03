@@ -4,6 +4,31 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3-office-ux] - 2026-10-03 (fork refinement; local package)
+
+This is a follow-up refinement of [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF), maintained in [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF). It continues under GNU GPLv3 with upstream attribution, the original LICENSE, corresponding source, and build instructions retained. This entry records local work, not a completed GitHub publication.
+
+這是在原開源專案上延續微調的一版，針對台灣辦公文件的使用情境改善操作，依舊遵循原有 GNU GPLv3 開源原則，保留作者與貢獻者署名並提供對應原始碼。
+
+### Changed
+
+- Organized file commands and reading, filling/signing, annotation, and page-management tasks; added overflow access and visible saved/unsaved status.
+- Refined Traditional Chinese terminology, Gregorian/ROC date insertion, check marks, text-editing shortcuts, and focus behavior.
+- Extended native WPF signature input with undo-last-stroke, larger controls, and optional local storage disabled by default.
+
+### Fixed
+
+- Preserved Unicode AcroForm values and generated widget appearances without permanently painting old field text into editable saved pages.
+- Shared output snapshots across save, Save As, print, and compatible export; kept the active document and unsaved changes intact on output failure.
+- Avoided repeated annotation burn-in and included form appearances in print/export copies.
+- Rejected invalid print ranges and accepted fullwidth numbers and Taiwanese punctuation.
+
+### Validation
+
+- 40 automated tests, native ink checks, PDF output comparisons, and WPF layout checks passed locally. Physical stylus, IME, printer, and external-reader acceptance remain pending; see [OFFICE_UX_VALIDATION.md](OFFICE_UX_VALIDATION.md).
+
+The entries below retain the upstream release history and its original release status.
+
 ## [1.6.2] - unreleased
 
 ### Added

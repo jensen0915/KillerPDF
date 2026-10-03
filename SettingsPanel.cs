@@ -77,7 +77,7 @@ namespace KillerPDF
             SlideSettingsOpen();
         }
 
-        private const double SettingsPanelWidth = 228;
+        private const double SettingsPanelWidth = 300;
 
         // Expands the panel out of the sidebar (Width grows from the flush left edge). Clipped while
         // animating so it reveals left-to-right; clip is dropped at the end so the drop shadow shows.
@@ -323,6 +323,7 @@ namespace KillerPDF
 
         private void OnThemeChanged()
         {
+            RefreshOfficeToolbarLanguage();
             // Refresh snapshot FindResource calls that were set as local values.
             // SetResourceReference bindings update automatically; sidebar tabs and
             // active tool button background still need an explicit refresh.
@@ -486,6 +487,7 @@ namespace KillerPDF
             // DynamicResource), so rebuild the toolbar on every language change. Harmless for the
             // icon-only modes; refreshes the captions for Text-beside / Text-under / Text-only.
             ApplyToolbarAppearance();
+            RefreshOfficeToolbarLanguage();
 
             // The annotate bars (text / draw) also capture Loc() values when built, so rebuild whichever
             // one is currently showing in the new language.

@@ -34,6 +34,8 @@
     <Compile Include="..\TextAnnotationRasterizer.cs" Link="TextAnnotationRasterizer.cs" />
     <Compile Include="..\Services\SignatureStore.cs" Link="Services\SignatureStore.cs" />
     <Compile Include="..\Services\SearchService.cs" Link="Services\SearchService.cs" />
+    <Compile Include="..\Services\PrintPageRange.cs" Link="Services\PrintPageRange.cs" />
+    <Compile Include="..\Services\AtomicFile.cs" Link="Services\AtomicFile.cs" />
   </ItemGroup>
 
 </Project>

@@ -1,16 +1,32 @@
 # KillerPDF
 
-Free and open-source PDF editor for Windows. View, annotate, OCR, merge, split, edit text, draw, sign, fill forms, print, flatten, and open password-protected PDFs without an Adobe subscription or a phone-home. Install or run portable. Single Windows EXE, ~14.6 MB (ZIPs to 10.2MB), no runtime install required.
+Free and open-source PDF editor for Windows. View, annotate, OCR, merge, split, edit text, draw, sign, fill forms, print, flatten, and open password-protected PDFs. Install or run portable as a single Windows EXE (about 15 MB; requires .NET Framework 4.8).
 
-Landing page is hosted at [KillerPDF.net](https://killerpdf.net)
+Original project: [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF). Its website is [KillerPDF.net](https://killerpdf.net). This fork is maintained at [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF).
 
-## Notes for this fork/build
+## 本次微調版／About this refinement
 
-This build focuses on fixing Chinese / CJK text handling when annotations are saved, flattened, or shown in print preview. CJK text annotations are rasterized through WPF before being burned into the PDF, avoiding garbled glyphs from PdfSharpCore's vector text path.
+**1.6.3-office-ux — 2026-10-03**
 
-For PDFs that Edge's built-in Adobe viewer shows as a blank page after normal Save, use **Save > Save Flattened PDF...**. That output rasterizes each page and is intended for maximum viewer compatibility; text in the flattened output is no longer selectable.
+這是在原開源 KillerPDF 基礎上延續修改的一版，針對台灣辦公文件的閱讀、填寫、簽名與寄回情境做了後續微調。主要整理工具列與繁中用語，改善簽名操作，並修正中文表單及儲存／列印輸出的內容完整性。
 
-## Why this exists
+本分支依舊遵循原專案的開源原則，沿用 **GNU GPLv3**，保留原作者、貢獻者的署名與授權資訊，並提供對應版本的原始碼及建置方式。這是衍生微調版，不是原專案的官方發佈，也不將原專案成果宣稱為重新原創。
+
+This is a follow-up refinement of the original open-source KillerPDF, focused on everyday office documents and Traditional Chinese workflows in Taiwan. It reorganizes common actions, improves signature handling, and fixes Chinese form values and save/print output. This fork continues under **GNU GPLv3**, retains upstream attribution and license notices, and provides corresponding source and build instructions. It is a modified fork, not an official upstream release.
+
+- Task groups for reading, filling/signing, annotations, and page organization; visible file commands and unsaved-state text.
+- Taiwanese terminology, Gregorian/ROC dates, check marks, multiline text, and Ctrl+Enter to finish editing. Esc cancels tools or panels.
+- Native WPF signature ink, undo-last-stroke, and optional local signature storage, unchecked by default.
+- Unicode AcroForm values and widget appearances; shared output snapshots and safe file replacement prevent missing content and repeated annotation burn-in.
+- **File → Export compatible PDF copy** / **檔案 → 匯出相容 PDF 副本** creates an image-based copy. Its text is not selectable, and its form fields are no longer editable; the working document stays open with its current unsaved state.
+
+[繁中操作說明](OFFICE_UX.md) · [驗證結果與待驗項目](OFFICE_UX_VALIDATION.md) · [GitHub 發佈方式與目前狀態](PROJECT_STATUS.md)
+
+As of this documentation update, the refinement has been packaged locally; this work has not published a GitHub Release. The validation report distinguishes automated checks from pending physical-stylus, IME, printer, and Edge/Adobe Reader checks.
+
+## Original project motivation
+
+The following motivation is retained from the upstream README:
 
 I hate Adobe. Acrobat is bloated, wants a subscription to do basic things, and phones home constantly. Most of the "free" alternatives are either ad-riddled, cloud-based, or rebrands of the same PDF engine sold under three different names.
 
@@ -63,25 +79,27 @@ KillerPDF is what I wanted: local-only, portable, no account, no telemetry. The 
 ### Output
 
 - Print with annotations flattened, a real in-app preview, and scale / position / margins / pages-per-sheet / color / two-sided options, rendered at 300 DPI
-- Save Flattened PDF: rasterize every page into a fully uneditable document, useful for Edge/Adobe viewer compatibility when a source PDF uses fragile image/mask structures
+- Export compatible PDF copy: rasterize every page into an image-based copy for viewers that have trouble with the original PDF; text selection and editable form fields are not retained
 - Document Info: view and edit title, author, subject, keywords, and creator metadata
 
 ### Customize
 
 - Six themes - Dark, Light, Black, Blood, Greed, Cyanotic - with per-theme accent colors, switchable live
-- Toolbar style (icon size, text placement) and a resizable sidebar that docks left or right
+- Office task toolbar with a keyboard-accessible More menu, plus a resizable sidebar that docks left or right
 - Localized UI in 8 languages (English, Spanish, Traditional and Simplified Chinese, German, French, Turkish, Bengali); contribute via `Strings/TRANSLATING.md`
 - Full keyboard shortcut overlay (Ctrl+?) with a link to the online guide
 
 ### App & files
 
-- Single portable Windows EXE, ~14.62 MB, no runtime install
+- Single portable Windows EXE, about 15 MB; uses .NET Framework 4.8
 - Self-installs per-user to %LOCALAPPDATA% (no UAC), registers as a PDF handler with a branded file icon, and uninstalls cleanly via Add/Remove Programs
 - Opens password-protected PDFs (prompts instead of erroring) and repairs damaged ones
 - Preserves editable text for normal PDFs, while warning when Edge/Adobe-compatible flattened output is safer
-- Local-only: no account, no telemetry, no phone-home
+- Document editing runs locally; optional OCR language downloads, update checks, and certificate signing may use network services
 
 ## Screenshots
+
+These screenshots are retained from the upstream interface and do not show the new office task toolbar. See the [usage guide](OFFICE_UX.md) for the current workflow.
 
 <p align="center">
   <img src="pdf-landing/screenshots/02.png" width="32%" alt="KillerPDF" />
@@ -95,34 +113,37 @@ KillerPDF is what I wanted: local-only, portable, no account, no telemetry. The 
 ## Requirements
 
 - Windows 10 or 11 (x64)
-- No runtime install. Everything needed is inside the EXE (targets .NET Framework 4.8, which ships with every supported Windows release).
+- .NET Framework 4.8. The .NET 8 SDK is needed for building from source, not for running the EXE.
 
-## Download
+## Download and updates
 
-WinGet:
+- This fork: [jensen0915/KillerPDF Releases](https://github.com/jensen0915/KillerPDF/releases). Use the assets from the matching release when available; the link does not imply that `1.6.3-office-ux` has already been published.
+- Current local refinement: `bin/OfficeUX/KillerPDF.exe`, alongside `KillerPDF-1.6.3-office-ux-src.zip`, `LICENSE`, `PDFium-LICENSE.txt`, and `SHA256SUMS.txt`.
+- Original project: [upstream releases](https://github.com/SteveTheKiller/KillerPDF/releases). WinGet and Chocolatey commands below install the upstream distribution, not this fork's office refinement.
+
+Upstream WinGet:
 
 ```powershell
 winget install killerpdf
 ```
 
-Chocolately:
+Upstream Chocolatey:
 
 ```powershell
 choco install killerpdf
 ```
 
-- Prebuilt binary: <https://github.com/SteveTheKiller/KillerPDF/releases/latest/download/KillerPDF.exe>
-- Source (GPL3 corresponding source for this release): <https://github.com/SteveTheKiller/KillerPDF/releases/download/v1.6.1/KillerPDF-1.6.1-src.zip>
+The app's built-in update check and some issue-report links still target upstream. Use this fork's release page to obtain its refinements, and report fork-specific problems in [this fork's Issues](https://github.com/jensen0915/KillerPDF/issues).
 
 ## Build from source
 
 ```powershell
-git clone https://github.com/SteveTheKiller/KillerPDF.git
+git clone https://github.com/jensen0915/KillerPDF.git
 cd KillerPDF
-dotnet publish -c Release
+dotnet publish KillerPDF.csproj -c Release -o bin/OfficeUX
 ```
 
-Output lands in `bin/Release/net48/publish/`. The publish step produces a single Costura-bundled `KillerPDF.exe` plus a versioned `KillerPDF-<version>-src.zip` for GPL3 source distribution.
+This command writes to `bin/OfficeUX/`. The GitHub workflow uses `Properties/PublishProfiles/FolderProfile1.pubxml` and writes to `bin/Release/net48/publish/`. Both publish paths produce a Costura-bundled `KillerPDF.exe` and a versioned `KillerPDF-<version>-src.zip` containing the source and build files. Keep the matching source archive and [LICENSE](LICENSE) available with distributed builds.
 
 Requires the .NET 8 SDK or later to build (even though the output targets .NET Framework 4.8).
 
@@ -132,4 +153,6 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-GPLv3. See [LICENSE](LICENSE). If you fork, modify, or redistribute KillerPDF, your version must also be released under GPLv3 with source available. No exceptions for commercial rebrands.
+This fork and its refinements continue under **GNU GPLv3**. The original [LICENSE](LICENSE) text and upstream attribution are retained. The source archive includes this version's modifications and build files. The local package and release workflow also preserve PDFium's bundled third-party notices as `PDFium-LICENSE.txt`; dependency licenses remain applicable.
+
+本微調版延續 GNU GPLv3 開源授權，保留原有署名與授權文件，並提供包含本次修改的原始碼及建置方式。完整授權條款請見 [LICENSE](LICENSE)。感謝原專案作者及所有貢獻者。

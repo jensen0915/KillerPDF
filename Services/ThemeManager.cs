@@ -57,12 +57,18 @@ namespace KillerPDF.Services
         public static void Initialize()
         {
             var saved = App.GetSetting("Theme");
+            bool firstRun = string.IsNullOrWhiteSpace(saved) && string.IsNullOrWhiteSpace(App.GetSetting("LightAccent"));
             // Back-compat: the Black theme's enum value was renamed from "HighContrast".
             if (saved == "HighContrast") saved = nameof(Theme.Black);
-            _current = Enum.TryParse<Theme>(saved, out var t) ? t : Theme.Dark;
+            _current = Enum.TryParse<Theme>(saved, out var t) ? t : (firstRun ? Theme.Light : Theme.Dark);
             _darkAccent  = Enum.TryParse<DarkAccent>(App.GetSetting("DarkAccent"),  out var da) ? da : DarkAccent.Green;
-            _lightAccent = Enum.TryParse<DarkAccent>(App.GetSetting("LightAccent"), out var la) ? la : DarkAccent.Green;
+            _lightAccent = Enum.TryParse<DarkAccent>(App.GetSetting("LightAccent"), out var la) ? la : (firstRun ? DarkAccent.Blue : DarkAccent.Green);
             _blackAccent = Enum.TryParse<DarkAccent>(App.GetSetting("BlackAccent"), out var ba) ? ba : DarkAccent.Green;
+            if (firstRun)
+            {
+                App.SetSetting("Theme", Theme.Light.ToString());
+                App.SetSetting("LightAccent", DarkAccent.Blue.ToString());
+            }
             ApplyInternal(_current, applyDwm: false);
         }
 

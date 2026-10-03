@@ -45,8 +45,12 @@ namespace KillerPDF
         public SignDocumentDialog(Window? owner, string sourcePdf)
         {
             _sourcePdf = sourcePdf;
-            Title = "KillerPDF - Digital Signature";
+            Title = "KillerPDF - " + L("Str_Sign_TitleSuffix");
             Width = 470;
+            MinWidth = Math.Min(420, Math.Max(320, SystemParameters.WorkArea.Width - 32));
+            MaxWidth = Math.Max(MinWidth, SystemParameters.WorkArea.Width - 32);
+            MaxHeight = Math.Max(320, SystemParameters.WorkArea.Height - 32);
+            WindowStartupLocation = WindowStartupLocation.CenterOwner;
             SizeToContent = SizeToContent.Height;
             UseLayoutRounding = true;
             DialogChrome.Configure(this, owner);
@@ -59,8 +63,8 @@ namespace KillerPDF
 
             body.Children.Add(new TextBlock
             {
-                Text = string.Format(L("Str_Sign_Desc"), Path.GetFileName(_sourcePdf)),
-                Foreground = R("TextSecondary"), FontSize = 11, TextWrapping = TextWrapping.Wrap,
+                Text = string.Format(L("Str_Sign_Desc"), _sourcePdf),
+                Foreground = R("TextSecondary"), FontSize = 12, TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 0, 0, 14)
             });
 
@@ -86,7 +90,7 @@ namespace KillerPDF
             fileRow.Children.Add(_browsePfx);
             body.Children.Add(fileRow);
 
-            body.Children.Add(new TextBlock { Text = L("Str_Sign_Password"), Foreground = R("TextSecondary"), FontSize = 11, Margin = new Thickness(20, 4, 0, 2) });
+            body.Children.Add(new TextBlock { Text = L("Str_Sign_Password"), Foreground = R("TextSecondary"), FontSize = 12, Margin = new Thickness(20, 4, 0, 2) });
             _pwBox = new PasswordBox
             {
                 Margin = new Thickness(20, 0, 0, 10),
@@ -137,9 +141,11 @@ namespace KillerPDF
             // --- Buttons -------------------------------------------------------------------------
             var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
             var sign = MakeButton(L("Str_Sign_Sign"), true);
+            sign.Height = 44;
             sign.Click += (_, _) => DoSign();
             sign.IsDefault = true;    // Enter
             var cancel = MakeButton(L("Str_Sign_Cancel"), false);
+            cancel.Height = 44;
             cancel.Margin = new Thickness(8, 0, 0, 0);
             cancel.Click += (_, _) => { DialogResult = false; Close(); };
             cancel.IsCancel = true;   // Esc
@@ -149,8 +155,15 @@ namespace KillerPDF
 
             SyncSource();
 
+            var scroll = new ScrollViewer
+            {
+                Content = body,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                MaxHeight = Math.Max(260, SystemParameters.WorkArea.Height - 96)
+            };
             Content = DialogChrome.Frame(this, Owner, "KillerPDF - " + L("Str_Sign_TitleSuffix"),
-                () => { DialogResult = false; Close(); }, body);
+                () => { DialogResult = false; Close(); }, scroll);
         }
 
         private string DefaultOutputPath()
@@ -170,34 +183,57 @@ namespace KillerPDF
 
         private void BrowsePfx()
         {
-            var dlg = new OpenFileDialog { Filter = "Certificate files|*.pfx;*.p12|All files|*.*", Title = "Choose a signing certificate" };
+            var dlg = new OpenFileDialog { Filter = L("Str_Sign_CertificateFilter"), Title = L("Str_Sign_ChooseCertificate") };
             if (dlg.ShowDialog(this) == true) _pfxBox.Text = dlg.FileName;
         }
 
         private void BrowseOutput()
         {
-            var dlg = new SaveFileDialog { Filter = "PDF files|*.pdf", Title = "Save signed PDF as", FileName = Path.GetFileName(_outputBox.Text) };
+            var dlg = new SaveFileDialog { Filter = L("Str_Sign_PdfFilter"), Title = L("Str_Sign_SaveAs"), FileName = Path.GetFileName(_outputBox.Text) };
             if (dlg.ShowDialog(this) == true) _outputBox.Text = dlg.FileName;
         }
 
         private void DoSign()
         {
+            if (!File.Exists(_sourcePdf)) { Warn(L("Str_Sign_SourceMissing")); return; }
+
             ICertificateProvider provider;
             if (_fileRadio.IsChecked == true)
             {
                 string pfx = _pfxBox.Text?.Trim() ?? "";
-                if (!File.Exists(pfx)) { Warn("Choose a certificate file (.pfx / .p12) first."); return; }
+                if (!File.Exists(pfx)) { Warn(L("Str_Sign_CertificateMissing")); return; }
                 provider = new PfxFileCertificateProvider(pfx, _pwBox.Password);
             }
             else
             {
                 int i = _storeCombo.SelectedIndex;
-                if (i < 0 || i >= _storeCerts.Count) { Warn("No signing certificate is available in the Windows store."); return; }
+                if (i < 0 || i >= _storeCerts.Count) { Warn(L("Str_Sign_NoStoreCertificate")); return; }
                 provider = new StoreCertificateProvider(_storeCerts[i]);
             }
 
             string output = _outputBox.Text?.Trim() ?? "";
-            if (string.IsNullOrEmpty(output)) { Warn("Choose where to save the signed copy."); return; }
+            if (string.IsNullOrEmpty(output)) { Warn(L("Str_Sign_ChooseOutput")); return; }
+            try
+            {
+                string sourceFull = Path.GetFullPath(_sourcePdf);
+                string outputFull = Path.GetFullPath(output);
+                if (string.Equals(outputFull, sourceFull, StringComparison.OrdinalIgnoreCase))
+                { Warn(L("Str_ExportNeedsNewPath")); return; }
+                output = outputFull;
+                string? dir = Path.GetDirectoryName(output);
+                if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+                { Warn(L("Str_Sign_OutputFolderMissing")); return; }
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                Warn(string.Format(L("Str_Sign_InvalidOutput"), ex.Message));
+                return;
+            }
+
+            if (File.Exists(output) &&
+                MessageBox.Show(this, L("Str_Sign_OverwriteQuestion"), L("Str_Sign_OverwriteTitle"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+                return;
 
             X509Certificate2 cert;
             try { cert = provider.GetCertificate(); }
@@ -205,10 +241,10 @@ namespace KillerPDF
             {
                 // The raw Win32 text ("The specified network password is not correct.") is misleading -
                 // nothing networked is involved. Almost always a wrong password or a non-.pfx file.
-                Warn("Could not open the certificate.\n\nThe password may be incorrect, or the file is not a valid .pfx / .p12 certificate.");
+                Warn(L("Str_Sign_CertificateOpenFailed"));
                 return;
             }
-            catch (Exception ex) { Warn("Could not load the certificate:\n\n" + ex.Message); return; }
+            catch (Exception ex) { Warn(string.Format(L("Str_Sign_CertificateLoadFailed"), ex.Message)); return; }
 
             try
             {
@@ -217,16 +253,16 @@ namespace KillerPDF
             }
             catch (Exception ex)
             {
-                Warn("Signing failed:\n\n" + ex.GetType().Name + ": " + ex.Message);
+                Warn(string.Format(L("Str_Sign_Failed"), ex.GetType().Name, ex.Message));
                 return;
             }
 
-            KillerDialog.Show(this, "Signed copy saved to:\n" + output, "Digital Signature", MessageBoxButton.OK, MessageBoxImage.Information);
+            KillerDialog.Show(this, string.Format(L("Str_Sign_Succeeded"), output), L("Str_Sign_TitleSuffix"), MessageBoxButton.OK, MessageBoxImage.Information);
             DialogResult = true;
             Close();
         }
 
-        private void Warn(string msg) => KillerDialog.Show(this, msg, "Digital Signature", MessageBoxButton.OK, MessageBoxImage.Warning);
+        private void Warn(string msg) => KillerDialog.Show(this, msg, L("Str_Sign_TitleSuffix"), MessageBoxButton.OK, MessageBoxImage.Warning);
 
         // ---- themed control helpers (mirroring PrintPreviewWindow) -------------------------------
         private Style? FindOwnerStyle(string key) => Owner?.TryFindResource(key) as Style;

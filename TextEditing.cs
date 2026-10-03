@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -23,6 +23,16 @@ namespace KillerPDF
 {
     public partial class MainWindow
     {
+        private bool _imeComposing;
+
+        private void AttachImeCompositionHandlers(TextBox tb)
+        {
+            TextCompositionManager.AddPreviewTextInputStartHandler(tb, (_, _) => _imeComposing = true);
+            TextCompositionManager.AddPreviewTextInputUpdateHandler(tb, (_, _) => _imeComposing = true);
+            TextCompositionManager.AddPreviewTextInputHandler(tb, (_, _) => _imeComposing = false);
+            tb.LostKeyboardFocus += (_, _) => _imeComposing = false;
+        }
+
         // ============================================================
         // Inline text editing (double-click)
         // ============================================================
@@ -144,10 +154,11 @@ namespace KillerPDF
                     _activeCanvas.Children.Add(ptb);
                     _activeTextBox = ptb;
                     StyleEditBox(ptb);   // restore the box's typeface + B/I/S
+                    AttachImeCompositionHandlers(ptb);
                     ptb.PreviewKeyDown += TextBox_PreviewKeyDown;
                     ptb.Loaded += (s, ev) => { ptb.Focus(); Keyboard.Focus(ptb); ptb.SelectAll(); ptb.LostFocus += TextBox_LostFocus; AttachTextEditResizeHandles(ptb); };
                     ShowTextSettings();
-                    SetStatus("Editing text - change size/color above, Enter to save");
+                    SetStatus(Loc("Str_TextEdit_ChangeSizeColor"));
                     return;
                 }
             }
@@ -158,7 +169,7 @@ namespace KillerPDF
             if (_annotations.TryGetValue(pageIdx, out var coverPage)
                 && coverPage.OfType<CoverAnnotation>().Any(c => { var b = c.Bounds; b.Inflate(6, 6); return b.Contains(canvasPos); }))
             {
-                SetStatus("Already an edit here - click its text to re-edit, or drag the cover");
+                SetStatus(Loc("Str_TextEdit_AlreadyEdited"));
                 return;
             }
 
@@ -216,7 +227,7 @@ namespace KillerPDF
 
                 if (lineWords.Count == 0)
                 {
-                    SetStatus("No text line found at this position");
+                    SetStatus(Loc("Str_TextEdit_NoLine"));
                     return;
                 }
 
@@ -257,7 +268,7 @@ namespace KillerPDF
                 if (_annotations.TryGetValue(pageIdx, out var coveredPage)
                     && coveredPage.OfType<CoverAnnotation>().Any(c => c.Bounds.IntersectsWith(lineRect)))
                 {
-                    SetStatus("This line is already edited - click its text to change it");
+                    SetStatus(Loc("Str_TextEdit_LineAlreadyEdited"));
                     return;
                 }
 
@@ -309,7 +320,7 @@ namespace KillerPDF
             }
             catch (Exception ex)
             {
-                SetStatus($"Text edit error: {ex.Message}");
+                    SetStatus(string.Format(Loc("Str_TextEdit_Error"), ex.Message));
             }
         }
 
@@ -367,12 +378,13 @@ namespace KillerPDF
             Canvas.SetTop(tb, cTop);
             _activeCanvas.Children.Add(tb);
             _activeTextBox = tb;
+            AttachImeCompositionHandlers(tb);
             tb.PreviewKeyDown += TextBox_PreviewKeyDown;
             tb.Loaded += (s, ev) => { tb.Focus(); Keyboard.Focus(tb); tb.SelectAll(); tb.LostFocus += TextBox_LostFocus; AttachTextEditResizeHandles(tb); };
             ShowTextSettings();
             SetStatus(string.IsNullOrEmpty(text)
-                ? "Type your text, then drag the cover over the original - Enter to save, Escape to cancel"
-                : "Editing text - change size/color above, Enter to save, Escape to cancel");
+                ? Loc("Str_TextEdit_TypeCover")
+                : Loc("Str_TextEdit_Editing"));
         }
 
         // ============================================================
@@ -447,11 +459,17 @@ namespace KillerPDF
                 TextWrapping = TextWrapping.Wrap,
                 Tag = pageIdx
             };
+            if (_officeTextPreset != null)
+            {
+                tb.Text = _officeTextPreset;
+                _officeTextPreset = null;
+            }
             Canvas.SetLeft(tb, pos.X);
             Canvas.SetTop(tb, pos.Y);
             _activeCanvas.Children.Add(tb);
             _activeTextBox = tb;
             StyleEditBox(tb);   // current typeface + B/I/S
+            AttachImeCompositionHandlers(tb);
             tb.PreviewKeyDown += TextBox_PreviewKeyDown;
             tb.LostFocus += TextBox_LostFocus;
             // Focus the box and attach its live resize handles once laid out. Loaded fires on first
@@ -560,9 +578,16 @@ namespace KillerPDF
         }
 
         // Attached as PreviewKeyDown (tunneling) so Enter is caught before the TextBox inserts a line
-        // break: Enter commits, Shift+Enter falls through to make a newline (the box is AcceptsReturn).
+        // break: Ctrl+Enter commits; Enter keeps the native multiline behavior.
         private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Let an active IME finish or cancel its composition before the editor handles
+            // navigation/commit keys. This is essential for 注音 candidate confirmation.
+            if (e.Key is Key.ImeProcessed or Key.DeadCharProcessed ||
+                _imeComposing &&
+                e.Key is Key.Enter or Key.Escape or Key.Left or Key.Right or Key.Up or Key.Down)
+                return;
+
             if (e.Key == Key.Escape)
             {
                 CancelActiveTextEdit();
@@ -577,7 +602,7 @@ namespace KillerPDF
                 CancelActiveTextEdit();
                 e.Handled = true;
             }
-            else if (e.Key == Key.Enter && Keyboard.Modifiers != ModifierKeys.Shift)
+            else if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 CommitActiveTextBox();
                 e.Handled = true;
@@ -589,6 +614,7 @@ namespace KillerPDF
         // "Ctrl+Z with nothing left in the box" path.
         private void CancelActiveTextEdit()
         {
+            _imeComposing = false;
             RemoveTextEditHandles();
             RemoveReeditCoverOutline();   // edit cancelled; drop the cover hint (repaint follows)
             if (_activeTextBox is not null)
@@ -607,6 +633,7 @@ namespace KillerPDF
                 RenderAllAnnotations(rp);
             }
             if (_currentTool != EditTool.Text) HideTextSettings();
+            else SetTool(EditTool.Select);
         }
 
         private void TextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -633,6 +660,7 @@ namespace KillerPDF
         private void CommitActiveTextBox()
         {
             if (_activeTextBox is null) return;
+            _imeComposing = false;
             var tb = _activeTextBox;
             _activeTextBox = null;
             RemoveTextEditHandles();
@@ -640,7 +668,7 @@ namespace KillerPDF
             string reeditPair = _reeditOriginal?.PairId ?? "";   // preserve a re-edited text's cover pairing
             _reeditOriginal = null;   // committing replaces any annotation being re-edited
 
-            string content = tb.Text.Trim();
+            string content = tb.Text;
             int pageIdx = tb.Tag is int idx ? idx : PageList.SelectedIndex;
             double x = Canvas.GetLeft(tb);
             double y = Canvas.GetTop(tb);
@@ -652,7 +680,7 @@ namespace KillerPDF
             // live Parent is the correct host.
             RemoveFromParent(tb);
 
-            if (!string.IsNullOrEmpty(content))
+            if (!string.IsNullOrWhiteSpace(content))
             {
                 double boxW = (!double.IsNaN(tb.Width) && tb.Width > 0) ? tb.Width
                             : (tb.ActualWidth > 0 ? tb.ActualWidth : TextBoxDefaultWidth);

@@ -10,6 +10,38 @@
                 <!-- [1] Strings (overridden at startup by LocaleManager.Initialize) -->
                 <ResourceDictionary Source="Strings/en-US.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <ControlTemplate x:Key="OfficeToolbarTemplate" TargetType="ToolBar">
+                <Grid Background="{TemplateBinding Background}" Width="{TemplateBinding Width}">
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <ToolBarPanel x:Name="PART_ToolBarPanel" IsItemsHost="True"/>
+                    <ToggleButton x:Name="OverflowButton" Grid.Column="1" Content="{DynamicResource Str_Office_More}"
+                        MinHeight="36" MinWidth="68" Padding="8,4" FontSize="14" Focusable="True"
+                        Foreground="{DynamicResource TextPrimary}" Background="{DynamicResource BgPanel}"
+                        FocusVisualStyle="{DynamicResource OfficeFocus}"
+                        IsChecked="{Binding IsOverflowOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" BorderBrush="{DynamicResource BorderDim}" BorderThickness="1" CornerRadius="3">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate></ToggleButton.Template>
+                    </ToggleButton>
+                    <Popup IsOpen="{Binding IsOverflowOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                        PlacementTarget="{Binding ElementName=OverflowButton}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                        <Border Background="{DynamicResource BgPanel}" BorderBrush="{DynamicResource BorderDim}" BorderThickness="1" Padding="6">
+                            <ToolBarOverflowPanel x:Name="PART_ToolBarOverflowPanel" KeyboardNavigation.TabNavigation="Cycle"/>
+                        </Border>
+                    </Popup>
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="HasOverflowItems" Value="False"><Setter TargetName="OverflowButton" Property="Visibility" Value="Collapsed"/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+            <Style x:Key="OfficeFocus" TargetType="Control">
+                <Setter Property="Template"><Setter.Value><ControlTemplate>
+                    <Border BorderBrush="{DynamicResource Accent}" BorderThickness="2" CornerRadius="3" Margin="1"/>
+                </ControlTemplate></Setter.Value></Setter>
+            </Style>
+
 
             <!-- Chrome close-button corner. Defined at app scope (not just on MainWindow) so the dialog
                  windows that borrow the ChromeCloseButton style can resolve it too - otherwise the

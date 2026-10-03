@@ -75,7 +75,7 @@
         <Style x:Key="OverflowMenuButton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OfficeFocus}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -292,7 +292,7 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OfficeFocus}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -498,13 +498,13 @@
                                 </Grid.ColumnDefinitions>
                                 <!-- check glyph for checkable items (e.g. OCR language multi-select) -->
                                 <TextBlock x:Name="Check" Grid.Column="0" Text="&#xE73E;"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
                                            Foreground="{DynamicResource Accent}"
                                            VerticalAlignment="Center" HorizontalAlignment="Left"
                                            Visibility="Collapsed"/>
                                 <ContentPresenter Grid.Column="1" ContentSource="Header" VerticalAlignment="Center"/>
                                 <TextBlock x:Name="Gesture" Grid.Column="2" Text="{TemplateBinding InputGestureText}"
-                                           Foreground="{DynamicResource TextSecondary}" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondary}" FontSize="12"
                                            VerticalAlignment="Center" Margin="24,0,0,0"/>
                                 <!-- submenu arrow for items that have children -->
                                 <TextBlock x:Name="SubArrow" Grid.Column="3" Text="&#xE76C;"
@@ -660,8 +660,8 @@
                                              Background="Transparent"
                                              BorderThickness="0"
                                              Foreground="{DynamicResource TextPrimary}"
-                                             FontFamily="Consolas"
-                                             FontSize="11"
+                                             FontFamily="{DynamicResource UiFont}"
+                                             FontSize="12"
                                              VerticalAlignment="Center"
                                              IsReadOnly="{TemplateBinding IsReadOnly}"
                                              Visibility="Hidden"
@@ -849,7 +849,7 @@
             <Setter Property="Padding" Value="6,5"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource OfficeFocus}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TreeViewItem">
@@ -1021,7 +1021,7 @@
                                             BorderBrush="{DynamicResource TextDim}" BorderThickness="1.5"
                                             Background="Transparent"/>
                                     <TextBlock x:Name="tick" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets"
-                                               FontSize="10" Foreground="{DynamicResource RadioAccent}"
+                                               FontSize="12" Foreground="{DynamicResource RadioAccent}"
                                                Visibility="Collapsed"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Grid>
@@ -1113,7 +1113,7 @@
                 <!-- File name: takes the middle space and truncates before the window buttons -->
                 <TextBlock Grid.Column="1" Text="" x:Name="FileNameLabel" VerticalAlignment="Center"
                            Margin="16,0,12,0" TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource FilenameBrush}" FontFamily="Consolas" FontSize="11"/>
+                           Foreground="{DynamicResource FilenameBrush}" FontFamily="{DynamicResource UiFont}" FontSize="12"/>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="&#xE921;" Click="MinimizeBtn_Click" Style="{StaticResource ChromeButton}" WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button Content="&#xE922;" Click="MaximizeBtn_Click" Style="{StaticResource ChromeButton}" WindowChrome.IsHitTestVisibleInChrome="True"/>
@@ -1134,11 +1134,11 @@
                     <Button Content="&#xE7C3;" Style="{StaticResource ToolbarButton}" Click="New_Click" ToolTip="{DynamicResource Str_TT_NewBlank}"/>
                     <Button x:Name="CloseFileBtn" Content="&#xE711;" Style="{StaticResource ToolbarButton}" Click="CloseFile_Click" ToolTip="{DynamicResource Str_TT_CloseFile}" IsEnabled="False"/>
                     <Button x:Name="OpenFileBtn" Content="&#xE8DA;" Style="{StaticResource ToolbarSplitMain}" Click="Open_Click" MouseRightButtonUp="OpenRecent_Click" ToolTip="{DynamicResource Str_TT_Open}"/>
-                    <Button x:Name="OpenRecentBtn" Content="&#xE70D;" FontSize="10" Width="13" Padding="0" Margin="-6,0,0,0" Style="{StaticResource ToolbarButton}" Click="OpenRecent_Click" ToolTip="Recent files"/>
+                    <Button x:Name="OpenRecentBtn" Content="&#xE70D;" FontSize="12" Width="13" Padding="0" Margin="-6,0,0,0" Style="{StaticResource ToolbarButton}" Click="OpenRecent_Click" ToolTip="Recent files"/>
                     <Button x:Name="SaveAsBtn" Content="&#xE74E;" Style="{StaticResource ToolbarSplitMainAccent}" Click="Save_Click" MouseRightButtonUp="SaveMenu_Click" ToolTip="{DynamicResource Str_TT_Save}"/>
-                    <Button x:Name="SaveMenuBtn" Content="&#xE70D;" FontSize="10" Width="13" Padding="0" Margin="-6,0,0,0" Style="{StaticResource ToolbarButton}" Click="SaveMenu_Click" ToolTip="Save options"/>
+                    <Button x:Name="SaveMenuBtn" Content="&#xE70D;" FontSize="12" Width="13" Padding="0" Margin="-6,0,0,0" Style="{StaticResource ToolbarButton}" Click="SaveMenu_Click" ToolTip="Save options"/>
                     <Button x:Name="OcrBtn" Content="&#xEE6F;" Style="{StaticResource ToolbarSplitMain}" Click="Ocr_Click" MouseRightButtonUp="OcrMenu_Click" ToolTip="{DynamicResource Str_TT_Ocr}"/>
-                    <Button x:Name="OcrMenuBtn" Content="&#xE70D;" FontSize="10" Width="13" Padding="0" Margin="-6,0,0,0" Style="{StaticResource ToolbarButton}" Click="OcrMenu_Click" ToolTip="OCR options"/>
+                    <Button x:Name="OcrMenuBtn" Content="&#xE70D;" FontSize="12" Width="13" Padding="0" Margin="-6,0,0,0" Style="{StaticResource ToolbarButton}" Click="OcrMenu_Click" ToolTip="OCR options"/>
                     <Button Content="&#xE8B9;" Style="{StaticResource ToolbarButton}" Click="SaveFlattened_Click" ToolTip="{DynamicResource Str_TT_SaveFlattened}"/>
                     <Button Content="&#xE749;" Style="{StaticResource ToolbarButton}" Click="Print_Click" ToolTip="{DynamicResource Str_TT_Print}"/>
                     <StackPanel x:Name="GrpPageOps" Orientation="Horizontal">
@@ -1272,6 +1272,10 @@
                     </Popup>
                 </StackPanel>
             </Grid>
+             <!-- Office-style command surface is built after the window is initialized. The legacy
+                  adaptive toolbar remains in the visual tree so its existing command wiring and
+                  Settings reflow code stay available for older saved layouts. -->
+             <Grid x:Name="OfficeToolbarHost" Visibility="Collapsed" Margin="4,2"/>
             </Grid>
         </Border>
 
@@ -1282,7 +1286,7 @@
                      swaps which column is the sized sidebar (24-260px) and which is the star document
                      area, and repoints _sidebarCol accordingly. SidebarCol never collapses to 0 - it
                      shrinks to 24px (the toggle strip width). -->
-                <ColumnDefinition x:Name="SidebarCol" Width="180" MinWidth="24" MaxWidth="234"/>
+                <ColumnDefinition x:Name="SidebarCol" Width="180" MinWidth="36" MaxWidth="234"/>
                 <!-- Dedicated drag handle column — keeps the splitter independent of the sidebar content -->
                 <ColumnDefinition Width="6"/>
                 <ColumnDefinition x:Name="DocCol" Width="*"/>
@@ -1298,7 +1302,7 @@
             <Grid x:Name="SidebarOuterGrid" Grid.Column="0" Grid.Row="0" Grid.RowSpan="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="SbContentCol" Width="*"/>   <!-- page list content -->
-                    <ColumnDefinition x:Name="SbToggleCol" Width="24"/>   <!-- toggle strip — always visible -->
+                    <ColumnDefinition x:Name="SbToggleCol" Width="36"/>   <!-- toggle strip — always visible -->
                 </Grid.ColumnDefinitions>
 
                 <!-- Page list content (hidden when collapsed) -->
@@ -1336,14 +1340,14 @@
                             <TextBox x:Name="PageJumpBox" DockPanel.Dock="Left"
                                      Width="30" Height="20" VerticalAlignment="Center"
                                      TextAlignment="Center" VerticalContentAlignment="Center"
-                                     FontFamily="Consolas" FontSize="11"
+                                     FontFamily="{DynamicResource UiFont}" FontSize="12"
                                      Background="{DynamicResource BgPanel}"
                                      Foreground="{DynamicResource TextPrimary}"
                                      BorderBrush="{DynamicResource BorderDim}" BorderThickness="1"
                                      CaretBrush="{DynamicResource Accent}"
                                      SelectionBrush="{DynamicResource AccentDim}"
                                      IsEnabled="False"
-                                     FocusVisualStyle="{x:Null}"
+                                     FocusVisualStyle="{StaticResource OfficeFocus}"
                                      KeyDown="PageJumpBox_KeyDown"
                                      GotFocus="PageJumpBox_GotFocus"
                                      ToolTip="{DynamicResource Str_TT_GoToPage}"
@@ -1375,7 +1379,7 @@
                                 </TextBox>
                             <TextBlock x:Name="PageTotalLabel" DockPanel.Dock="Left"
                                        Text="/ –" VerticalAlignment="Center"
-                                       FontFamily="Consolas" FontSize="11"
+                                       FontFamily="{DynamicResource UiFont}" FontSize="12"
                                        Foreground="{DynamicResource TextSecondary}"
                                        Margin="2,0,0,0"/>
                         </DockPanel><!-- /PageControlsRow -->
@@ -1410,7 +1414,7 @@
                                         </Border>
                                         <TextBlock Text="{Binding Label}"
                                                    FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI"
-                                                   FontSize="10"
+                                                   FontSize="12"
                                                    HorizontalAlignment="Center"
                                                    Margin="0,2,0,0">
                                             <TextBlock.Style>
@@ -1470,15 +1474,15 @@
                         <Button x:Name="SidebarToggleBtn"
                                 Content="&#xE76B;" ToolTip="{DynamicResource Str_TT_CollapseSidebar}"
                                 Style="{StaticResource ToolbarButton}"
-                                Width="24" Padding="0" FontSize="10"
+                                Width="36" Height="36" Padding="0" FontSize="14"
                                 VerticalAlignment="Top" Margin="0,6,0,0"
                                 Click="SidebarToggle_Click"/>
                         <!-- Settings and help icons pinned to bottom -->
                         <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,6">
                             <Button Click="DocInfo_Click"
-                                    Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                    Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                     ToolTip="{DynamicResource Str_TT_DocInfo}"
-                                    Width="24" Height="24" Padding="0" Margin="1,0,0,6">
+                                    Width="36" Height="36" Padding="0" Margin="0,0,0,6">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border Background="Transparent">
@@ -1504,15 +1508,15 @@
                                 </Button.Template>
                             </Button>
                             <Button Click="ShortcutHelp_Click"
-                                    Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                    Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                     ToolTip="{DynamicResource Str_TT_KeyboardShortcuts}"
-                                    Width="24" Height="24" Padding="0" Margin="0,0,0,6">
+                                    Width="36" Height="36" Padding="0" Margin="0,0,0,6">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border Background="Transparent">
                                             <TextBlock Text="?"
                                                        Foreground="{DynamicResource TextPrimary}"
-                                                       FontFamily="Consolas" FontSize="18"
+                                                       FontFamily="{DynamicResource UiFont}" FontSize="18"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center">
                                                 <TextBlock.Effect>
@@ -1534,9 +1538,9 @@
                             </Button>
                             <Button x:Name="SettingsBtn"
                                     Click="SettingsBtn_Click"
-                                    Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                    Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                     ToolTip="{DynamicResource Str_TT_Settings}"
-                                    Width="24" Height="24" Padding="0">
+                                    Width="36" Height="36" Padding="0">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border Background="Transparent">
@@ -1704,7 +1708,7 @@
                                             Opacity="{DynamicResource GrainOpacity}"/>
                                     <DockPanel Margin="18,22,12,16">
                                         <TextBlock DockPanel.Dock="Top" Text="RECENT" FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI"
-                                                   FontSize="11" FontWeight="SemiBold"
+                                                   FontSize="12" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource Accent}" Margin="2,0,0,10"/>
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                             <ItemsControl x:Name="RecentFilesList"/>
@@ -1781,20 +1785,26 @@
                     <ScaleTransform ScaleY="-1"/>
                 </Border.RenderTransform>
             </Border>
-            <Grid Margin="16,0">
-                <TextBlock x:Name="StatusText" Text="{DynamicResource Str_Ready}"
-                           Foreground="{DynamicResource FilenameBrush}"
-                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" VerticalAlignment="Center"/>
+            <Grid Margin="12,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" Text="{DynamicResource Str_Ready}" TextTrimming="CharacterEllipsis"
+                    Foreground="{DynamicResource TextSecondary}" FontFamily="{DynamicResource UiFont}" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock x:Name="OfficeSaveStatus" Grid.Column="1" Margin="12,0" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Text, ElementName=PageJumpBox}" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{Binding Text, ElementName=PageTotalLabel}" Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{Binding Text, ElementName=ZoomBox}" Margin="12,0,0,0" Foreground="{DynamicResource TextPrimary}"/>
+                </StackPanel>
                 <!-- Portable mode indicator (hidden when installed) -->
-                <StackPanel x:Name="PortableBadge" Orientation="Horizontal"
+                <StackPanel x:Name="PortableBadge" Orientation="Horizontal" Grid.Column="0" MaxWidth="0" IsHitTestVisible="False"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="Collapsed">
                     <TextBlock Text="{DynamicResource Str_Portable}" Foreground="{DynamicResource TextSecondary}"
-                               FontFamily="Consolas" FontSize="9"
+                               FontFamily="{DynamicResource UiFont}" FontSize="12"
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Button x:Name="InstallBtn" Content="{DynamicResource Str_InstallBtn}"
                             Click="Install_Click"
-                            FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" FontWeight="SemiBold"
+                            FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12" FontWeight="SemiBold"
                             Foreground="White"
                             Background="{DynamicResource InstallBtnBg}"
                             BorderThickness="0"
@@ -1823,15 +1833,15 @@
                         </Button.Template>
                     </Button>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Visibility="Collapsed" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBlock x:Name="VersionLabel" Text="v1.6.2"
-                               Foreground="{DynamicResource TextFooter}" FontFamily="Consolas"
-                               FontSize="10" VerticalAlignment="Center" Margin="0,0,12,0"
+                               Foreground="{DynamicResource TextFooter}" FontFamily="{DynamicResource UiFont}"
+                               FontSize="12" VerticalAlignment="Center" Margin="0,0,12,0"
                                Cursor="Hand" ToolTip="{DynamicResource Str_TT_About}"
                                MouseLeftButtonDown="VersionLabel_MouseLeftButtonDown"/>
                     <!-- 14px trailing margin keeps the copyright clear of the corner grip (family standard) -->
-                    <TextBlock FontSize="10" VerticalAlignment="Center"
-                               FontFamily="Consolas" Margin="0,0,14,0">
+                    <TextBlock FontSize="12" VerticalAlignment="Center"
+                               FontFamily="{DynamicResource UiFont}" Margin="0,0,14,0">
                         <Run Text="&#x00A9; 2026 " Foreground="{DynamicResource TextFooter}"/>
                         <Hyperlink NavigateUri="https://thekiller.net"
                                    RequestNavigate="Hyperlink_RequestNavigate"
@@ -1866,7 +1876,7 @@
               Grid.RowSpan="5"
               Panel.ZIndex="9999"
               Visibility="Collapsed">
-            <Grid x:Name="SettingsPanel" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="186,0,0,28" Width="228"
+            <Grid x:Name="SettingsPanel" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="186,0,0,28" Width="300"
                   MaxHeight="{Binding ActualHeight, ElementName=DocPaneBorder}">
                 <!-- Left edge stays flush against the sidebar's right edge; the panel expands rightward
                      out of the sidebar (its Width animates) and shrinks back into it on close. The inner
@@ -1903,7 +1913,7 @@
                 <StackPanel Margin="12,0,0,0">
                     <Grid x:Name="SettingsHeader" Background="Transparent" Margin="0,0,0,12">
                         <TextBlock Text="{DynamicResource Str_Settings}"
-                                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                   FontFamily="{DynamicResource UiFont}" FontSize="16" FontWeight="Bold"
                                    Foreground="{DynamicResource HeaderAccent}"
                                    HorizontalAlignment="Left" VerticalAlignment="Center">
                             <TextBlock.Effect>
@@ -1912,7 +1922,7 @@
                         </TextBlock>
                         <Button Click="SettingsOverlayClose_Click"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                Width="24" Height="24" Content="&#xE711;"
+                                Width="36" Height="36" Content="&#xE711;"
                                 Style="{StaticResource DangerCloseButton}"/>
                     </Grid>
                     <TextBlock Text="{DynamicResource Str_Language}" Style="{StaticResource SettingsSubheader}"
@@ -1923,7 +1933,7 @@
                     <Grid Margin="0,0,0,4">
                         <ToggleButton x:Name="LangMenuButton"
                                       Checked="SettingsMenu_Toggled" Unchecked="SettingsMenu_Toggled"
-                                      Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                      Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                       HorizontalAlignment="Stretch"
                                       HorizontalContentAlignment="Stretch">
                             <ToggleButton.Template>
@@ -1943,7 +1953,7 @@
                             </ToggleButton.Template>
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Right"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
                                            VerticalAlignment="Center" Margin="6,0,0,0"
                                            Foreground="{DynamicResource TextSecondary}">
                                     <!-- Up chevron when the section is collapsed, down when expanded. -->
@@ -2076,7 +2086,7 @@
                     <Grid Margin="0,0,0,4">
                         <ToggleButton x:Name="ThemeMenuButton"
                                       Checked="SettingsMenu_Toggled" Unchecked="SettingsMenu_Toggled"
-                                      Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                      Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                       HorizontalAlignment="Stretch"
                                       HorizontalContentAlignment="Stretch">
                             <ToggleButton.Template>
@@ -2096,7 +2106,7 @@
                             </ToggleButton.Template>
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Right"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
                                            VerticalAlignment="Center" Margin="6,0,0,0"
                                            Foreground="{DynamicResource TextSecondary}">
                                     <!-- Up chevron when the section is collapsed, down when expanded. -->
@@ -2179,9 +2189,9 @@
                                Margin="0,12,0,8"/>
                     <!-- Toolbar style picker: a flyout submenu mirroring Theme/Language. -->
                     <Grid Margin="0,0,0,4">
-                        <ToggleButton x:Name="ToolbarMenuButton"
+                        <ToggleButton x:Name="ToolbarMenuButton" Visibility="Collapsed"
                                       Checked="SettingsMenu_Toggled" Unchecked="SettingsMenu_Toggled"
-                                      Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                      Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                       HorizontalAlignment="Stretch"
                                       HorizontalContentAlignment="Stretch">
                             <ToggleButton.Template>
@@ -2201,7 +2211,7 @@
                             </ToggleButton.Template>
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Right"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
                                            VerticalAlignment="Center" Margin="6,0,0,0"
                                            Foreground="{DynamicResource TextSecondary}">
                                     <!-- Up chevron when the section is collapsed, down when expanded. -->
@@ -2253,7 +2263,7 @@
                     <Grid Margin="0,0,0,4">
                         <ToggleButton x:Name="SidebarMenuButton"
                                       Checked="SettingsMenu_Toggled" Unchecked="SettingsMenu_Toggled"
-                                      Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                      Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                       HorizontalAlignment="Stretch"
                                       HorizontalContentAlignment="Stretch">
                             <ToggleButton.Template>
@@ -2273,7 +2283,7 @@
                             </ToggleButton.Template>
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Right"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
                                            VerticalAlignment="Center" Margin="6,0,0,0"
                                            Foreground="{DynamicResource TextSecondary}">
                                     <TextBlock.Style>
@@ -2307,7 +2317,7 @@
                     <Grid Margin="0,0,0,4">
                         <ToggleButton x:Name="ViewMenuButton"
                                       Checked="SettingsMenu_Toggled" Unchecked="SettingsMenu_Toggled"
-                                      Cursor="Hand" FocusVisualStyle="{x:Null}"
+                                      Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                                       HorizontalAlignment="Stretch"
                                       HorizontalContentAlignment="Stretch">
                             <ToggleButton.Template>
@@ -2327,7 +2337,7 @@
                             </ToggleButton.Template>
                             <DockPanel LastChildFill="True">
                                 <TextBlock DockPanel.Dock="Right"
-                                           FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                           FontFamily="Segoe MDL2 Assets" FontSize="12"
                                            VerticalAlignment="Center" Margin="6,0,0,0"
                                            Foreground="{DynamicResource TextSecondary}">
                                     <!-- Up chevron when the section is collapsed, down when expanded. -->
@@ -2388,7 +2398,7 @@
               Grid.RowSpan="5"
               Panel.ZIndex="10000"
               Visibility="Collapsed"
-              Background="#88000000"
+              Background="{DynamicResource BgOverlay}"
               MouseLeftButtonDown="ShortcutOverlay_MouseLeftButtonDown"
               MouseRightButtonDown="ShortcutOverlay_MouseLeftButtonDown">
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="480" MaxWidth="640">
@@ -2410,7 +2420,7 @@
                 <StackPanel>
                     <Grid Margin="0,0,0,12">
                         <TextBlock Text="{DynamicResource Str_KS_Title}"
-                                   FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                   FontFamily="{DynamicResource UiFont}" FontSize="16" FontWeight="Bold"
                                    Foreground="{DynamicResource HeaderAccent}"
                                    HorizontalAlignment="Left" VerticalAlignment="Center">
                             <TextBlock.Effect>
@@ -2419,7 +2429,7 @@
                         </TextBlock>
                         <Button Click="ShortcutOverlayClose_Click"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                Width="24" Height="24" Content="&#xE711;"
+                                Width="36" Height="36" Content="&#xE711;"
                                 Style="{StaticResource DangerCloseButton}"/>
                     </Grid>
 
@@ -2437,7 +2447,7 @@
                         <!-- Right column - rows generated from KsRightColumn in ShortcutsOverlay.cs -->
                         <StackPanel x:Name="ShortcutRightColumn" Grid.Column="2"/>
                     </Grid>
-                    <TextBlock HorizontalAlignment="Right" Margin="0,14,0,0" FontFamily="Consolas" FontSize="11">
+                    <TextBlock HorizontalAlignment="Right" Margin="0,14,0,0" FontFamily="{DynamicResource UiFont}" FontSize="12">
                         <Hyperlink Click="OnlineHelp_Click" Foreground="{DynamicResource Accent}"
                                    ToolTip="https://killerpdf.net/help.html"><Run Text="{DynamicResource Str_KS_OnlineHelp}"/></Hyperlink>
                     </TextBlock>
@@ -2451,7 +2461,7 @@
               Grid.RowSpan="5"
               Panel.ZIndex="10001"
               Visibility="Collapsed"
-              Background="#88000000"
+              Background="{DynamicResource BgOverlay}"
               MouseLeftButtonDown="AboutOverlay_MouseLeftButtonDown"
               MouseRightButtonDown="AboutOverlay_MouseLeftButtonDown">
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -2501,7 +2511,7 @@
                             </Grid>
                             <!-- Tagline (populated in code-behind with hyperlinks) -->
                             <TextBlock x:Name="AboutTaglineBlock"
-                                       FontSize="11"/>
+                                       FontSize="12"/>
                         </StackPanel>
                     </StackPanel>
                     <!-- Info card - matte panel lifted above the grainy card with a drop shadow.
@@ -2518,7 +2528,7 @@
                         <StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="{DynamicResource Str_About_Version}" Foreground="{DynamicResource TextSecondary}"
-                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" Margin="0,0,0,2"/>
+                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12" Margin="0,0,0,2"/>
                                 <TextBlock x:Name="AboutVersionBlock"
                                            FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12"
                                            Foreground="{DynamicResource Accent}"
@@ -2526,24 +2536,24 @@
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="{DynamicResource Str_About_Publisher}" Foreground="{DynamicResource TextSecondary}"
-                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" Margin="0,0,0,2"/>
+                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12" Margin="0,0,0,2"/>
                                 <TextBlock x:Name="AboutPublisherBlock"
                                            FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12"
                                            Foreground="{DynamicResource TextPrimary}"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="{DynamicResource Str_About_Thumbprint}" Foreground="{DynamicResource TextSecondary}"
-                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" Margin="0,0,0,2"/>
+                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12" Margin="0,0,0,2"/>
                                 <TextBlock x:Name="AboutThumbprintBlock"
-                                           FontFamily="Consolas" FontSize="11"
+                                           FontFamily="{DynamicResource UiFont}" FontSize="12"
                                            Foreground="{DynamicResource TextPrimary}"
                                            TextWrapping="Wrap"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,0,10">
                                 <TextBlock Text="{DynamicResource Str_About_ExeSha}" Foreground="{DynamicResource TextSecondary}"
-                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="11" Margin="0,0,0,2"/>
+                                           FontFamily="Segoe UI, Microsoft JhengHei UI, Nirmala UI" FontSize="12" Margin="0,0,0,2"/>
                                 <TextBlock x:Name="AboutSha256Block"
-                                           FontFamily="Consolas" FontSize="11"
+                                           FontFamily="{DynamicResource UiFont}" FontSize="12"
                                            Foreground="{DynamicResource TextPrimary}"
                                            TextWrapping="NoWrap"/>
                             </StackPanel>
@@ -2553,7 +2563,7 @@
                     <!-- Update notice: shown only when a newer release is found (set in code-behind) -->
                     <Button x:Name="AboutUpdateButton" Visibility="Collapsed"
                             Margin="0,14,0,0" HorizontalAlignment="Left"
-                            Cursor="Hand" FocusVisualStyle="{x:Null}"
+                            Cursor="Hand" FocusVisualStyle="{StaticResource OfficeFocus}"
                             Click="AboutUpdateButton_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -2574,7 +2584,7 @@
                                    Foreground="{DynamicResource Accent}"/>
                     </Button>
                     <!-- Tiny destructive footer link, bottom-right like the main-window footer, red on hover. -->
-                    <TextBlock FontFamily="Consolas" FontSize="10" Margin="0,10,0,0"
+                    <TextBlock FontFamily="{DynamicResource UiFont}" FontSize="12" Margin="0,10,0,0"
                                HorizontalAlignment="Right">
                         <Hyperlink TextDecorations="None" Cursor="Hand" Click="AboutClearData_Click">
                             <Hyperlink.Style>
@@ -2594,7 +2604,7 @@
                     <!-- X close button overlaid at top-right - no vertical space consumed -->
                     <Button Click="AboutOverlayClose_Click"
                             HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Width="24" Height="24" Content="&#xE711;"
+                            Width="36" Height="36" Content="&#xE711;"
                             Style="{StaticResource DangerCloseButton}"/>
                 </Grid>
                 </Grid>

@@ -56,7 +56,42 @@ namespace KillerPDF
             return png ?? [];
         }
 
+        public static byte[] RenderFormFieldToPng(string text, double width, double height,
+            double fontSize, bool multiline, TextAlignment alignment)
+        {
+            var annotation = new TextAnnotation
+            {
+                Content = text ?? "",
+                Width = Math.Max(1, width),
+                Height = Math.Max(1, height),
+                FontSize = Math.Max(1, fontSize),
+                FontName = "Microsoft JhengHei"
+            };
+            return RenderToPng(annotation, multiline, alignment);
+        }
+
         private static byte[] RenderToPngOnSta(TextAnnotation ta)
+            => RenderToPngOnSta(ta, multiline: true, TextAlignment.Left);
+
+        private static byte[] RenderToPng(TextAnnotation annotation, bool multiline, TextAlignment alignment)
+        {
+            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+                return RenderToPngOnSta(annotation, multiline, alignment);
+            byte[]? png = null;
+            Exception? error = null;
+            var thread = new Thread(() =>
+            {
+                try { png = RenderToPngOnSta(annotation, multiline, alignment); }
+                catch (Exception ex) { error = ex; }
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+            if (error is not null) throw error;
+            return png ?? [];
+        }
+
+        private static byte[] RenderToPngOnSta(TextAnnotation ta, bool multiline, TextAlignment alignment)
         {
             double width = Math.Max(1, ta.Width);
             double height = Math.Max(1, ta.Height);
@@ -69,9 +104,11 @@ namespace KillerPDF
                 FontStyle = ta.Italic ? FontStyles.Italic : FontStyles.Normal,
                 TextDecorations = BuildDecorations(ta.Underline, ta.Strike),
                 FontSize = Math.Max(1, ta.FontSize),
-                Padding = new Thickness(2),
-                TextWrapping = TextWrapping.Wrap,
-                VerticalAlignment = VerticalAlignment.Top
+                Padding = new Thickness(2, 0, 2, 0),
+                TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                TextTrimming = multiline ? TextTrimming.None : TextTrimming.CharacterEllipsis,
+                TextAlignment = alignment,
+                VerticalAlignment = multiline ? VerticalAlignment.Top : VerticalAlignment.Center
             };
             TextOptions.SetTextFormattingMode(text, TextFormattingMode.Display);
             TextOptions.SetTextRenderingMode(text, TextRenderingMode.Grayscale);

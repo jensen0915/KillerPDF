@@ -34,8 +34,10 @@ namespace KillerPDF
             // Don't intercept keys when typing in an editable TextBox (typewriter tool or form field).
             // The zoom ComboBox is editable-but-read-only; after using it, focus parks on its inner
             // TextBox and would otherwise swallow every shortcut (e.g. Ctrl+F) until the user clicked away.
-            if (e.OriginalSource is TextBox tbSrc && !tbSrc.IsReadOnly) return;
-            if (_activeTextBox is not null && _activeTextBox.IsFocused) return;
+            bool saving = e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0 && !_imeComposing;
+            if (!saving && e.OriginalSource is FrameworkElement field && field.Tag as string == FormOverlayTag) return;
+            if (!saving && e.OriginalSource is TextBox tbSrc && !tbSrc.IsReadOnly) return;
+            if (!saving && _activeTextBox is not null && _activeTextBox.IsFocused) return;
 
             if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -97,7 +99,7 @@ namespace KillerPDF
             {
                 // A cancellable long operation (OCR, repair) is running behind the busy overlay - offer to
                 // cancel it instead of letting Escape fall through to the app-exit handler below.
-                if (KillerDialog.Show(this, $"Cancel the current {_busyOpLabel}?", "KillerPDF",
+                if (KillerDialog.Show(this, string.Format(Loc("Str_Dlg_CancelCurrent"), _busyOpLabel), Loc("Str_Dlg_AppTitle"),
                         MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                     _busyCts?.Cancel();
                 e.Handled = true;
@@ -263,8 +265,9 @@ namespace KillerPDF
             }
             else if (e.Key == Key.Escape)
             {
-                // No overlay active - ESC exits the app
-                Close();
+                // Escape cancels the active tool operation; it must not close the main window.
+                if (_currentTool != EditTool.Select)
+                    SetTool(EditTool.Select);
                 e.Handled = true;
             }
             else if (e.Key == Key.Space && !_spaceHeld)

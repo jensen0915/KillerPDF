@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Windows;
 
 namespace KillerPDF.Services
@@ -17,8 +18,18 @@ namespace KillerPDF.Services
         public static void Initialize()
         {
             var saved = App.GetSetting("Locale");
-            _current = Enum.TryParse<Locale>(saved, out var l) ? l : Locale.EnUS;
+            _current = Enum.TryParse<Locale>(saved, out var l) ? l : DefaultLocale();
             ApplyInternal(_current);
+        }
+
+        private static Locale DefaultLocale()
+        {
+            string name = CultureInfo.CurrentUICulture.Name;
+            if (name.Equals("zh-TW", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("zh-Hant", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("zh-HK", StringComparison.OrdinalIgnoreCase))
+                return Locale.ZhTW;
+            return Locale.EnUS;
         }
 
         /// <summary>

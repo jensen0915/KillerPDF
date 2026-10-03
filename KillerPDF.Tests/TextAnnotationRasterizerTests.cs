@@ -1,4 +1,7 @@
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.IO;
 using Xunit;
 
 namespace KillerPDF.Tests
@@ -39,6 +42,22 @@ namespace KillerPDF.Tests
             Assert.Equal(0x50, png[1]);
             Assert.Equal(0x4E, png[2]);
             Assert.Equal(0x47, png[3]);
+        }
+
+        [Theory]
+        [InlineData("繁體中文欄位", false, TextAlignment.Center)]
+        [InlineData("第一行\n第二行", true, TextAlignment.Right)]
+        [InlineData("Plain Latin text", false, TextAlignment.Left)]
+        public void RenderFormFieldProducesTransparentPng(string text, bool multiline, TextAlignment alignment)
+        {
+            var png = TextAnnotationRasterizer.RenderFormFieldToPng(text, 180, 42, 12, multiline, alignment);
+            var decoder = new PngBitmapDecoder(new MemoryStream(png), BitmapCreateOptions.PreservePixelFormat,
+                BitmapCacheOption.OnLoad);
+            var frame = decoder.Frames[0];
+
+            Assert.Equal(540, frame.PixelWidth);
+            Assert.Equal(126, frame.PixelHeight);
+            Assert.True(frame.Format == PixelFormats.Pbgra32 || frame.Format == PixelFormats.Bgra32);
         }
     }
 }

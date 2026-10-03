@@ -68,7 +68,7 @@ namespace KillerPDF
             double sigW = sig.CanvasWidth * scale;
             double sigH = sig.CanvasHeight * scale;
             SelectAnnotation(annot, new Rect(pos.X, pos.Y, sigW, sigH));
-            SetStatus("Signature placed - drag to reposition, use the corner handle to resize");
+            SetStatus(Loc("Str_Sig_Placed"));
         }
 
         // Already signed -> change/remove menu. Otherwise drop the reusable choice, or open the
@@ -85,9 +85,7 @@ namespace KillerPDF
             {
                 _pendingSignField = (initials, objNum, pageIndex, x, y, w, h);
                 ShowSignaturePopup();
-                SetStatus(initials
-                    ? "Choose initials - they will be reused for every initials field"
-                    : "Choose a signature - it will be reused for every signature field");
+                SetStatus(Loc(initials ? "Str_Sig_ChooseInitials" : "Str_Sig_ChooseSignature"));
                 return;
             }
             DropSignatureInField(objNum, choice, pageIndex, x, y, w, h);
@@ -96,15 +94,15 @@ namespace KillerPDF
         // Re-clicking a signed field: change (re-pick) or remove it.
         private void ShowSignedFieldMenu(bool initials, int objNum, int pageIndex, double x, double y, double w, double h)
         {
-            string what = initials ? "initials" : "signature";
+            string what = Loc(initials ? "Str_Sig_Initials" : "Str_Sig_Signatures");
             var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
-            menu.Items.Add(MakeMenuItem("Change " + what, (_, _) =>
+            menu.Items.Add(MakeMenuItem(string.Format(Loc("Str_Sig_Change"), what), (_, _) =>
             {
                 RemoveSignedField(objNum, pageIndex);
                 _pendingSignField = (initials, objNum, pageIndex, x, y, w, h);
                 ShowSignaturePopup();
             }));
-            menu.Items.Add(MakeMenuItem("Remove " + what, (_, _) => RemoveSignedField(objNum, pageIndex)));
+            menu.Items.Add(MakeMenuItem(string.Format(Loc("Str_Sig_Remove"), what), (_, _) => RemoveSignedField(objNum, pageIndex)));
             menu.IsOpen = true;
         }
 
@@ -116,7 +114,7 @@ namespace KillerPDF
             _signedFields.Remove(objNum);
             RenderAllAnnotations(pageIndex);
             MarkDirty(true);
-            SetStatus("Field cleared");
+            SetStatus(Loc("Str_Sig_FieldCleared"));
         }
 
         // Places a SignatureAnnotation centred in and scaled to fit the field rectangle.
@@ -148,7 +146,7 @@ namespace KillerPDF
             AddAnnotation(annot);
             RenderAllAnnotations(pageIndex);
             MarkDirty(true);
-            SetStatus("Field signed");
+            SetStatus(Loc("Str_Sig_FieldSigned"));
         }
 
         private void HideSignaturePopup()
@@ -400,9 +398,9 @@ namespace KillerPDF
                     }
                     _pendingSignature = sigCopy;
                     _annotationCanvas.Cursor = Cursors.Cross;
-                    SetStatus(sigCopy.Kind == SignatureKind.Initials
-                        ? "Click on the page to place your initials"
-                        : "Click on the page to place your signature");
+                    SetStatus(Loc(sigCopy.Kind == SignatureKind.Initials
+                        ? "Str_Sig_ClickToPlaceInitials"
+                        : "Str_Sig_ClickToPlaceSignature"));
                 };
                 item.MouseEnter += (s, e) =>
                     ((Border)s!).BorderBrush = (SolidColorBrush)FindResource("Accent");
@@ -485,11 +483,23 @@ namespace KillerPDF
                 var createBtn = UiKit.Make(Loc("Str_Sig_Create"), accent: true);
                 createBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
                 createBtn.Margin = new Thickness(0, 0, 3, 0);
-                createBtn.Click += (s, e) => { HideSignaturePopup(); OpenSignatureCreator(kind); ShowSignaturePopup(); };
+                createBtn.Click += (s, e) =>
+                {
+                    HideSignaturePopup();
+                    _pendingSignature = null;
+                    OpenSignatureCreator(kind);
+                    if (_pendingSignature is null) ShowSignaturePopup();
+                };
                 var importBtn = UiKit.Make(Loc("Str_Sig_Import"), accent: false);
                 importBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
                 importBtn.Margin = new Thickness(3, 0, 0, 0);
-                importBtn.Click += (s, e) => { HideSignaturePopup(); ImportImageSignature(kind); ShowSignaturePopup(); };
+                importBtn.Click += (s, e) =>
+                {
+                    HideSignaturePopup();
+                    _pendingSignature = null;
+                    ImportImageSignature(kind);
+                    if (_pendingSignature is null) ShowSignaturePopup();
+                };
                 Grid.SetColumn(createBtn, 0);
                 Grid.SetColumn(importBtn, 1);
                 rowBtns.Children.Add(createBtn);
@@ -564,10 +574,16 @@ namespace KillerPDF
 
         private void OpenSignatureCreator(SignatureKind kind = SignatureKind.Signature)
         {
+            double workW = Math.Max(320, SystemParameters.WorkArea.Width - 40);
+            double workH = Math.Max(320, SystemParameters.WorkArea.Height - 40);
             var win = new Window
             {
-                Title = "Create Signature",
-                Width = 460,
+                Title = Loc("Str_Sig_CreateTitle"),
+                Width = Math.Min(760, workW),
+                MinWidth = Math.Min(640, workW),
+                MaxWidth = workW,
+                MaxHeight = workH,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 SizeToContent = SizeToContent.Height   // size to content so there's no empty padding below
             };
             DialogChrome.Configure(win, this);
@@ -587,7 +603,8 @@ namespace KillerPDF
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(12, 12, 12, 4),
                 CornerRadius = new CornerRadius(4),
-                Height = 170
+                MinWidth = Math.Min(600, Math.Max(300, workW - 24)),
+                Height = Math.Min(300, Math.Max(180, workH - 300))
             };
             var drawCanvas = new SignatureInkCanvas();
             canvasBorder.Child = drawCanvas;
@@ -616,7 +633,7 @@ namespace KillerPDF
             // Pen-width selector: three preset thicknesses, active one highlighted. On the left so the
             // modal does not read bottom-right-heavy.
             var penRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(14, 6, 12, 0), VerticalAlignment = VerticalAlignment.Center };
-            penRow.Children.Add(new TextBlock { Text = Loc("Str_Sig_Pen"), Foreground = (SolidColorBrush)FindResource("TextSecondary"), FontFamily = UiKit.UiFont, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            penRow.Children.Add(new TextBlock { Text = Loc("Str_Sig_Pen"), Foreground = (SolidColorBrush)FindResource("TextSecondary"), FontFamily = UiKit.UiFont, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
             var penOptions = new (string Label, double W)[] { (Loc("Str_Sig_Thin"), 2.0), (Loc("Str_Sig_Medium"), 4.5), (Loc("Str_Sig_Thick"), 9.0) };
             var penBtns = new List<Button>();
             void RefreshPen()
@@ -635,13 +652,14 @@ namespace KillerPDF
                 var pb = new Button
                 {
                     Content = lbl,
+                    MinHeight = 36,
                     Style = (Style)FindResource("DarkButton"),
                     Padding = new Thickness(12, 3, 12, 3),
                     Margin = new Thickness(0, 0, 6, 0),
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
                     FontFamily = UiKit.UiFont,
-                    FontSize = 11
+                    FontSize = 12
                 };
                 pb.Click += (s2, e2) => { penWidth = ww; drawCanvas.SetPenWidth(ww); RefreshPen(); };
                 penBtns.Add(pb);
@@ -657,6 +675,7 @@ namespace KillerPDF
             };
 
             var clearBtn = UiKit.Make(Loc("Str_Sig_Clear"), accent: false);
+            clearBtn.Height = 44;
             clearBtn.Margin = new Thickness(0, 0, 8, 0);
             clearBtn.Click += (s, e) =>
             {
@@ -664,12 +683,33 @@ namespace KillerPDF
                 placeholder.Visibility = Visibility.Visible;
             };
 
+            var undoBtn = UiKit.Make(Loc("Str_Sig_UndoLast"), accent: false);
+            undoBtn.Height = 44;
+            undoBtn.Margin = new Thickness(0, 0, 8, 0);
+            undoBtn.Click += (s, e) =>
+            {
+                if (drawCanvas.Strokes.Count == 0) return;
+                drawCanvas.Strokes.RemoveAt(drawCanvas.Strokes.Count - 1);
+                placeholder.Visibility = drawCanvas.Strokes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            };
+
+            var saveCheck = new CheckBox
+            {
+                IsChecked = false,
+                Content = Loc("Str_Sig_SaveToComputer"),
+                Margin = new Thickness(14, 8, 12, 0),
+                Foreground = (SolidColorBrush)FindResource("TextPrimary"),
+                FontFamily = UiKit.UiFont,
+                FontSize = 11
+            };
+
             var saveBtn = UiKit.Make(Loc("Str_Sig_SaveSig"), accent: true);
+            saveBtn.Height = 44;
             saveBtn.Click += (s, e) =>
             {
                 if (drawCanvas.Strokes.Count == 0)
                 {
-                    KillerDialog.Show(this, "Draw a signature first.", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    KillerDialog.Show(this, Loc("Str_Sig_DrawFirst"), "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -682,30 +722,42 @@ namespace KillerPDF
                     StrokeWidth = penWidth,
                     CanvasWidth = cw,
                     CanvasHeight = ch,
-                    Name = $"{(kind == SignatureKind.Initials ? "Initials" : "Signature")} {_signatureStore.Signatures.Count(x => x.Kind == kind) + 1}"
+                    Name = string.Format(Loc(kind == SignatureKind.Initials ? "Str_Sig_NameInitials" : "Str_Sig_NameSignature"),
+                        _signatureStore.Signatures.Count(x => x.Kind == kind) + 1)
                 };
                 foreach (var stroke in drawCanvas.Strokes)
                 {
                     var sPts = stroke.StylusPoints.Select(p => new SerializablePoint { X = p.X, Y = p.Y }).ToList();
                     saved.Strokes.Add(sPts);
                 }
-                _signatureStore.Add(saved);
-                PersistSignatures();
+                if (saveCheck.IsChecked == true)
+                {
+                    _signatureStore.Add(saved);
+                    PersistSignatures();
+                }
 
                 // Auto-select the new signature for placement
                 _pendingSignature = saved;
                 _annotationCanvas.Cursor = Cursors.Cross;
-                SetStatus("Signature saved - click on the page to place it");
+                SetStatus(Loc("Str_Sig_ReadyToPlace"));
 
                 win.Close();
             };
 
+            var cancelBtn = UiKit.Make(Loc("Str_Sig_Cancel"), accent: false);
+            cancelBtn.Height = 44;
+            cancelBtn.Margin = new Thickness(0, 0, 8, 0);
+            cancelBtn.Click += (s, e) => win.Close();
+
             btnPanel.Children.Add(clearBtn);
+            btnPanel.Children.Add(undoBtn);
+            btnPanel.Children.Add(cancelBtn);
             btnPanel.Children.Add(saveBtn);
 
             // Pen-size selector on its own row above the buttons. A single shared row doesn't survive
             // longer translated labels (e.g. Bengali Clear/Save) - the last pen option ("Thick") clipped.
             contentArea.Children.Add(penRow);
+            contentArea.Children.Add(saveCheck);
             btnPanel.Margin = new Thickness(12, 4, 12, 12);
             contentArea.Children.Add(btnPanel);
 
@@ -717,8 +769,8 @@ namespace KillerPDF
         {
             var dlg = new OpenFileDialog
             {
-                Filter = "Image files|*.png;*.jpg;*.jpeg;*.bmp;*.gif|All files|*.*",
-                Title = "Import Signature Image"
+                Filter = Loc("Str_Sig_ImageFilter"),
+                Title = Loc("Str_Sig_ImportTitle")
             };
             if (dlg.ShowDialog(this) != true) return;
 
@@ -742,16 +794,23 @@ namespace KillerPDF
                     CanvasHeight = bmp.PixelHeight,
                     ImageData = Convert.ToBase64String(pngBytes)
                 };
-                _signatureStore.Add(saved);
-                PersistSignatures();
+
+                bool remember = MessageBox.Show(this, Loc("Str_Sig_SaveImportedQuestion"),
+                    Loc("Str_Sig_SaveToComputer"), MessageBoxButton.YesNo, MessageBoxImage.Question,
+                    MessageBoxResult.No) == MessageBoxResult.Yes;
+                if (remember)
+                {
+                    _signatureStore.Add(saved);
+                    PersistSignatures();
+                }
 
                 _pendingSignature = saved;
                 _annotationCanvas.Cursor = Cursors.Cross;
-                SetStatus("Image loaded - click on the page to place it");
+                SetStatus(Loc("Str_Sig_ImageReadyToPlace"));
             }
             catch (Exception ex)
             {
-                KillerDialog.Show(this, $"Failed to import image:\n{ex.Message}", "KillerPDF",
+                KillerDialog.Show(this, string.Format(Loc("Str_Sig_ImportFailed"), ex.Message), "KillerPDF",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

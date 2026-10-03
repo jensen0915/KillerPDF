@@ -1119,7 +1119,7 @@ namespace KillerPDF
         // Opens the Document Info dialog; edits are applied to the live doc and persist on the next save.
         private void OpenDocumentInfo()
         {
-            if (_doc is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
+            if (_doc is null) { KillerDialog.Show(this, Loc("Str_OpenFirst")); return; }
             CommitActiveTextBox();
             var dlg = new DocumentInfoDialog(this, _doc, _originalFile ?? _currentFile);
             dlg.ShowDialog();   // fade-close dialogs don't reliably return true; rely on the Saved flag
@@ -1132,7 +1132,7 @@ namespace KillerPDF
 
         private void Merge_Click(object sender, RoutedEventArgs e)
         {
-            if (_doc is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
+            if (_doc is null) { KillerDialog.Show(this, Loc("Str_OpenFirst")); return; }
             var doc = _doc;
             var dlg = new OpenFileDialog { Filter = "PDF files|*.pdf", Title = "Select PDF to merge", Multiselect = true };
             if (dlg.ShowDialog(this) != true) return;
@@ -1341,221 +1341,74 @@ namespace KillerPDF
 
         private void SaveInPlace()
         {
-            if (_doc is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
-            // Save back to the user's real file. After a page edit (crop/rotate) _currentFile is a
-            // temp working copy, so the real path is kept in _originalFile. If there is no real path
-            // (e.g. a repaired temp-backed open), fall back to Save As.
+            if (_doc is null) { KillerDialog.Show(this, Loc("Str_OpenFirst")); return; }
             if (string.IsNullOrEmpty(_originalFile)) { SaveAs_Click(this, new RoutedEventArgs()); return; }
             CommitActiveTextBox();
-            if (!ConfirmEdgeFragileVectorSave()) return;
-            string saveTarget = _originalFile!;
-            try
-            {
-                bool hasAnnotations = _annotations.Values.Any(list => list.Count > 0);
-                WriteFormValuesToDocument();
-                // Always strip link annotation borders regardless of user annotation count
-                // so mailto/URI links don't appear as strikethrough lines in other viewers.
-                StripLinkAnnotationBorders(_doc);
-                StripInvalidPdfXMetadata(_doc);
-
-                if (hasAnnotations)
-                {
-                    // Save a clean copy of the doc (without burned annotations), burn
-                    // annotations into the real file, then restore the in-memory doc
-                    // from the clean copy so future saves don't double-burn.
-                    var tempClean = App.MakeTempFile("clean");
-                    _doc.Save(tempClean);
-                    DrawStampsOnDocument();
-                    DrawAnnotationsOnDocument();
-                    _doc.Save(saveTarget);
-                    _doc.Close();
-                    try
-                    {
-                        _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-                    }
-                    catch (Exception saveOpenEx) when (IsXRefException(saveOpenEx))
-                    {
-                        var fixedPath = App.MakeTempFile("savefixed");
-                        if (!TryImportRepairToPath(tempClean, fixedPath)
-                            && !TryPdfiumSaveWithZeroRotations(tempClean, fixedPath))
-                            throw;
-                        tempClean = fixedPath;
-                        _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-                    }
-                    _currentFile = tempClean;
-                }
-                else
-                {
-                    _doc.Save(saveTarget);
-                }
-
-                MarkDirty(false);
-                SetStatus($"Saved - {System.IO.Path.GetFileName(saveTarget)}");
-            }
-            catch (Exception ex)
-            {
-                KillerDialog.Show(this, $"Save failed:\n{ex.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            if (ConfirmEdgeFragileVectorSave()) SaveDocumentTo(_originalFile!);
         }
 
-        private void Save_Click(object sender, RoutedEventArgs e)
-        {
-            if (_doc is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
-            // No real path yet (repaired temp-backed open) -> go straight to Save As.
-            if (string.IsNullOrEmpty(_originalFile)) { SaveAs_Click(sender, e); return; }
-            var name = System.IO.Path.GetFileName(_originalFile);
-            var choice = KillerDialog.Show(this, $"Overwrite {name}?", "Save",
-                                           MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-            if (choice == MessageBoxResult.Yes)      SaveInPlace();
-            else if (choice == MessageBoxResult.No)  SaveAs_Click(sender, e);
-            // Cancel or closed: do nothing.
-        }
+        private void Save_Click(object sender, RoutedEventArgs e) => SaveInPlace();
 
-        private void SaveAs_Click(object sender, RoutedEventArgs e)
+        private void SaveAs_Click(object sender, RoutedEventArgs e) => SaveDocumentAs();
+
+        private bool SaveDocumentAs(bool forSigning = false)
         {
-            if (_doc is null || _currentFile is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
+            if (_doc is null) { KillerDialog.Show(this, Loc("Str_OpenFirst")); return false; }
             CommitActiveTextBox();
-            var dlg = new SaveFileDialog { Filter = "PDF files|*.pdf", Title = "Save PDF as",
-                                           CheckFileExists = false, CheckPathExists = true };
-            // Seed the dialog from the last real save location. Guard every path call: on .NET Framework
-            // Path.GetDirectoryName("") throws ArgumentException ("path is not of a legal form"), so a merged
-            // or imported doc (where _originalFile is null) would crash Save before the dialog opened (#112).
-            string? seed = _originalFile ?? _currentFile;
-            try
+            var dlg = new SaveFileDialog
             {
-                if (!string.IsNullOrWhiteSpace(seed))
-                    dlg.FileName = System.IO.Path.GetFileName(seed);
-                if (!string.IsNullOrWhiteSpace(_originalFile))
-                {
-                    var seedDir = System.IO.Path.GetDirectoryName(_originalFile);
-                    if (!string.IsNullOrEmpty(seedDir) && System.IO.Directory.Exists(seedDir))
-                        dlg.InitialDirectory = seedDir;
-                }
-            }
-            catch { /* malformed seed path - just open the dialog with its defaults */ }
-            if (dlg.ShowDialog(this) != true) return;
-            if (!ConfirmEdgeFragileVectorSave()) return;
-            try
+                Filter = "PDF|*.pdf", Title = Loc(forSigning ? "Str_SaveBeforeSigning" : "Str_Menu_SaveAs"),
+                CheckPathExists = true, OverwritePrompt = true, AddExtension = true, DefaultExt = ".pdf"
+            };
+            if (!string.IsNullOrEmpty(_originalFile))
             {
-                bool hasAnnotations = _annotations.Values.Any(list => list.Count > 0);
-                WriteFormValuesToDocument();
-                // Always strip link annotation borders regardless of user annotation count.
-                StripLinkAnnotationBorders(_doc);
-                StripInvalidPdfXMetadata(_doc);
-
-                if (hasAnnotations)
-                {
-                    var tempClean = App.MakeTempFile("clean");
-                    _doc.Save(tempClean);
-                    DrawStampsOnDocument();
-                    DrawAnnotationsOnDocument();
-                    _doc.Save(dlg.FileName);
-                    _doc.Close();
-                    try
-                    {
-                        _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-                    }
-                    catch (Exception saveOpenEx) when (IsXRefException(saveOpenEx))
-                    {
-                        var fixedPath = App.MakeTempFile("savefixed");
-                        if (!TryImportRepairToPath(tempClean, fixedPath)
-                            && !TryPdfiumSaveWithZeroRotations(tempClean, fixedPath))
-                            throw;
-                        tempClean = fixedPath;
-                        _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-                    }
-                    _currentFile = tempClean;
-                    _originalFile = dlg.FileName;
-                    FileNameLabel.Text = System.IO.Path.GetFileName(dlg.FileName);
-                    MarkDirty(false);
-                    SetStatus($"Saved with annotations to {System.IO.Path.GetFileName(dlg.FileName)}");
-                }
-                else
-                {
-                    _doc.Save(dlg.FileName);
-                    _originalFile = dlg.FileName;
-                    FileNameLabel.Text = System.IO.Path.GetFileName(dlg.FileName);
-                    MarkDirty(false);
-                    SetStatus($"Saved to {System.IO.Path.GetFileName(dlg.FileName)}");
-                }
+                dlg.InitialDirectory = System.IO.Path.GetDirectoryName(_originalFile);
+                dlg.FileName = forSigning
+                    ? System.IO.Path.GetFileNameWithoutExtension(_originalFile) + "-to-sign.pdf"
+                    : System.IO.Path.GetFileName(_originalFile);
             }
-            catch (Exception ex)
-            {
-                KillerDialog.Show(this, $"Save failed:\n{ex.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            if (dlg.ShowDialog(this) != true || !ConfirmEdgeFragileVectorSave()) return false;
+            return SaveDocumentTo(dlg.FileName);
         }
 
         private bool ConfirmEdgeFragileVectorSave()
         {
             if (!_edgeAdobeFragilePdf) return true;
             KillerDialog.Show(this,
-                "This PDF uses image/mask structures that Edge's Adobe PDF viewer shows as a blank page after normal Save.\n\nUse Save > Save Flattened PDF... for an Edge-compatible copy.",
+                Loc("Str_CompatibleRecommended"),
                 "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
         private async void SaveFlattened_Click(object sender, RoutedEventArgs e)
         {
-            if (_doc is null || _currentFile is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
+            if (_doc is null || _currentFile is null) { KillerDialog.Show(this, Loc("Str_OpenFirst")); return; }
             CommitActiveTextBox();
-            var dlg = new SaveFileDialog { Filter = "PDF files|*.pdf", Title = "Save Flattened PDF",
+            var dlg = new SaveFileDialog { Filter = "PDF files|*.pdf", Title = Loc("Str_Lbl_Flatten"),
                                            CheckFileExists = false, CheckPathExists = true };
+            dlg.FileName = System.IO.Path.GetFileNameWithoutExtension(_originalFile ?? "document.pdf") + "-compatible.pdf";
+            if (KillerDialog.Show(this, Loc("Str_CompatibleExplanation"), Loc("Str_Lbl_Flatten"),
+                MessageBoxButton.OKCancel, MessageBoxImage.Information) != MessageBoxResult.OK) return;
             if (dlg.ShowDialog(this) != true) return;
 
-            // Burn any pending annotations into a temp source for rasterization
-            // (must happen on UI thread before we go async)
-            string sourcePath;
-            bool hasAnnotations = _annotations.Values.Any(list => list.Count > 0);
-            if (hasAnnotations)
+            if (!string.IsNullOrEmpty(_originalFile) && string.Equals(System.IO.Path.GetFullPath(dlg.FileName),
+                System.IO.Path.GetFullPath(_originalFile), StringComparison.OrdinalIgnoreCase))
             {
-                var tempClean  = App.MakeTempFile("clean");
-                var tempBurned = App.MakeTempFile("burned");
-                StripInvalidPdfXMetadata(_doc);
-                _doc.Save(tempClean);
-                DrawStampsOnDocument();
-                DrawAnnotationsOnDocument();
-                _doc.Save(tempBurned);
-                _doc.Close();
-                try
-                {
-                    _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-                }
-                catch (Exception saveOpenEx) when (IsXRefException(saveOpenEx))
-                {
-                    var fixedPath = App.MakeTempFile("savefixed");
-                    if (!TryImportRepairToPath(tempClean, fixedPath)
-                        && !TryPdfiumSaveWithZeroRotations(tempClean, fixedPath))
-                        throw;
-                    tempClean = fixedPath;
-                    _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-                }
-                _currentFile = tempClean;
-                sourcePath = tempBurned;
+                KillerDialog.Show(this, Loc("Str_ExportNeedsNewPath"));
+                return;
             }
-            else
-            {
-                var temp = App.MakeTempFile("src");
-                StripInvalidPdfXMetadata(_doc);
-                _doc.Save(temp);
-                sourcePath = temp;
-            }
-
-            int pageCount = _doc.PageCount;
-
-            // Snapshot per-page dimensions (CropBox-aware) before going off-thread
-            var pageDims = new (double widthPt, double heightPt)[pageCount];
-            for (int i = 0; i < pageCount; i++)
-            {
-                var p = _doc.Pages[i];
-                pageDims[i] = (p.Width.Point, p.Height.Point);
-            }
-
-            // Show a progress overlay so the user knows we're working
-            var overlay = ShowFlattenProgress(pageCount);
+            string? sourcePath = null;
+            string stagedOutput = App.MakeTempFile("compatible-output");
+            Border? overlay = null;
             string outputPath = dlg.FileName;
-
             try
             {
+                sourcePath = CreateDocumentOutputSnapshot();
+                int pageCount = _doc.PageCount;
+                var pageDims = new (double widthPt, double heightPt)[pageCount];
+                for (int i = 0; i < pageCount; i++)
+                    pageDims[i] = (_doc.Pages[i].Width.Point, _doc.Pages[i].Height.Point);
+                overlay = ShowFlattenProgress(pageCount, Loc("Str_ExportProgress"));
                 var ct = BeginCancellableOp("flatten");
                 // Rasterize on a background thread - keeps the UI responsive
                 await Task.Run(() =>
@@ -1607,7 +1460,7 @@ namespace KillerPDF
                             using var gfx = XGraphics.FromPdfPage(newPage);
                             gfx.DrawImage(xi, 0, 0, newPage.Width.Point, newPage.Height.Point);
                         }
-                        outDoc.Save(outputPath);
+                        outDoc.Save(stagedOutput);
                     }
                     finally
                     {
@@ -1615,18 +1468,20 @@ namespace KillerPDF
                     }
                 });
 
-                if (ct.IsCancellationRequested) { SetStatus("Flatten cancelled (no file written)"); return; }
-                MarkDirty(false);
-                SetStatus($"Flattened PDF saved to {System.IO.Path.GetFileName(outputPath)}");
+                if (ct.IsCancellationRequested) { SetStatus(Loc("Str_ExportCancelled")); return; }
+                AtomicFile.Copy(stagedOutput, outputPath);
+                SetStatus(string.Format(Loc("Str_ExportSaved"), System.IO.Path.GetFileName(outputPath)));
             }
             catch (Exception ex)
             {
-                try { KillerDialog.Show(this, $"Flatten failed:\n{ex.GetType().Name}: {ex.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error); }
+                try { KillerDialog.Show(this, string.Format(Loc("Str_ExportFailed"), ex.Message), "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error); }
                 catch { /* dialog failed; overlay still removed in finally */ }
             }
             finally
             {
-                try { HideFlattenProgress(overlay); } catch { /* ensure overlay never leaks */ }
+                if (overlay != null) HideFlattenProgress(overlay);
+                DeleteOutputTemp(sourcePath);
+                DeleteOutputTemp(stagedOutput);
                 EndCancellableOp();
             }
         }
@@ -1683,7 +1538,7 @@ namespace KillerPDF
 
         private void Print_Click(object sender, RoutedEventArgs e)
         {
-            if (_doc is null || _currentFile is null) { KillerDialog.Show(this, "Open a PDF first."); return; }
+            if (_doc is null || _currentFile is null) { KillerDialog.Show(this, Loc("Str_OpenFirst")); return; }
             CommitActiveTextBox();
 
             // The print prep (annotation burn + doc reopen) runs synchronously on the UI thread and freezes
@@ -1703,66 +1558,18 @@ namespace KillerPDF
             }
         }
 
-        private async void RunPrintFlow()
+        private void RunPrintFlow()
         {
             if (_doc is null || _currentFile is null) return;
-            string srcFile = _currentFile;
-
-            bool hasAnnotations = _annotations.Values.Any(list => list.Count > 0);
             string printPath;
-            string? tempFlattened = null;
-            if (hasAnnotations || _docStampSpec is not null)
+            try { printPath = CreateDocumentOutputSnapshot(); }
+            catch (Exception ex)
             {
-                var tempClean = App.MakeTempFile("clean");
-                StripInvalidPdfXMetadata(_doc);
-                _doc.Save(tempClean);   // UI-thread snapshot of the current doc (just serialization)
-                // Snapshot the data the burn needs so the background thread reads no live UI state.
-                var annotsSnap = _annotations.ToDictionary(kv => kv.Key, kv => new List<PageAnnotation>(kv.Value));
-                var dimsSnap   = new Dictionary<int, (int w, int h)>(_renderDims);
-                var stampSnap  = _docStampSpec?.Clone();
-                var burnPath   = App.MakeTempFile("print");
-
-                // Flatten the annotations onto a throwaway COPY on a background thread. The live _doc is never
-                // touched (no close/reopen), so the UI stays responsive and the editing session keeps its
-                // overlay annotations. DrawAnnotationsIntoDoc is static, so it can't reach UI state.
-                bool burned = await Task.Run(() =>
-                {
-                    try
-                    {
-                        PdfDocument burnDoc;
-                        try { burnDoc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify); }
-                        catch (Exception ex) when (IsXRefException(ex))
-                        {
-                            // PdfSharpCore can write a snapshot its own reader then chokes on; repair via
-                            // Import then PDFium, same as the save/undo paths.
-                            var fixedPath = App.MakeTempFile("printfixed");
-                            if (!TryImportRepairToPath(tempClean, fixedPath) && !TryPdfiumSaveWithZeroRotations(tempClean, fixedPath))
-                                return false;
-                            burnDoc = PdfReader.Open(fixedPath, PdfDocumentOpenMode.Modify);
-                        }
-                        using (burnDoc)
-                        {
-                            DrawStampsIntoDoc(burnDoc, stampSnap);   // stamps sit beneath annotations
-                            DrawAnnotationsIntoDoc(burnDoc, annotsSnap, dimsSnap);
-                            burnDoc.Save(burnPath);
-                        }
-                        return true;
-                    }
-                    catch { return false; }
-                });
-
-                if (!burned) SetStatus("Could not flatten annotations for printing; printing without them.");
-                printPath     = burned ? burnPath : srcFile;
-                tempFlattened = burned ? burnPath : null;
+                KillerDialog.Show(this, string.Format(Loc("Str_PrintFailed"), ex.Message), "KillerPDF",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
-            else
-            {
-                printPath = srcFile;
-            }
-
-            if (_doc is null) return;   // re-check after the await (the doc was untouched, this satisfies flow analysis)
             int pageCount = _doc.PageCount;
-
             // Each page's true physical size in DIPs (96/inch) so the dialog can offer an exact
             // "actual size" / custom scale. Computed on the UI thread (PdfSharp isn't thread-safe).
             var pageDipW = new double[pageCount];
@@ -1782,7 +1589,7 @@ namespace KillerPDF
             // responsive on large files. WPF's OS PrintDialog can't show a preview, so KillerPDF
             // renders it and drives printing itself.
             string  renderPath = printPath;
-            string? cleanup    = tempFlattened;
+            string? cleanup    = printPath;
             // Preview rasters are display-only (shown fit-to-pane in a Viewbox), so render them at a
             // modest budget that scales DOWN as the document grows - this keeps the preview's resident
             // bitmaps from ballooning on large files. The Print button re-renders the chosen pages at a

@@ -36,7 +36,60 @@ namespace KillerPDF
             double Cx, double Cy, double Cw, double Ch,
             List<string> Options,
             double DaFontPt,   // font size from the field's /DA (points); 0 = auto-size
+            int TextAlign,     // inherited /Q: 0 left, 1 center, 2 right
             double Scale);     // canvas units per PDF point, for converting DaFontPt to canvas size
+
+        private readonly System.Runtime.CompilerServices.ConditionalWeakTable<PdfDocument, Dictionary<PdfDictionary, int>> _formWidgetKeys = new();
+
+        private int FormWidgetKey(PdfDictionary widget, int fallback)
+        {
+            var keys = _formWidgetKeys.GetValue(_doc!, _ => new Dictionary<PdfDictionary, int>());
+            if (!keys.TryGetValue(widget, out int key)) keys[widget] = key = fallback;
+            return key;
+        }
+
+        private Dictionary<(int page, int index), int> CaptureFormWidgetKeys()
+        {
+            var keys = new Dictionary<(int, int), int>();
+            if (_doc is null) return keys;
+            for (int p = 0; p < _doc.PageCount; p++)
+            {
+                var annots = _doc.Pages[p].Elements.GetArray("/Annots");
+                if (annots is null) continue;
+                for (int i = 0; i < annots.Elements.Count; i++)
+                {
+                    var element = annots.Elements[i];
+                    var widget = element as PdfDictionary ?? DerefItem(element) as PdfDictionary;
+                    if (widget is null) continue;
+                    int key = GetObjectNumber(element);
+                    keys[(p, i)] = FormWidgetKey(widget, key < 0 ? -(p * 10000 + i) : key);
+                }
+            }
+            return keys;
+        }
+
+        private bool _showFormHints = true;
+
+        private void RestoreFormWidgetKeys(Dictionary<(int page, int index), int> keys)
+        {
+            if (_doc is null) return;
+            var cache = _formWidgetKeys.GetOrCreateValue(_doc);
+            foreach (var pair in keys)
+            {
+                if (pair.Key.page >= _doc.PageCount) continue;
+                var annots = _doc.Pages[pair.Key.page].Elements.GetArray("/Annots");
+                if (annots is null || pair.Key.index >= annots.Elements.Count) continue;
+                var item = annots.Elements[pair.Key.index];
+                var widget = item as PdfDictionary ?? DerefItem(item) as PdfDictionary;
+                if (widget != null) cache[widget] = pair.Value;
+            }
+        }
+
+        private void ToggleFormHints_Click(object sender, RoutedEventArgs e)
+        {
+            _showFormHints = !_showFormHints;
+            if (_doc is not null) RenderActiveSession();
+        }
 
         /// <summary>
         /// Scans the current page's /Annots for Widget subtypes and overlays interactive
@@ -65,13 +118,16 @@ namespace KillerPDF
             // matching how Chrome/Brave render fields instead of drawing a green line around each one.
             var fieldBorder = new SolidColorBrush(Color.FromArgb(0x55, 0x88, 0x88, 0x88)); // faint gray, check/radio only
             var darkBrush   = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x22));
-            var fieldBg     = new SolidColorBrush(Color.FromArgb(200, 255, 253, 231));
+            var fieldBg     = _showFormHints
+                ? new SolidColorBrush(Color.FromArgb(200, 255, 253, 231))
+                : Brushes.Transparent;
 
             // Collect radio buttons per group so we can wire mutual exclusion after the loop.
             var radioGroups = new Dictionary<string, List<(Ellipse dot, string onVal)>>();
 
             bool anyField = false;
-            foreach (var f in fields)
+            int tabIndex = 0;
+            foreach (var f in fields.OrderBy(f => f.Cy).ThenBy(f => f.Cx))
             {
                 UIElement? ctrl = null;
 
@@ -107,6 +163,7 @@ namespace KillerPDF
                         IsReadOnly       = f.IsReadOnly,
                         AcceptsReturn    = f.IsMultiLine,
                         TextWrapping     = f.IsMultiLine ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                        TextAlignment    = f.TextAlign == 1 ? TextAlignment.Center : f.TextAlign == 2 ? TextAlignment.Right : TextAlignment.Left,
                         VerticalScrollBarVisibility = f.IsMultiLine
                             ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden,
                         Background       = fieldBg,
@@ -194,14 +251,16 @@ namespace KillerPDF
                     if (!f.IsReadOnly)
                     {
                         int capturedKey = f.ObjNum;
-                        box.MouseLeftButtonDown += (_, e) =>
+                        Action toggle = () =>
                         {
                             bool now = !(_formCheckValues.TryGetValue(capturedKey, out var v) ? v : isChecked);
                             _formCheckValues[capturedKey] = now;
                             checkMark.Visibility = now ? Visibility.Visible : Visibility.Collapsed;
                             MarkDirty(true);
-                            e.Handled = true;
                         };
+                        box.Focusable = true;
+                        box.MouseLeftButtonDown += (_, e) => { box.Focus(); toggle(); e.Handled = true; };
+                        box.KeyDown += (_, e) => { if (e.Key == Key.Space || e.Key == Key.Enter) { toggle(); e.Handled = true; } };
                     }
                     ctrl = box;
                 }
@@ -259,7 +318,7 @@ namespace KillerPDF
                     {
                         string capturedGroup = f.FieldName;
                         string capturedOn    = f.OnValue;
-                        radioBorder.MouseLeftButtonDown += (_, e) =>
+                        Action selectRadio = () =>
                         {
                             _formRadioValues[capturedGroup] = capturedOn;
                             // Deselect all in group, then select this one.
@@ -267,13 +326,21 @@ namespace KillerPDF
                                 foreach (var (d, ov) in gl)
                                     d.Visibility = ov == capturedOn ? Visibility.Visible : Visibility.Collapsed;
                             MarkDirty(true);
-                            e.Handled = true;
                         };
+                        radioBorder.Focusable = true;
+                        radioBorder.MouseLeftButtonDown += (_, e) => { radioBorder.Focus(); selectRadio(); e.Handled = true; };
+                        radioBorder.KeyDown += (_, e) => { if (e.Key == Key.Space || e.Key == Key.Enter) { selectRadio(); e.Handled = true; } };
                     }
                     ctrl = radioBorder;
                 }
 
                 if (ctrl is null) continue;
+                if (f.IsReadOnly) { ctrl.Focusable = false; ctrl.IsHitTestVisible = false; }
+                KeyboardNavigation.SetTabIndex(ctrl, tabIndex++);
+                System.Windows.Automation.AutomationProperties.SetName(ctrl, f.FieldName);
+                if (ctrl is FrameworkElement focusElement)
+                    focusElement.FocusVisualStyle = (Style)FindResource("OfficeFocus");
+                if (ctrl is Control control && f.IsReadOnly) control.IsTabStop = false;
                 Canvas.SetLeft(ctrl, f.Cx);
                 Canvas.SetTop(ctrl, f.Cy);
                 canvas.Children.Add(ctrl);
@@ -448,16 +515,26 @@ namespace KillerPDF
                     int objNum = GetObjectNumber(elem);
                     if (objNum < 0)
                         objNum = -(pageIndex * 10000 + i); // synthetic key for inline dicts
+                    objNum = FormWidgetKey(ann, objNum);
 
                     // Font size the field asks for (points) and the page's render scale, so the
                     // overlay can size text the way the form intends rather than guessing from the
                     // box height (which made tall fields huge and others shrink).
                     double daFontPt = ParseDaFontSize(da);
+                    int textAlign = 0;
+                    node = ann;
+                    while (node is not null)
+                    {
+                        if (node.Elements["/Q"] is PdfInteger q) { textAlign = Math.Max(0, Math.Min(2, q.Value)); break; }
+                        var qi = node.Elements["/Parent"];
+                        if (qi is null) break;
+                        node = qi as PdfDictionary ?? DerefItem(qi) as PdfDictionary;
+                    }
                     double fScale   = (rotation == 90 || rotation == 270)
                         ? canvasH / pageW : canvasH / pageH;
 
                     result.Add(new FormFieldInfo(objNum, ft, isCheckBox, isRadio, isMultiLine,
-                        name, curVal, onValue, isReadOnly, cx, cy, cw, ch, options, daFontPt, fScale));
+                        name, curVal, onValue, isReadOnly, cx, cy, cw, ch, options, daFontPt, textAlign, fScale));
                 }
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GetPageFormFields: {ex}"); }
@@ -483,21 +560,26 @@ namespace KillerPDF
         /// Writes all filled form values back into the PDF document's AcroForm field dictionaries.
         /// Called just before saving so values are persisted in the output file.
         /// </summary>
-        private void WriteFormValuesToDocument()
+        private void WriteFormValuesToDocument(PdfDocument target, Dictionary<(int page, int index), int> widgetKeys)
         {
-            if (_doc is null) return;
+            if (_doc is null) throw new InvalidOperationException("No source document is open.");
             if (_formTextValues.Count == 0 && _formCheckValues.Count == 0 && _formRadioValues.Count == 0) return;
+            if (target.PageCount != _doc.PageCount) throw new InvalidOperationException("Form snapshot page count changed.");
 
-            try
+            // Object numbers may be reassigned by PdfDocument.Save/Open. Resolve the source key by the
+            // stable page + annotation index instead of comparing object ids across documents.
+            for (int p = 0; p < target.PageCount; p++)
             {
-                for (int p = 0; p < _doc.PageCount; p++)
-                {
-                    var page = _doc.Pages[p];
-                    var annotsArr = page.Elements.GetArray("/Annots");
-                    if (annotsArr is null) continue;
+                var sourceAnnots = _doc.Pages[p].Elements.GetArray("/Annots");
+                var page = target.Pages[p];
+                var annotsArr = page.Elements.GetArray("/Annots");
+                if (annotsArr is null) continue;
+                if (sourceAnnots is null || sourceAnnots.Elements.Count != annotsArr.Elements.Count)
+                    throw new InvalidOperationException($"Form widget layout changed on page {p + 1}.");
 
-                    for (int i = 0; i < annotsArr.Elements.Count; i++)
-                    {
+                for (int i = 0; i < annotsArr.Elements.Count; i++)
+                {
+                        PdfItem? sourceElem = sourceAnnots.Elements[i];
                         PdfItem? elem = annotsArr.Elements[i];
                         PdfDictionary? ann = elem as PdfDictionary ?? DerefItem(elem) as PdfDictionary;
                         if (ann is null) continue;
@@ -505,8 +587,7 @@ namespace KillerPDF
                         var subtype = ann.Elements["/Subtype"]?.ToString() ?? "";
                         if (!subtype.Contains("Widget")) continue;
 
-                        int objNum = GetObjectNumber(elem);
-                        if (objNum < 0) objNum = -(p * 10000 + i);
+                        int objNum = widgetKeys[(p, i)];
 
                         // Walk parent chain to find the canonical field dict (owns /FT)
                         PdfDictionary? fieldDict = ann;
@@ -543,7 +624,7 @@ namespace KillerPDF
 
                         if (_formTextValues.TryGetValue(objNum, out var textVal) && fieldDict is not null)
                         {
-                            fieldDict.Elements["/V"] = new PdfString(textVal);
+                            fieldDict.Elements["/V"] = new PdfString(textVal, PdfStringEncoding.Unicode);
                             // Bake a per-field font-size override (from the size stepper) into the
                             // field's /DA so the saved appearance and any later editor use it.
                             if (_formFontSizes.TryGetValue(objNum, out var ovPt) && ovPt > 0)
@@ -551,7 +632,10 @@ namespace KillerPDF
                                 daStr = WithDaFontSize(daStr, ovPt);
                                 fieldDict.Elements["/DA"] = new PdfString(daStr);
                             }
-                            GenerateTextFieldAppearance(ann, textVal, daStr, fieldW, fieldH);
+                            int flags = ResolveInheritedInteger(ann, "/Ff");
+                            bool multiline = (flags & 4096) != 0;
+                            int alignment = Math.Max(0, Math.Min(2, ResolveInheritedInteger(ann, "/Q")));
+                            GenerateTextFieldAppearance(target, ann, textVal, daStr, fieldW, fieldH, multiline, alignment);
                         }
                         else if (_formCheckValues.TryGetValue(objNum, out var checkVal) && fieldDict is not null)
                         {
@@ -569,7 +653,7 @@ namespace KillerPDF
                             fieldDict.Elements["/V"]  = new PdfName(checkVal ? onVal : "/Off");
                             fieldDict.Elements["/AS"] = new PdfName(checkVal ? onVal : "/Off");
                             ann.Elements["/AS"]        = new PdfName(checkVal ? onVal : "/Off");
-                            GenerateCheckBoxAppearance(ann, checkVal, onVal, fieldW, fieldH);
+                            GenerateCheckBoxAppearance(target, ann, checkVal, onVal, fieldW, fieldH);
                         }
                         else if (_formRadioValues.Count > 0 && fieldDict is not null)
                         {
@@ -606,19 +690,23 @@ namespace KillerPDF
                                 }
                             }
                         }
-                    }
                 }
-
-                // Belt-and-suspenders: also set NeedAppearances in case any AP generation failed
-                try
-                {
-                    var acroForm = _doc.Internals.Catalog.Elements.GetDictionary("/AcroForm");
-                    if (acroForm is not null)
-                        acroForm.Elements["/NeedAppearances"] = new PdfBoolean(true);
-                }
-                catch { }
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"WriteFormValuesToDocument: {ex}"); }
+
+            var acroForm = target.Internals.Catalog.Elements.GetDictionary("/AcroForm");
+            if (acroForm is not null) acroForm.Elements["/NeedAppearances"] = new PdfBoolean(false);
+        }
+
+        private static int ResolveInheritedInteger(PdfDictionary start, string key)
+        {
+            PdfDictionary? node = start;
+            while (node is not null)
+            {
+                if (node.Elements[key] is PdfInteger value) return value.Value;
+                var parent = node.Elements["/Parent"];
+                node = parent as PdfDictionary ?? (parent is null ? null : DerefItem(parent) as PdfDictionary);
+            }
+            return 0;
         }
 
         /// <summary>
@@ -626,29 +714,22 @@ namespace KillerPDF
         /// on the widget annotation. Uses reflection to access PdfSharpCore's internal
         /// PdfDictionary.PdfStream constructor since there is no public factory method.
         /// </summary>
-        private void GenerateTextFieldAppearance(PdfDictionary widgetAnn, string text, string? da, double fieldW, double fieldH)
+        private static void GenerateTextFieldAppearance(PdfDocument target, PdfDictionary widgetAnn,
+            string text, string? da, double fieldW, double fieldH, bool multiline, int alignment)
         {
-            try
-            {
-                var (fontName, fontSize) = ParseDaString(da);
-                if (fontSize <= 0) fontSize = Math.Max(6, Math.Min(fieldH * 0.65, 12));
-                fontSize = Math.Max(6, Math.Min(fontSize, fieldH * 0.85));
-
-                // Vertical centering: PDF baseline is measured from bottom of the field rect.
-                double textY = (fieldH - fontSize) / 2 + fontSize * 0.2;
-                if (textY < 1) textY = 1;
-
-                string escaped = EscapePdfString(text);
-                string content =
-                    $"/Tx BMC\nq\n0 0 {fieldW:F2} {fieldH:F2} re W n\n" +
-                    $"BT\n{fontName} {fontSize:F2} Tf\n0 g\n2 {textY:F2} Td\n({escaped}) Tj\nET\nQ\nEMC";
-
-                var xobj = BuildFormXObject(fontName, fieldW, fieldH, content);
-                if (xobj is null) return;
-
-                AttachAppearance(widgetAnn, xobj);
-            }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GenerateTextFieldAppearance: {ex}"); }
+            var (_, fontSize) = ParseDaString(da);
+            if (fontSize <= 0) fontSize = Math.Max(6, Math.Min(fieldH * (multiline ? 0.45 : 0.65), 12));
+            fontSize = Math.Max(6, Math.Min(fontSize, fieldH * 0.85));
+            var png = TextAnnotationRasterizer.RenderFormFieldToPng(text, fieldW, fieldH, fontSize,
+                multiline, alignment == 1 ? TextAlignment.Center : alignment == 2 ? TextAlignment.Right : TextAlignment.Left);
+            using var image = XImage.FromStream(() => new MemoryStream(png));
+            var form = new XForm(target, new XSize(fieldW, fieldH));
+            using (var gfx = XGraphics.FromForm(form))
+                gfx.DrawImage(image, 0, 0, fieldW, fieldH);
+            var field = typeof(XForm).GetField("_pdfForm", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (field?.GetValue(form) is not PdfDictionary xobj)
+                throw new InvalidOperationException("Could not create form field appearance.");
+            AttachAppearance(widgetAnn, xobj);
         }
 
         /// <summary>
@@ -656,7 +737,7 @@ namespace KillerPDF
         /// checkbox widget and sets them on the annotation.
         /// </summary>
         // isChecked unused - both AP states are always generated; /AS selects the active one
-        private void GenerateCheckBoxAppearance(PdfDictionary widgetAnn, bool isChecked, string onVal, double fieldW, double fieldH)
+        private static void GenerateCheckBoxAppearance(PdfDocument target, PdfDictionary widgetAnn, bool isChecked, string onVal, double fieldW, double fieldH)
         {
             try
             {
@@ -669,43 +750,43 @@ namespace KillerPDF
                 double tx = (fieldW - fs * 0.6) / 2;
                 double ty = (fieldH - fs) / 2 + fs * 0.15;
 
-                string checkedContent =
-                    $"q\nBT\n/ZaDb {fs:F2} Tf\n0 g\n{tx:F2} {ty:F2} Td\n(4) Tj\nET\nQ";
+                string checkedContent = FormattableString.Invariant(
+                    $"q\nBT\n/ZaDb {fs:F2} Tf\n0 g\n{tx:F2} {ty:F2} Td\n(4) Tj\nET\nQ");
 
                 string offContent = "q\nQ"; // empty - just clears
 
                 // /Resources needs ZapfDingbats font for the checked state
-                var checkedXobj = BuildFormXObject("/ZaDb", fieldW, fieldH, checkedContent, isZaDb: true);
-                var offXobj     = BuildFormXObject("/ZaDb", fieldW, fieldH, offContent,     isZaDb: true);
-                if (checkedXobj is null || offXobj is null) return;
+                var checkedXobj = BuildFormXObject(target, "/ZaDb", fieldW, fieldH, checkedContent, isZaDb: true);
+                var offXobj     = BuildFormXObject(target, "/ZaDb", fieldW, fieldH, offContent,     isZaDb: true);
+                if (checkedXobj is null || offXobj is null) throw new InvalidOperationException("Could not create checkbox appearance stream.");
 
                 // /AP dictionary with /N being a sub-dict keyed by state name
-                var nDict = new PdfDictionary(_doc);
+                var nDict = new PdfDictionary(target);
                 nDict.Elements[onVal]  = checkedXobj.Reference;
                 nDict.Elements["/Off"] = offXobj.Reference;
 
-                var apDict = new PdfDictionary(_doc);
+                var apDict = new PdfDictionary(target);
                 apDict.Elements["/N"] = nDict;
 
                 widgetAnn.Elements["/AP"] = apDict;
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GenerateCheckBoxAppearance: {ex}"); }
+            catch (Exception ex) { throw new InvalidOperationException("Could not create checkbox appearance.", ex); }
         }
 
         /// <summary>
         /// Creates an indirect PdfDictionary stream object representing a Form XObject,
         /// suitable for use as an /AP /N appearance stream.
         /// </summary>
-        private PdfDictionary? BuildFormXObject(string fontName, double w, double h, string content, bool isZaDb = false)
+        private static PdfDictionary? BuildFormXObject(PdfDocument target, string fontName, double w, double h, string content, bool isZaDb = false)
         {
             byte[] bytes = System.Text.Encoding.GetEncoding("iso-8859-1").GetBytes(content);
 
-            var xobj = new PdfDictionary(_doc);
+            var xobj = new PdfDictionary(target);
             xobj.Elements["/Type"]     = new PdfName("/XObject");
             xobj.Elements["/Subtype"]  = new PdfName("/Form");
             xobj.Elements["/FormType"] = new PdfInteger(1);
 
-            var bbox = new PdfArray(_doc);
+            var bbox = new PdfArray(target);
             bbox.Elements.Add(new PdfReal(0));
             bbox.Elements.Add(new PdfReal(0));
             bbox.Elements.Add(new PdfReal(w));
@@ -713,7 +794,7 @@ namespace KillerPDF
             xobj.Elements["/BBox"] = bbox;
 
             // Inline font resource - avoids adding top-level objects for every field.
-            var fontEntry = new PdfDictionary(_doc);
+            var fontEntry = new PdfDictionary(target);
             fontEntry.Elements["/Type"]    = new PdfName("/Font");
             fontEntry.Elements["/Subtype"] = new PdfName("/Type1");
             fontEntry.Elements["/BaseFont"] = isZaDb
@@ -722,16 +803,16 @@ namespace KillerPDF
             if (!isZaDb)
                 fontEntry.Elements["/Encoding"] = new PdfName("/WinAnsiEncoding");
 
-            var fontDict = new PdfDictionary(_doc);
+            var fontDict = new PdfDictionary(target);
             fontDict.Elements[fontName] = fontEntry;
 
-            var res = new PdfDictionary(_doc);
+            var res = new PdfDictionary(target);
             res.Elements["/Font"] = fontDict;
             xobj.Elements["/Resources"] = res;
 
-            if (!TryAttachStreamBytes(xobj, bytes)) return null;
+            if (!TryAttachStreamBytes(xobj, bytes)) throw new InvalidOperationException("Could not create form appearance stream.");
 
-            _doc!.Internals.AddObject(xobj);
+            target.Internals.AddObject(xobj);
             return xobj;
         }
 

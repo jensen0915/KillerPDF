@@ -354,11 +354,12 @@ namespace KillerPDF
             RestoreToolSettings();   // Draw + Text tool styles carry across sessions
             Loaded += (_, _) => AdjustZoomBoxWidth();   // fit the zoom box to the longest localized term
             IndexToolbarButtons();
+            InitializeOfficeToolbar();
             OutlineTree.SelectedItemChanged += OutlineTree_SelectedItemChanged;
             LoadSignatures();
             BuildContextMenu();
             SetTool(EditTool.Select);
-            ApplyGrainTexture();
+            // The office workspace uses a plain background to keep document and control text clear.
             ApplyToolNumberTooltips();   // append the 1-9 toolbar positions to the tool tooltips
             BuildShortcutsOverlay();     // generate the shortcuts card from the single-source table (ShortcutsOverlay.cs)
             SourceInitialized += MainWindow_SourceInitialized;

@@ -2533,7 +2533,7 @@ namespace KillerPDF
             PdfDocument? doc,
             IReadOnlyDictionary<int, List<PageAnnotation>> annotations,
             IReadOnlyDictionary<int, (int w, int h)> renderDims,
-            int? onlyPage = null)
+            int? onlyPage = null, bool failOnError = false)
         {
             if (doc is null) return;
 
@@ -2548,7 +2548,11 @@ namespace KillerPDF
                 if (onlyPage.HasValue && pageIdx != onlyPage.Value) continue;
                 var annots = kvp.Value;
                 if (annots.Count == 0 || pageIdx >= doc.PageCount) continue;
-                if (!renderDims.ContainsKey(pageIdx)) continue;
+                if (!renderDims.ContainsKey(pageIdx))
+                {
+                    if (failOnError) throw new InvalidOperationException("Missing annotation page dimensions.");
+                    continue;
+                }
 
                 var page = doc.Pages[pageIdx];
                 var (renderW, renderH) = renderDims[pageIdx];
@@ -2567,7 +2571,7 @@ namespace KillerPDF
                             double tboxY = ta.Position.Y * sy;
                             double tboxW = ta.Width * sx;
                             double tboxH = ta.Height * sy;
-                            if (TextAnnotationRasterizer.ContainsCjk(ta.Content))
+                            if (TextAnnotationRasterizer.ContainsCjk(ta.Content) || ta.Content.Any(c => c > 255))
                             {
                                 bool rasterized = false;
                                 try
@@ -2579,7 +2583,7 @@ namespace KillerPDF
                                 }
                                 catch
                                 {
-                                    // ponytail: keep export alive; failed raster falls back to the old vector path below.
+                                    if (failOnError) throw; // Never report a successful export with missing text.
                                 }
                                 if (rasterized) break;
                             }
@@ -2670,7 +2674,7 @@ namespace KillerPDF
                                     double imgH = sa.SourceHeight * sa.Scale * sy;
                                     gfx.DrawImage(xImg, imgX, imgY, imgW, imgH);
                                 }
-                                catch { /* skip broken image */ }
+                                catch { if (failOnError) throw; /* preview may skip broken images */ }
                             }
                             else
                             {
@@ -2704,7 +2708,7 @@ namespace KillerPDF
                                 double iaH = ia.SourceHeight * ia.Scale * sy;
                                 gfx.DrawImage(xia, iaX, iaY, iaW, iaH);
                             }
-                            catch { /* skip broken image */ }
+                            catch { if (failOnError) throw; /* preview may skip broken images */ }
                             break;
                     }
                 }

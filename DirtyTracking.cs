@@ -29,7 +29,10 @@ namespace KillerPDF
 
         private void MarkDirty(bool dirty = true)
         {
+            bool becameDirty = dirty && !_isDirty;
             _isDirty = dirty;
+            UpdateOfficeSaveStatus();
+            if (becameDirty && StatusText != null) SetStatus(Loc("Str_Office_Unsaved"));
             if (_saveAsBtnRef != null)
             {
                 if (dirty)
@@ -61,13 +64,13 @@ namespace KillerPDF
         {
             if (_doc is null || string.IsNullOrEmpty(_currentFile))
             {
-                KillerDialog.Show(this, "Open a PDF first.");
+                KillerDialog.Show(this, Loc("Str_OpenFirst"));
                 return;
             }
-            // Sign the user's real document, not the temp working copy. Operations like print/crop/repair
-            // repoint _currentFile at a temp (e.g. "...printfixed...") while _originalFile keeps the real
-            // path - which is the name the user expects to see and the file Save targets.
-            new SignDocumentDialog(this, _originalFile ?? _currentFile!).ShowDialog();
+            CommitActiveTextBox();
+            if ((_isDirty || string.IsNullOrEmpty(_originalFile)) && !SaveDocumentAs(forSigning: true)) return;
+            if (string.IsNullOrEmpty(_originalFile)) return;
+            new SignDocumentDialog(this, _originalFile!).ShowDialog();
         }
 
         // ---- generic busy overlay (indeterminate spinner) for blocking background work ----

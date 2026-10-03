@@ -56,8 +56,8 @@ namespace KillerPDF
         private bool _grayscale;             // send the job as grayscale/B&W rather than color
 
         // Printable area in DIPs for the currently selected printer + orientation.
-        private double _areaW = 816;   // Letter portrait fallback (8.5in * 96)
-        private double _areaH = 1056;  // (11in * 96)
+        private double _areaW = 210 * 96 / 25.4;   // Letter portrait fallback (8.5in * 96)
+        private double _areaH = 297 * 96 / 25.4;  // (11in * 96)
 
         private readonly Grid _previewHost = new();
         private readonly TextBlock _pageLabel = new();
@@ -65,6 +65,9 @@ namespace KillerPDF
         private ComboBox _printerCombo = null!;
         private TextBox _copiesBox = null!;
         private TextBox _pagesBox = null!;
+        private readonly TextBlock _rangeError = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+        private readonly TextBlock _paperInfo = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+        private bool _previewFailed;
         private Grid _rootGrid = null!;   // clipped to rounded corners on resize
 
         // Segoe MDL2 Assets close glyph, matching the main window chrome close button.
@@ -86,9 +89,9 @@ namespace KillerPDF
             _renderPath  = renderPath;
             _cleanupPath = cleanupPath;
 
-            Title  = "KillerPDF - Print";
-            Width  = 936;
-            Height = 716;
+            Title = S("Str_Print_Title");
+            Width = Math.Min(936, SystemParameters.WorkArea.Width - 32);
+            Height = Math.Min(716, SystemParameters.WorkArea.Height - 32);
             MinWidth  = 720;
             MinHeight = 480;
             DialogChrome.Configure(this, owner, resizable: true);
@@ -434,7 +437,7 @@ namespace KillerPDF
             var panel = new StackPanel { Margin = new Thickness(16, 8, 12, 4) };
 
             panel.Children.Add(Label(S("Str_Print_Printer")));
-            var printerCombo = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 26 };
+            var printerCombo = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 36 };
             ApplyComboStyle(printerCombo);
             printerCombo.SelectionChanged += (s, _) =>
             {
@@ -445,7 +448,7 @@ namespace KillerPDF
             panel.Children.Add(printerCombo);
 
             panel.Children.Add(Label(S("Str_Print_Orientation")));
-            var orient = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 26 };
+            var orient = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 36 };
             ApplyComboStyle(orient);
             orient.Items.Add(S("Str_Print_Portrait"));
             orient.Items.Add(S("Str_Print_Landscape"));
@@ -462,7 +465,7 @@ namespace KillerPDF
             // Color vs black & white. Sent on the print ticket so color-restricted print policies
             // (e.g. "B&W needs no password") see the job correctly instead of treating it as color.
             panel.Children.Add(Label(S("Str_Print_Color")));
-            var colorMode = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 26 };
+            var colorMode = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 36 };
             ApplyComboStyle(colorMode);
             colorMode.Items.Add(S("Str_Print_Color"));
             colorMode.Items.Add(S("Str_Print_BW"));
@@ -472,7 +475,7 @@ namespace KillerPDF
             panel.Children.Add(colorMode);
 
             panel.Children.Add(Label(S("Str_Stamp_Position")));
-            var position = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 26 };
+            var position = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 36 };
             ApplyComboStyle(position);
             // (resource key, horizontal 0/1/2, vertical 0/1/2)
             var positions = new (string key, int h, int v)[]
@@ -498,14 +501,14 @@ namespace KillerPDF
 
             // Margins: an extra inset applied inside the printable area.
             panel.Children.Add(Label(S("Str_Print_Margins")));
-            var margins = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 26 };
+            var margins = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 36 };
             ApplyComboStyle(margins);
             var marginOpts = new (string name, double inches)[]
             {
                 (S("Str_Margin_None"), 0),
-                ($"{S("Str_Margin_Narrow")} (0.25\")", 0.25),
-                ($"{S("Str_Margin_Normal")} (0.5\")", 0.5),
-                ($"{S("Str_Margin_Wide")} (1\")", 1.0)
+                (MarginLabel("Str_Margin_Narrow", 6.35, "0.25"), 0.25),
+                (MarginLabel("Str_Margin_Normal", 12.7, "0.5"), 0.5),
+                (MarginLabel("Str_Margin_Wide", 25.4, "1"), 1.0)
             };
             foreach (var (name, _) in marginOpts) margins.Items.Add(name);
             margins.SelectedIndex = 0;
@@ -518,7 +521,7 @@ namespace KillerPDF
 
             // Pages per sheet (N-up): KillerPDF composes the sheet itself.
             panel.Children.Add(Label(S("Str_Print_PagesPerSheet")));
-            var nup = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 26 };
+            var nup = new ComboBox { Margin = new Thickness(0, 4, 0, 12), Height = 36 };
             ApplyComboStyle(nup);
             foreach (var n in new[] { "1", "2", "4", "6", "9" }) nup.Items.Add(n);
             nup.SelectedIndex = 0;
@@ -531,7 +534,7 @@ namespace KillerPDF
             panel.Children.Add(nup);
 
             panel.Children.Add(Label(S("Str_Print_Scale")));
-            var scale = new ComboBox { Margin = new Thickness(0, 4, 0, 6), Height = 26 };
+            var scale = new ComboBox { Margin = new Thickness(0, 4, 0, 6), Height = 36 };
             ApplyComboStyle(scale);
             scale.Items.Add(S("Str_Print_Fit"));
             scale.Items.Add(S("Str_Print_Actual"));
@@ -647,11 +650,15 @@ namespace KillerPDF
             // Typing a range re-filters the preview to just those pages (jump back to the first one).
             _pagesBox.TextChanged += (_, _) => { _previewIndex = 0; UpdatePreview(); };
             panel.Children.Add(_pagesBox);
+            _rangeError.SetResourceReference(TextBlock.ForegroundProperty, "DangerRed");
+            panel.Children.Add(_rangeError);
+            _paperInfo.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondary");
+            panel.Children.Add(_paperInfo);
             panel.Children.Add(new TextBlock
             {
                 Text         = S("Str_Print_PagesHint"),
                 Foreground   = R("TextSecondary"),
-                FontSize     = 11,
+                FontSize     = 12,
                 Margin       = new Thickness(0, 0, 0, 16),
                 TextWrapping = TextWrapping.Wrap
             });
@@ -739,7 +746,7 @@ namespace KillerPDF
             // "Rendering X / Y" gets its own line above the page nav while pages stream in.
             _renderLabel.Foreground = R("TextSecondary");
             _renderLabel.HorizontalAlignment = HorizontalAlignment.Center;
-            _renderLabel.FontSize = 11;
+            _renderLabel.FontSize = 12;
             _renderLabel.Margin = new Thickness(0, 0, 0, 2);
             _renderLabel.Visibility = Visibility.Collapsed;
 
@@ -809,7 +816,7 @@ namespace KillerPDF
 
         private void RefreshArea()
         {
-            double w = 816, h = 1056;   // Letter portrait fallback
+            double w = 210 * 96 / 25.4, h = 297 * 96 / 25.4; // A4 fallback only
             try
             {
                 if (_queue != null)
@@ -830,6 +837,11 @@ namespace KillerPDF
 
             _areaW = w;
             _areaH = h;
+            System.Printing.PageMediaSize? media = null;
+            try { media = _queue?.DefaultPrintTicket?.PageMediaSize; } catch { /* Printer offline: retain fallback. */ }
+            _paperInfo.Text = media?.Width is double mw && media.Height is double mh
+                ? string.Format(S("Str_Print_PaperSize"), mw * 25.4 / 96, mh * 25.4 / 96)
+                : S("Str_Print_PaperFallback");
         }
 
         private void UpdatePreview()
@@ -838,6 +850,10 @@ namespace KillerPDF
             if (_pages.Length == 0) { _pageLabel.Text = S("Str_Print_NoPages"); _renderLabel.Visibility = Visibility.Collapsed; return; }
 
             var selected = SelectedIndices();
+            bool validRange = selected.Count > 0;
+            _rangeError.Text = validRange ? "" : S("Str_Print_InvalidRange");
+            if (_printBtn != null) _printBtn.IsEnabled = validRange && !_isLoading && !_previewFailed;
+            if (!validRange) { _pageLabel.Text = S("Str_Print_NoPages"); return; }
             int sheets = Math.Max(1, (selected.Count + _nUp - 1) / _nUp);
             int sheet = Math.Max(0, Math.Min(_previewIndex, sheets - 1));
             _previewIndex = sheet;
@@ -851,7 +867,7 @@ namespace KillerPDF
             // pages are still streaming in. 1-up shows the real page number (so a filtered preview reads
             // "Page 6 of 108"); N-up shows the sheet position within the selected set.
             _pageLabel.Text = _nUp > 1
-                ? $"Sheet {sheet + 1} of {sheets}"
+                ? string.Format(S("Str_Print_Sheet"), sheet + 1, sheets)
                 : string.Format(S("Str_PageOf"), idxs.Count > 0 ? idxs[0] + 1 : 1, _pages.Length);
             UpdateRenderLabel();
 
@@ -877,7 +893,7 @@ namespace KillerPDF
         {
             if (_isLoading)
             {
-                _renderLabel.Text = $"Rendering {_loadedCount} / {_pages.Length}";
+                _renderLabel.Text = string.Format(S("Str_Print_Rendering"), _loadedCount, _pages.Length);
                 _renderLabel.Visibility = Visibility.Visible;
             }
             else _renderLabel.Visibility = Visibility.Collapsed;
@@ -911,10 +927,11 @@ namespace KillerPDF
         public void LoadFailed(string message)
         {
             _isLoading = false;
+            _previewFailed = true;
             _previewHost.Children.Clear();
             _previewHost.Children.Add(new TextBlock
             {
-                Text                = "Could not render preview:\n" + message,
+                Text = string.Format(S("Str_PrintFailed"), message),
                 Foreground          = R("TextSecondary"),
                 TextWrapping        = TextWrapping.Wrap,
                 TextAlignment       = TextAlignment.Center,
@@ -944,7 +961,7 @@ namespace KillerPDF
             sp.Children.Add(ring);
             sp.Children.Add(new TextBlock
             {
-                Text                = $"Rendering {_loadedCount} / {_pages.Length}",
+                Text                = string.Format(S("Str_Print_Rendering"), _loadedCount, _pages.Length),
                 Foreground          = R("TextSecondary"),
                 FontSize            = 12,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -970,7 +987,7 @@ namespace KillerPDF
         {
             if (_queue == null)
             {
-                KillerDialog.Show(this, "No printer is available.", "KillerPDF",
+                KillerDialog.Show(this, S("Str_Print_NoPrinter"), "KillerPDF",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -978,7 +995,7 @@ namespace KillerPDF
             var indices = ParseRange(_pagesBox.Text, _pages.Length);
             if (indices.Count == 0)
             {
-                KillerDialog.Show(this, "No valid pages in that range.", "KillerPDF",
+                KillerDialog.Show(this, S("Str_Print_InvalidRange"), "KillerPDF",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -1042,12 +1059,12 @@ namespace KillerPDF
                         bs.Freeze();
                         hiPages[idx] = bs; hiW[idx] = w; hiH[idx] = h;
                         int shown = done;
-                        try { statusText.Dispatcher.Invoke(() => statusText.Text = $"Preparing page {shown} of {total}…"); }
+                        try { statusText.Dispatcher.Invoke(() => statusText.Text = string.Format(S("Str_Print_PreparingPage"), shown, total)); }
                         catch { /* window closing */ }
                     }
                 });
 
-                statusText.Text = "Sending to printer…";
+                statusText.Text = S("Str_Print_Sending");
                 // Let the scrim repaint the new message before the UI-thread compose + spool below runs.
                 await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
 
@@ -1125,7 +1142,7 @@ namespace KillerPDF
             {
                 RemoveOverlay(overlay);   // drop the scrim so the error dialog isn't stuck behind it
                 _printBtn.IsEnabled = true;
-                KillerDialog.Show(this, $"Print failed:\n{ex.GetType().Name}: {ex.Message}",
+                KillerDialog.Show(this, string.Format(S("Str_Print_Failed"), ex.Message),
                     "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -1153,7 +1170,7 @@ namespace KillerPDF
 
             status = new TextBlock
             {
-                Text                = "Preparing to print…",
+                Text                = S("Str_Print_Preparing"),
                 Foreground          = R("TextPrimary"),
                 FontSize            = 13,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -1178,36 +1195,11 @@ namespace KillerPDF
 
         private void RemoveOverlay(Border overlay) => _rootGrid.Children.Remove(overlay);
 
-        // Parses "1-3,5" style ranges into sorted 0-based indices. Blank/invalid = all pages.
-        private static List<int> ParseRange(string? text, int count)
-        {
-            text = text?.Trim() ?? "";
-            if (text.Length == 0) return [.. Enumerable.Range(0, count)];
+        private static List<int> ParseRange(string? text, int count) => Services.PrintPageRange.Parse(text, count);
 
-            var set = new SortedSet<int>();
-            foreach (var raw in text.Split(','))
-            {
-                var part = raw.Trim();
-                if (part.Length == 0) continue;
-                if (part.Contains('-'))
-                {
-                    var seg = part.Split('-');
-                    if (seg.Length == 2 &&
-                        int.TryParse(seg[0].Trim(), out int a) &&
-                        int.TryParse(seg[1].Trim(), out int b))
-                    {
-                        if (a > b) (a, b) = (b, a);
-                        for (int i = a; i <= b; i++)
-                            if (i >= 1 && i <= count) set.Add(i - 1);
-                    }
-                }
-                else if (int.TryParse(part, out int v))
-                {
-                    if (v >= 1 && v <= count) set.Add(v - 1);
-                }
-            }
-            return set.Count == 0 ? [.. Enumerable.Range(0, count)] : [.. set];
-        }
+        private static string MarginLabel(string key, double mm, string inches)
+            => Services.LocaleManager.Current == Services.Locale.ZhTW
+                ? $"{S(key)} ({mm:0.##} mm)" : $"{S(key)} ({inches} in)";
 
         // Shared themed button (UiKit.Make) so the print dialog matches every other dialog.
         private static Button MakeButton(string label, bool accent) => UiKit.Make(label, accent);

@@ -35,7 +35,11 @@ namespace KillerPDF
             // what Apply will produce (otherwise annotations are invisible in the Transform window). Kept at a
             // modest resolution (the preview only shows at ~600px) so the live scale/rotate compose stays
             // fast; Apply re-renders at full resolution independently.
-            var src = RenderPageBitmap(pageIdx, 1100, BurnPageAnnotationsToTemp(pageIdx));
+            BitmapSource? src;
+            string? snapshot = null;
+            try { snapshot = BurnPageAnnotationsToTemp(pageIdx); src = RenderPageBitmap(pageIdx, 1100, snapshot); }
+            catch (Exception ex) { KillerDialog.Show(this, string.Format(Loc("Str_SaveFailed"), ex.Message)); return; }
+            finally { DeleteOutputTemp(snapshot); }
             if (src is null) { SetStatus(Loc("Str_Tf_NoRender")); return; }
 
             // First-use warning that a transform rasterizes the page; persists the opt-out.
@@ -134,37 +138,9 @@ namespace KillerPDF
             }
         }
 
-        // Saves the document with ONE page's annotations burned in, to a temp PDF, and returns its path
-        // (null if the page has no annotations - the caller then renders the normal source). Non-destructive:
-        // _doc is restored to its pre-burn state by reopening from a clean snapshot, mirroring the proven
-        // Save-Flattened pattern, so this is safe for the preview as well as Apply.
+        // Transform previews use the same complete, non-destructive output snapshot as print.
         private string? BurnPageAnnotationsToTemp(int pageIdx)
-        {
-            if (_doc is null) return null;
-            if (!(_annotations.TryGetValue(pageIdx, out var pa) && pa.Count > 0)) return null;
-
-            var tempClean  = App.MakeTempFile("xfclean");
-            var tempBurned = App.MakeTempFile("xfburn");
-            _doc.Save(tempClean);
-            DrawAnnotationsOnDocument(pageIdx);
-            _doc.Save(tempBurned);
-            _doc.Close();
-            try
-            {
-                _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-            }
-            catch (Exception xrefEx) when (IsXRefException(xrefEx))
-            {
-                var fixedPath = App.MakeTempFile("xffixed");
-                if (!TryImportRepairToPath(tempClean, fixedPath)
-                    && !TryPdfiumSaveWithZeroRotations(tempClean, fixedPath))
-                    throw;
-                tempClean = fixedPath;
-                _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
-            }
-            _currentFile = tempClean;
-            return tempBurned;
-        }
+            => _doc is null ? null : CreateDocumentOutputSnapshot();
 
         // Renders a page to a white-backed bitmap (transparent page backgrounds show white, not the dark
         // canvas), applying any in-app rotation so the preview matches the live view.
