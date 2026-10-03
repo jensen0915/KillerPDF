@@ -4,6 +4,12 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Maintenance
+
+- Updated release actions to Node.js 24 runtimes to address the GitHub Actions Node.js 20 deprecation warning; .NET SDK 8.0 and the net48 application target are unchanged.
+
 ## [1.6.3-office-ux] - 2026-10-03 (fork refinement; local package)
 
 This is a follow-up refinement of [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF), maintained in [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF). It continues under GNU GPLv3 with upstream attribution, the original LICENSE, corresponding source, and build instructions retained. This entry records local work, not a completed GitHub publication.
