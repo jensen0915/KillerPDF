@@ -673,6 +673,38 @@ namespace KillerPDF
 
         private static bool IsDraggable(PageAnnotation a) => a is PlacedAnnotation or TextAnnotation or HighlightAnnotation or InkAnnotation;
 
+        // Selects the topmost matching annotation under the pointer and starts dragging it. A grouped
+        // annotation selects + drags its whole group; _dragGroupOrig holds the companions' start
+        // positions so the group translates rigidly. Returns false when nothing matching is there.
+        private bool TryBeginAnnotationDrag(int pageIdx, Point pos, Func<PageAnnotation, bool> canDrag)
+        {
+            if (!_annotations.TryGetValue(pageIdx, out var list)) return false;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var pa = list[i];
+                if (!canDrag(pa) || !HitTestAnnotation(pa, pos, out Rect bounds)) continue;
+                _dragGroupOrig.Clear();
+                if (pa.GroupId.Length > 0)
+                {
+                    SelectGroup(pa);
+                    foreach (var m in _selectedSet) _dragGroupOrig.Add((m, AnnotGetPos(m)));
+                }
+                else
+                {
+                    ClearSelection();
+                    RenderAllAnnotations(pageIdx);
+                    SelectAnnotation(pa, bounds);
+                }
+                _isDraggingAnnot = true;
+                _dragAnnotStart = pos;
+                _dragAnnotOrigPos = AnnotGetPos(pa);
+                _dragAnnot = pa;
+                _activeCanvas.CaptureMouse();
+                return true;
+            }
+            return false;
+        }
+
         // Shortest distance from point p to the segment a-b. Used to hit-test straight lines and ink
         // strokes along their length, not just at their sample points.
         private static double DistPointToSegment(Point p, Point a, Point b)
@@ -812,7 +844,7 @@ namespace KillerPDF
         {
             if (_doc is null) return;
             if (sender is Canvas srcCanvas) _activeCanvas = srcCanvas;
-            // A click on a live text-edit corner handle starts a free-form resize. Checked FIRST, before
+            // A click on a live text-edit corner handle starts a free-form resize (the grip, a move). Checked FIRST, before
             // the "click inside the editing box" guard below: that guard tests OriginalSource, which is
             // unreliable across the nested transparent canvases, so it can otherwise swallow a corner
             // click right after placement. This is a reliable position-based hit test.
@@ -828,6 +860,7 @@ namespace KillerPDF
                     double bh = _tehBox.ActualHeight > 0 ? _tehBox.ActualHeight : Math.Max(_tehBox.MinHeight, 24);
                     _tehAnchor = _tehCorner switch
                     {
+                        "MOVE" => new Point(hpos.X - bx, hpos.Y - by),
                         "NW" => new Point(bx + bw, by + bh),
                         "NE" => new Point(bx,      by + bh),
                         "SW" => new Point(bx + bw, by),
@@ -1021,49 +1054,24 @@ namespace KillerPDF
                         bool shiftSel = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
                         // Single click: check if hitting a PlacedAnnotation first - select and drag
                         bool hitPlaced = false;
-                        if (_annotations.TryGetValue(pageIdx, out var pageAnnotsList))
+                        if (!shiftSel)
+                            hitPlaced = TryBeginAnnotationDrag(pageIdx, pos, IsDraggable);
+                        else if (_annotations.TryGetValue(pageIdx, out var pageAnnotsList))
                         {
                             for (int i = pageAnnotsList.Count - 1; i >= 0; i--)
                             {
                                 if (IsDraggable(pageAnnotsList[i]) &&
                                     HitTestAnnotation(pageAnnotsList[i], pos, out Rect paBounds))
                                 {
-                                    var pa = pageAnnotsList[i];
-                                    if (shiftSel)
-                                    {
-                                        // Toggle in/out of the multi-selection; no drag while shifting.
-                                        ToggleMultiSelect(pa, paBounds, _gestureCanvas ?? _activeCanvas);
-                                        e.Handled = true;
-                                        hitPlaced = true;
-                                        break;
-                                    }
-                                    // A grouped annotation selects + drags its whole group together;
-                                    // otherwise just this one. _dragGroupOrig holds the companions' start
-                                    // positions so the group translates rigidly during the drag.
-                                    _dragGroupOrig.Clear();
-                                    if (pa.GroupId.Length > 0)
-                                    {
-                                        SelectGroup(pa);
-                                        foreach (var m in _selectedSet) _dragGroupOrig.Add((m, AnnotGetPos(m)));
-                                    }
-                                    else
-                                    {
-                                        ClearSelection();
-                                        RenderAllAnnotations(pageIdx);
-                                        SelectAnnotation(pa, paBounds);
-                                    }
-                                    _isDraggingAnnot = true;
-                                    _dragAnnotStart = pos;
-                                    _dragAnnotOrigPos = AnnotGetPos(pa);
-                                    _dragAnnot = pa;
-                                    _activeCanvas.CaptureMouse();
-                                    e.Handled = true;
+                                    // Toggle in/out of the multi-selection; no drag while shifting.
+                                    ToggleMultiSelect(pageAnnotsList[i], paBounds, _gestureCanvas ?? _activeCanvas);
                                     hitPlaced = true;
                                     break;
                                 }
                             }
                         }
-                        if (!hitPlaced)
+                        if (hitPlaced) e.Handled = true;
+                        else
                         {
                             // Keep the existing multi-selection when shift is held (a click on a
                             // non-draggable annotation is added on mouse-up); only a plain click clears.
@@ -1099,7 +1107,20 @@ namespace KillerPDF
                         break;
                     }
                     CommitActiveTextBox();
-                    PlaceTextBox(pos, pageIdx);
+                    // Filled-in text, dates, check marks and signatures stay movable without switching
+                    // to Select: a drag on one moves it, a double-click re-edits text. Only an empty
+                    // spot places a new box. Highlights and ink are left alone so text can go over them.
+                    if (e.ClickCount == 2 && _annotations.TryGetValue(pageIdx, out var textHits)
+                        && textHits.OfType<TextAnnotation>().Any(a => HitTestAnnotation(a, pos, out _)))
+                    {
+                        ClearSelection();
+                        EditTextAtPosition(pos, pageIdx);
+                    }
+                    else if (!TryBeginAnnotationDrag(pageIdx, pos, a => a is TextAnnotation or PlacedAnnotation))
+                    {
+                        ClearSelection();
+                        PlaceTextBox(pos, pageIdx);
+                    }
                     e.Handled = true;
                     break;
 
@@ -1323,6 +1344,17 @@ namespace KillerPDF
             var pos = e.GetPosition(gc);
             pos.X = Math.Max(0, Math.Min(gc.ActualWidth, pos.X));
             pos.Y = Math.Max(0, Math.Min(gc.ActualHeight, pos.Y));
+
+            // Live text-edit box move (mid-edit grip): the box follows the pointer and stays on the page.
+            if (_draggingTextEditHandle && _tehBox is not null && _tehCorner == "MOVE")
+            {
+                double bw = _tehBox.ActualWidth > 0 ? _tehBox.ActualWidth : _tehBox.Width;
+                double bh = _tehBox.ActualHeight > 0 ? _tehBox.ActualHeight : Math.Max(_tehBox.MinHeight, 24);
+                Canvas.SetLeft(_tehBox, Math.Max(0, Math.Min(gc.ActualWidth - bw, pos.X - _tehAnchor.X)));
+                Canvas.SetTop(_tehBox, Math.Max(0, Math.Min(gc.ActualHeight - bh, pos.Y - _tehAnchor.Y)));
+                LayoutTextEditHandles();
+                return;
+            }
 
             // Live text-edit box resize (mid-edit corner handles): free-form, opposite corner held fixed.
             if (_draggingTextEditHandle && _tehBox is not null)
@@ -1670,7 +1702,8 @@ namespace KillerPDF
                     // Keep the whole group selected after a group move (not just the dragged member).
                     if (da.GroupId.Length > 0) SelectGroup(da);
                     else SelectAnnotation(da, AnnotBounds(da));
-                    MarkDirty();
+                    // A click that only selects leaves the saved state alone.
+                    if (AnnotGetPos(da) != _dragAnnotOrigPos) MarkDirty();
                 }
                 _dragGroupOrig.Clear();
                 return;

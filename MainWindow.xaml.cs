@@ -148,12 +148,12 @@ namespace KillerPDF
         private string _resizeCorner = "SE";                    // which corner is being dragged
         private Point _resizeAnchor;                            // opposite corner, held fixed during resize
 
-        // Mid-edit resize handles: 4 corners shown around the live editing TextBox so the user can
-        // resize the box (and continue typing) without committing and re-selecting first.
-        private readonly List<Rectangle> _textEditHandles = [];
+        // Mid-edit handles: 4 corners plus a move grip shown around the live editing TextBox so the
+        // user can resize or move the box (and continue typing) without committing and re-selecting first.
+        private readonly List<FrameworkElement> _textEditHandles = [];
         private bool _draggingTextEditHandle;
         private string _tehCorner = "SE";
-        private Point _tehAnchor;
+        private Point _tehAnchor;   // fixed opposite corner for a resize; grab offset inside the box for "MOVE"
         private TextBox? _tehBox;
 
         // Placed annotation drag-to-move

@@ -487,9 +487,10 @@ namespace KillerPDF
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(Activate));
         }
 
-        // ── Live resize handles around the editing TextBox ──────────────────────────────
-        // Corner squares the user can drag to resize the box mid-edit, then keep typing. The
-        // box auto-grows in height until a handle is dragged, after which the height is free-form.
+        // ── Live resize/move handles around the editing TextBox ─────────────────────────
+        // Corner squares the user can drag to resize the box mid-edit, then keep typing, plus a grip
+        // that moves it. The box auto-grows in height until a corner is dragged, after which the
+        // height is free-form.
         private void AttachTextEditResizeHandles(TextBox tb)
         {
             RemoveTextEditHandles();
@@ -517,6 +518,33 @@ namespace KillerPDF
                 _textEditHandles.Add(hd);
                 _activeCanvas.Children.Add(hd);
             }
+            // Move grip outside the box: dragging it repositions the box mid-edit, so a field filled in
+            // the wrong spot can be nudged into place without leaving the editor or switching tools.
+            var grip = new Border
+            {
+                Width = 30 * inv,
+                Height = 18 * inv,
+                CornerRadius = new CornerRadius(3 * inv),
+                Background = AccentBrush(),
+                BorderBrush = Brushes.White,
+                BorderThickness = new Thickness(1 * inv),
+                Cursor = Cursors.SizeAll,
+                Focusable = false,
+                ToolTip = Loc("Str_TextEdit_MoveGrip"),
+                Tag = "MOVE",
+                Child = new TextBlock
+                {
+                    Text = "",   // Segoe MDL2 "Move"
+                    FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                    FontSize = 11 * inv,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            Panel.SetZIndex(grip, 200);
+            _textEditHandles.Add(grip);
+            _activeCanvas.Children.Add(grip);
             tb.SizeChanged += TextEditBox_SizeChanged;
             LayoutTextEditHandles();
         }
@@ -532,6 +560,16 @@ namespace KillerPDF
             foreach (var hd in _textEditHandles)
             {
                 double hsz = hd.Width;
+                if (hd.Tag as string == "MOVE")
+                {
+                    // Centered just above the box; below it when the box sits at the top of the page.
+                    double gap = hd.Height * 0.25;
+                    double top = y - hd.Height - gap;
+                    if (top < 0) top = y + h + gap;
+                    Canvas.SetLeft(hd, x + w / 2 - hd.Width / 2);
+                    Canvas.SetTop(hd, top);
+                    continue;
+                }
                 (double cx, double cy) = (hd.Tag as string) switch
                 {
                     "NW" => (x, y),

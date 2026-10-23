@@ -145,7 +145,11 @@ namespace KillerPDF
 
         private void OfficeTool(ToolBar bar, string key, EditTool tool)
         {
-            var button = OfficeButton(key, (_, _) => SetTool(tool));
+            var button = OfficeButton(key, (_, _) =>
+            {
+                SetTool(tool);
+                if (tool == EditTool.Text) SetStatus(Loc("Str_Office_ClickToPlace"));
+            });
             if (!_officeToolButtons.TryGetValue(tool, out var buttons)) _officeToolButtons[tool] = buttons = new();
             buttons.Add(button); bar.Items.Add(button);
         }

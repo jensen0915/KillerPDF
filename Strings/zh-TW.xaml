@@ -472,7 +472,7 @@
     <sys:String x:Key="Str_Office_AddText">新增文字</sys:String>
     <sys:String x:Key="Str_Office_Saved">已儲存</sys:String>
     <sys:String x:Key="Str_Office_Unsaved">尚未儲存</sys:String>
-    <sys:String x:Key="Str_Office_ClickToPlace">點擊文件放置；Ctrl+Enter 完成，Esc 取消。</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">點擊空白處放置；拖曳已放置的內容或編輯框上方把手可移動。Ctrl+Enter 完成，Esc 取消。</sys:String>
     <sys:String x:Key="Str_Office_RocDate">使用民國年（例如 115/10/03）</sys:String>
     <sys:String x:Key="Str_Office_Insert">插入</sys:String>
     <sys:String x:Key="Str_ToolbarGroup_FillSign">填寫與簽名</sys:String>
@@ -509,6 +509,7 @@
     <sys:String x:Key="Str_TextEdit_Error">文字編輯失敗：{0}</sys:String>
     <sys:String x:Key="Str_TextEdit_TypeCover">輸入文字並將遮蓋區域移到原文上；Ctrl+Enter 完成，Esc 取消。</sys:String>
     <sys:String x:Key="Str_TextEdit_Editing">Enter 換行；Ctrl+Enter 完成編輯，Esc 取消。</sys:String>
+    <sys:String x:Key="Str_TextEdit_MoveGrip">拖曳以移動文字框</sys:String>
     <sys:String x:Key="Str_Dlg_CancelCurrent">要取消目前的操作（{0}）嗎？</sys:String>
     <sys:String x:Key="Str_KS_Ocr">OCR</sys:String>
     <sys:String x:Key="Str_TT_DocInfo">文件資訊（F12）</sys:String>

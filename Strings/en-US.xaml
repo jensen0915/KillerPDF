@@ -498,7 +498,7 @@ You can uninstall via Add/Remove Programs at any time.</sys:String>
     <sys:String x:Key="Str_Office_AddText">Add text</sys:String>
     <sys:String x:Key="Str_Office_Saved">Saved</sys:String>
     <sys:String x:Key="Str_Office_Unsaved">Unsaved changes</sys:String>
-    <sys:String x:Key="Str_Office_ClickToPlace">Click the document to place; Ctrl+Enter finishes, Esc cancels.</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">Click an empty spot to place; drag placed items or the grip above the box to move them. Ctrl+Enter finishes, Esc cancels.</sys:String>
     <sys:String x:Key="Str_Office_RocDate">Use ROC year (e.g. 115/10/03)</sys:String>
     <sys:String x:Key="Str_Office_Insert">Insert</sys:String>
     <sys:String x:Key="Str_ToolbarGroup_FillSign">Fill &amp; sign</sys:String>
@@ -535,6 +535,7 @@ You can uninstall via Add/Remove Programs at any time.</sys:String>
     <sys:String x:Key="Str_TextEdit_Error">Text edit failed: {0}</sys:String>
     <sys:String x:Key="Str_TextEdit_TypeCover">Type text and move the cover over the original; Ctrl+Enter finishes, Esc cancels.</sys:String>
     <sys:String x:Key="Str_TextEdit_Editing">Enter adds a line; Ctrl+Enter finishes, Esc cancels.</sys:String>
+    <sys:String x:Key="Str_TextEdit_MoveGrip">Drag to move the text box</sys:String>
     <sys:String x:Key="Str_Dlg_CancelCurrent">Cancel the current {0}?</sys:String>
     <sys:String x:Key="Str_Sign_SourceMissing">The source PDF could not be found.</sys:String>
     <sys:String x:Key="Str_Sign_OutputFolderMissing">The output folder does not exist.</sys:String>

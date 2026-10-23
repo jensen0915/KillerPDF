@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 ## [Unreleased]
 
+### Changed
+
+- Filled-in text, dates, check marks, and signatures can be dragged while the Add Text tool is active (double-click re-edits text); only an empty spot places a new box. The text box being edited has a move grip above it.
+
 ### Fixed
 
 - Saving a PDF without bookmarks failed with "Unexpected token 'xref' in PDF stream" after any edit. Loading the Outline sidebar created an empty outline root that PdfSharpCore lists in the xref but never writes; the sidebar no longer creates it and saves drop an empty root.
