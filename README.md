@@ -23,7 +23,7 @@ This is a follow-up refinement of KillerPDF 1.8.91 for everyday office documents
 
 [繁中操作說明](OFFICE_UX.md) · [驗證結果與待驗項目](OFFICE_UX_VALIDATION.md) · [發佈方式與目前狀態](PROJECT_STATUS.md) · [從舊版 fork 移植的紀錄](docs/PORT_FROM_FORK.md)
 
-This fork's Releases ship an unsigned self-contained package that includes the .NET runtime; building from source needs the .NET 10 SDK. The in-app update check still points to the upstream project, so take fork updates from this fork's Releases.
+This fork's Releases ship an unsigned single-file `KillerPDF-Portable.exe` that includes the .NET runtime; building from source needs the .NET 10 SDK. The in-app update check still points to the upstream project, so take fork updates from this fork's Releases.
 
 ## The KillerPDF.Engine
 

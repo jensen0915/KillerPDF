@@ -1,7 +1,7 @@
 name: Build Release (fork)
 
 # jensen0915/KillerPDF only. Upstream releases are signed and packaged by release.ps1; this fork
-# has no code-signing certificate, so it publishes an unsigned self-contained package instead.
+# has no code-signing certificate, so it builds upstream's single-file portable edition unsigned.
 on:
   push:
     tags:
@@ -19,7 +19,7 @@ jobs:
   build:
     if: github.repository != 'SteveTheKiller/KillerPDF'
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: pwsh
@@ -42,30 +42,30 @@ jobs:
           dotnet test engine/KillerPdf.Engine.Tests/KillerPdf.Engine.Tests.csproj -c Release
           if ($LASTEXITCODE -ne 0) { throw 'Engine tests failed.' }
 
-      - name: Publish self-contained build
+      # Upstream's packager: a self-contained loose payload (startup-checked and hash-manifested),
+      # compressed into one KillerPDF-Portable.exe launcher. Unsigned, since -RequireSignature is off.
+      - name: Build portable EXE
+        shell: powershell
         run: |
-          dotnet publish KillerPDF.csproj -p:PublishProfile=FolderProfile1 -c Release
-          if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
+          $ErrorActionPreference = 'Stop'
+          ./build/build-portable.ps1 -PackageKind Portable
 
       - name: Package
         run: |
           [xml]$project = Get-Content -Raw KillerPDF.csproj
           $version = @($project.Project.PropertyGroup | Where-Object { $_.Version })[0].Version
-          $publish = 'bin/Release/net10.0-windows/publish'
-          $out = 'release'
+          $out = Join-Path $PWD 'release'
           New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-          $source = Get-ChildItem $publish -Filter 'KillerPDF-*-src.zip' | Select-Object -First 1
-          if (-not $source) { throw 'The GPL source archive was not produced.' }
-          Move-Item -LiteralPath $source.FullName -Destination $out
+          Copy-Item -LiteralPath 'bin/Release/net10.0-windows/publish/KillerPDF-Portable.exe' -Destination $out
+          ./build/bundle-source.ps1 -ProjectDir $PWD -Version $version -AppName KillerPDF -PublishDir $out
+          if (-not (Test-Path (Join-Path $out "KillerPDF-$version-src.zip"))) { throw 'The GPL source archive was not produced.' }
 
-          # The publish folder's LICENSE is PDFium's notice; keep it and add the project's GPLv3.
-          Move-Item -LiteralPath "$publish/LICENSE" -Destination "$publish/PDFium-LICENSE.txt" -Force
-          Copy-Item -LiteralPath LICENSE -Destination "$publish/LICENSE"
-          Compress-Archive -Path "$publish/*" -DestinationPath "$out/KillerPDF-$version-win-x64.zip"
-          Copy-Item -LiteralPath LICENSE -Destination "$out/LICENSE"
+          # The payload's LICENSE is PDFium's notice; the project's own license is GPLv3.
+          Copy-Item -LiteralPath 'bin/Release/net10.0-windows/portable-package/payload/LICENSE' -Destination (Join-Path $out 'PDFium-LICENSE.txt')
+          Copy-Item -LiteralPath LICENSE -Destination (Join-Path $out 'LICENSE')
 
-          $lines = Get-ChildItem $out -File | Where-Object Name -ne 'LICENSE' | ForEach-Object {
+          $lines = Get-ChildItem $out -File | Where-Object Name -NotIn 'LICENSE', 'PDFium-LICENSE.txt' | ForEach-Object {
             "$($_.Name)  $((Get-FileHash $_.FullName -Algorithm SHA256).Hash)"
           }
           $lines | Set-Content -LiteralPath (Join-Path $out 'SHA256SUMS.txt') -Encoding ascii
@@ -93,12 +93,15 @@ jobs:
             This is a follow-up refinement of KillerPDF 1.8.91 for everyday office documents and Traditional Chinese workflows.
             The fork continues under GNU GPLv3, retains upstream attribution and license notices, and provides corresponding source and build instructions.
 
-            - `KillerPDF-*-win-x64.zip`: self-contained package with its own .NET runtime. Unzip and run `KillerPDF.exe`. It is not code-signed, so Windows SmartScreen may warn on first run.
-            - `KillerPDF-*-src.zip`: the corresponding source. `LICENSE` is the project's GPLv3; PDFium's notice is `PDFium-LICENSE.txt` inside the package.
-            - See `OFFICE_UX.md` (usage), `OFFICE_UX_VALIDATION.md` (checks done and pending), and `docs/PORT_FROM_FORK.md` (what changed from the 1.6.3 fork).
-            - The in-app update check still points to the upstream project; take fork updates from this repository's Releases.
+            - `KillerPDF-Portable.exe`：單一可攜執行檔，已內含 .NET runtime，下載後直接執行，不需安裝。程式未簽章，第一次執行時 Windows SmartScreen 可能提示。
+              Single portable EXE with its own .NET runtime; download and run. It is not code-signed, so SmartScreen may warn on first run.
+            - `KillerPDF-*-src.zip`：對應原始碼 / corresponding source. `LICENSE` is the project's GPLv3; `PDFium-LICENSE.txt` is PDFium's notice.
+            - 說明見原始碼中的 `OFFICE_UX.md`、`OFFICE_UX_VALIDATION.md` 與 `docs/PORT_FROM_FORK.md`。
+            - 程式內的更新檢查仍指向原專案；本分支的更新請從這裡的 Releases 下載。
+              The in-app update check still points to the upstream project; take fork updates from this repository's Releases.
           files: |
-            release/KillerPDF-*-win-x64.zip
+            release/KillerPDF-Portable.exe
             release/KillerPDF-*-src.zip
             release/SHA256SUMS.txt
             release/LICENSE
+            release/PDFium-LICENSE.txt

@@ -4,7 +4,8 @@
 
 ## 安裝與執行
 
-- 本分支 Releases 提供自含版（self-contained），已附 .NET runtime，解壓縮後直接執行 `KillerPDF.exe`；程式未簽章，第一次執行時 Windows SmartScreen 可能提示。
+- 本分支 Releases 提供單一可攜執行檔 `KillerPDF-Portable.exe`，已內含 .NET runtime，下載後直接執行，不需安裝；程式未簽章，第一次執行時 Windows SmartScreen 可能提示。每次執行會把程式暫時解壓到 `%LOCALAPPDATA%\KillerPDF\Portable`，結束後自動清除。
+- 可攜版的設定與已儲存簽名放在 EXE 旁的 `KillerPDF-Data` 資料夾，與安裝版或舊版（存在登錄檔與 `%LOCALAPPDATA%\KillerPDF`）分開；舊版存的簽名不會自動出現在可攜版。
 - KillerPDF 只允許一個執行個體；開新版前請先關閉舊版，否則第二次啟動會交給已開啟的視窗。
 - 第一次使用（沒有任何既有設定）預設為淺色主題、藍色重點色、不加顆粒紋理；已有設定的使用者維持原本選擇。介面語言依 Windows 顯示語言，繁中 Windows 預設繁中。
 - 程式內的「檢查更新」仍指向原專案。要取得本分支的版本，請到本分支的 Releases 下載。

@@ -10,7 +10,8 @@
 | 應用程式測試 | `KillerPDF.Tests` 464／464 通過。含原專案全部測試（含「每個語系都有相同 key 與佔位符」與「介面不得寫死英文」），以及本次新增的列印頁碼、民國年日期、原生墨跡簽名、字型後備測試。 |
 | 引擎測試 | `KillerPdf.Engine.Tests` 1493／1493 通過，含新增的表單欄位 /Q 對齊讀取測試。 |
 | PDF 範例檢查 | 原專案 CI 使用的 `KillerPDF.UiSmoke --verify-fixture`：合成 PDF 可解析、繪製、儲存並重新開啟。 |
-| 自含版發佈 | `dotnet publish -p:PublishProfile=FolderProfile1` 成功；依 fork 發佈 workflow 的打包步驟在本機模擬，產生 `KillerPDF-1.8.91-office-ux-win-x64.zip`（約 79 MB）、原始碼 ZIP、`SHA256SUMS.txt`。 |
+| 單一可攜執行檔 | `build/build-portable.ps1 -PackageKind Portable` 成功：payload 415 個檔案通過清單比對與啟動檢查，產生未簽章的 `KillerPDF-Portable.exe`（約 75 MB，產品版本 1.8.91-office-ux）。依發佈 workflow 的打包步驟在本機模擬，附件為可攜 EXE、原始碼 ZIP、`SHA256SUMS.txt`、`LICENSE`、`PDFium-LICENSE.txt`。 |
+| 可攜版實際執行 | 透過可攜 EXE 跑 `Test-GuiStartup.ps1`：啟動器解壓到暫存資料夾、主視窗啟動檢查通過。以命令列 `--extract-pages`、`--to-image` 處理含日期、✓ 與中文的 PDF，輸出正確，暫存解壓目錄結束後已清除。 |
 | 離屏介面檢查 | 以暫存資料夾中的測試程式載入實際編譯的 KillerPDF，設定只存在記憶體，不註冊協定、不讀寫使用者設定。建立主視窗後開啟含表單欄位的合成 PDF，逐步截圖確認：首次啟動為淺色＋藍色；辦公工具列四個分組都能切換，右側顯示「已儲存／尚未儲存」；760 像素寬時第一列換行；可切換到原版工具列再切回；簽名視窗與日期視窗的版面與預設值。 |
 | 日期、勾選記號、中文存檔 | 同一離屏流程放置 `115/10/03`、✓ 與「臺北市信義區市府路1號」後存檔：存檔成功、尚未儲存狀態清除，重新開啟後三者完整顯示在頁面與縮圖。 |
 
@@ -19,9 +20,7 @@
 - 含 ✓ 的文件存檔失敗（Segoe UI 沒有 U+2713，引擎拒絕輸出）。字型後備鏈加入 Segoe UI Symbol 後通過。
 - `115/10/03` 在預設寬度的文字框內於「/」換行，高度卻以一行計算，結尾「03」在畫面與存檔中都被裁掉。高度改用與顯示相同的排版量測，插入的日期也會自動放寬為一行。
 
-## 與原專案相同的既有情形
-
-- `build/Test-GuiStartup.ps1` 在本機於 45 秒逾時，但五個啟動檢查點（含「PASS MainWindow startup」）都已記錄；原專案 1.8.91 未修改的建置在同一台電腦上結果相同，判斷與本次修改無關。
+- `build/Test-GuiStartup.ps1` 在本機逾時（原專案 1.8.91 也一樣），導致可攜版打包中斷。以 ClrMD 取得堆疊後確認：檢查已記錄 PASS，但關閉時主執行緒卡在 WPF 的觸控筆／平板（WISP）列舉 `PenThreadWorker.WorkerGetTabletsInfo`。啟動檢查改為記錄結果 10 秒後仍未結束就以該結果強制結束，並留下 `WARN shutdown stalled`；之後本機檢查約 12～15 秒通過。
 
 ## 尚未執行的人工驗收
 

@@ -120,7 +120,7 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 | 30 | 未移植（使用者同意）。辦公工具列與簽名視窗本身使用較大按鈕。 | — |
 | 31 | upstream 已涵蓋，未改動。 | — |
 | 32 | 已移植：README fork 說明、CHANGELOG fork 條目、`OFFICE_UX.md`、`OFFICE_UX_VALIDATION.md`、`PROJECT_STATUS.md` 改寫為 1.8.91 基底。 | 本次文件 commit |
-| 33 | 已移植：`build-release.yml` 改為 .NET 10 自含版發佈（先跑測試），upstream 的 Chocolatey、WinGet、NuGet、Release Sync 加上只在原專案執行的條件。打包步驟已在本機模擬。 | 本次文件 commit |
+| 33 | 已移植：`build-release.yml` 先跑測試，再用原專案的 `build/build-portable.ps1` 打包未簽章的單一 `KillerPDF-Portable.exe`（使用者 2026-10-23 選擇單一 EXE）；upstream 的 Chocolatey、WinGet、NuGet、Release Sync 加上只在原專案執行的條件。打包與執行已在本機測試。 | `5c950862`、本次 workflow commit |
 | 34 | 已移植：App 與引擎版本 `1.8.91-office-ux`（引擎專案要求兩者一致），組件版本仍為 1.8.91.0。 | 本次文件 commit |
 | 35 | `test-signature-ink.ps1` 改為 xUnit；`test-office-workflow.ps1` 驗證的是 PdfSharpCore 的輸出快照，不適用新引擎，改以 upstream 測試、PDF 範例檢查與離屏介面流程驗證（見 `OFFICE_UX_VALIDATION.md`）。 | — |
 
