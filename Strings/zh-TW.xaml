@@ -1053,4 +1053,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_CompatibleExplanation">匯出以頁面影像組成的 PDF 副本，方便交付，且在各種閱讀器中顯示一致。副本的文字無法選取，表單欄位無法再填寫。目前文件與尚未儲存的修改會保留。</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">請使用不同檔名，以保留目前開啟的文件。</sys:String>
     <sys:String x:Key="Str_TextEdit_MoveGrip">拖曳以移動文字框</sys:String>
+    <sys:String x:Key="Str_Lbl_FormHints">提示填表欄位</sys:String>
+    <sys:String x:Key="Str_FormHints_On">已標示可填寫的欄位</sys:String>
+    <sys:String x:Key="Str_FormHints_Off">已關閉欄位底色，頁面依列印樣式顯示</sys:String>
 </ResourceDictionary>

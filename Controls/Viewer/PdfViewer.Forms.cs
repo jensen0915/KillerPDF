@@ -316,7 +316,17 @@ namespace KillerPDF.Controls
             bool   IsComb,     // #158: /Tx with the Comb flag (bit 25) and a MaxLen
             int    MaxLen,     // #158: comb cell count (also the input length cap)
             Color? BackgroundColor,
-            Color? BorderColor);
+            Color? BorderColor,
+            KillerPdf.Engine.Authoring.PdfTextFieldAlignment Alignment);   // inherited /Q
+
+        // Fork: "Highlight fields" toggle. On (the default) tints every fillable field; off shows the
+        // page as printed. Shared by both panes and remembered across sessions.
+        private static bool? s_formHints;
+        internal static bool FormHintsEnabled
+        {
+            get => s_formHints ??= App.GetSetting("FormFieldHints") != "0";
+            set { s_formHints = value; App.SetSetting("FormFieldHints", value ? "1" : "0"); }
+        }
 
         /// <summary>
         /// Scans the current page's /Annots for Widget subtypes and overlays interactive
@@ -345,13 +355,18 @@ namespace KillerPDF.Controls
             // matching how Chrome/Brave render fields instead of drawing a green line around each one.
             var fieldBorder = new SolidColorBrush(Color.FromArgb(0x55, 0x88, 0x88, 0x88)); // faint gray, check/radio only
             var darkBrush   = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x22));
-            var fieldBg     = new SolidColorBrush(Color.FromArgb(200, 255, 253, 231));
+            var fieldBg     = FormHintsEnabled
+                ? new SolidColorBrush(Color.FromArgb(200, 255, 253, 231))
+                : Brushes.Transparent;
 
             // Collect radio buttons per group so we can wire mutual exclusion after the loop.
             var radioGroups = new Dictionary<string, List<(Ellipse dot, string onVal)>>();
 
             bool anyField = false;
-            foreach (var f in fields)
+            // Fork: Tab walks the fields the way a form is read - top to bottom, then left to right -
+            // instead of the order they happen to sit in /Annots.
+            int tabIndex = 0;
+            foreach (var f in fields.OrderBy(f => Math.Round(f.Cy)).ThenBy(f => f.Cx))
             {
                 UIElement? ctrl = null;
 
@@ -396,6 +411,12 @@ namespace KillerPDF.Controls
                         IsReadOnly       = f.IsReadOnly,
                         AcceptsReturn    = f.IsMultiLine,
                         TextWrapping     = f.IsMultiLine ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                        TextAlignment    = f.IsComb ? TextAlignment.Left : f.Alignment switch
+                        {
+                            KillerPdf.Engine.Authoring.PdfTextFieldAlignment.Center => TextAlignment.Center,
+                            KillerPdf.Engine.Authoring.PdfTextFieldAlignment.Right  => TextAlignment.Right,
+                            _ => TextAlignment.Left
+                        },
                         VerticalScrollBarVisibility = f.IsMultiLine
                             ? ScrollBarVisibility.Auto : ScrollBarVisibility.Hidden,
                         // A comb field is laid over the PDF's printed cells. An opaque live-field
@@ -531,13 +552,18 @@ namespace KillerPDF.Controls
                     if (!f.IsReadOnly)
                     {
                         string capturedKey = f.FieldName;
-                        box.MouseLeftButtonDown += (_, e) =>
+                        void Toggle()
                         {
                             bool now = !(_formCheckValues.TryGetValue(capturedKey, out var v) ? v : isChecked);
                             _formCheckValues[capturedKey] = now;
                             checkMark.Visibility = now ? Visibility.Visible : Visibility.Collapsed;
                             MarkDirty(true);
-                            e.Handled = true;
+                        }
+                        box.Focusable = true;   // fork: Tab reaches it, Space / Enter toggles
+                        box.MouseLeftButtonDown += (_, e) => { box.Focus(); Toggle(); e.Handled = true; };
+                        box.KeyDown += (_, e) =>
+                        {
+                            if (e.Key is Key.Space or Key.Enter) { Toggle(); e.Handled = true; }
                         };
                     }
                     ctrl = box;
@@ -596,7 +622,7 @@ namespace KillerPDF.Controls
                     {
                         string capturedGroup = f.FieldName;
                         string capturedOn    = f.OnValue;
-                        radioBorder.MouseLeftButtonDown += (_, e) =>
+                        void Choose()
                         {
                             _formRadioValues[capturedGroup] = capturedOn;
                             // Deselect all in group, then select this one.
@@ -604,13 +630,28 @@ namespace KillerPDF.Controls
                                 foreach (var (d, ov) in gl)
                                     d.Visibility = ov == capturedOn ? Visibility.Visible : Visibility.Collapsed;
                             MarkDirty(true);
-                            e.Handled = true;
+                        }
+                        radioBorder.Focusable = true;   // fork: Tab reaches it, Space / Enter selects
+                        radioBorder.MouseLeftButtonDown += (_, e) => { radioBorder.Focus(); Choose(); e.Handled = true; };
+                        radioBorder.KeyDown += (_, e) =>
+                        {
+                            if (e.Key is Key.Space or Key.Enter) { Choose(); e.Handled = true; }
                         };
                     }
                     ctrl = radioBorder;
                 }
 
                 if (ctrl is null) continue;
+                // Fork: read-only fields are skipped by Tab; the rest follow the reading order above.
+                if (f.IsReadOnly) ctrl.Focusable = false;
+                if (ctrl is Control focusable)
+                {
+                    focusable.IsTabStop = !f.IsReadOnly;
+                    focusable.TabIndex = tabIndex++;
+                }
+                else KeyboardNavigation.SetTabIndex(ctrl, tabIndex++);
+                if (!string.IsNullOrEmpty(f.FieldName))
+                    System.Windows.Automation.AutomationProperties.SetName(ctrl, f.FieldName);
                 AttachFormDesignDrag(ctrl, f, pageIndex, canvas);
                 Canvas.SetLeft(ctrl, f.Cx);
                 Canvas.SetTop(ctrl, f.Cy);
@@ -723,7 +764,8 @@ namespace KillerPDF.Controls
                                 (byte)Math.Round(border.Red * 255),
                                 (byte)Math.Round(border.Green * 255),
                                 (byte)Math.Round(border.Blue * 255))
-                            : null));
+                            : null,
+                        widget.Alignment));
                 }
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"GetPageFormFields (engine): {ex}"); }

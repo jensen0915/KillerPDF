@@ -55,6 +55,8 @@ public sealed record PdfFormWidgetInfo
     public PdfRgbColor? BorderColor { get; init; }
     /// <summary>Gets the effective maximum text length, or zero when unspecified.</summary>
     public required int MaximumLength { get; init; }
+    /// <summary>Gets the effective inheritable quadding (/Q), or left when unspecified.</summary>
+    public PdfTextFieldAlignment Alignment { get; init; }
     /// <summary>Gets the widget's button on-state name, including the leading slash.</summary>
     public required string OnValue { get; init; }
     /// <summary>Gets whether the widget defines an activation action.</summary>

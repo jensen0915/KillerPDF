@@ -16,6 +16,15 @@ namespace KillerPDF
 
         private void InsertCheckmark_Click(object sender, RoutedEventArgs e) => BeginOfficeText("✓");
 
+        // "Highlight fields": tint fillable form fields, or show the page exactly as printed.
+        private void ToggleFormHints_Click(object sender, RoutedEventArgs e)
+        {
+            PdfViewer.FormHintsEnabled = !PdfViewer.FormHintsEnabled;
+            Viewer.RefreshVisibleFormFieldsExt();
+            ViewerB.RefreshVisibleFormFieldsExt();
+            SetStatus(Loc(PdfViewer.FormHintsEnabled ? "Str_FormHints_On" : "Str_FormHints_Off"));
+        }
+
         private void BeginOfficeText(string text)
         {
             if (_doc is null) { KillerDialog.Show(this, Loc("Str_Msg_OpenFirst")); return; }

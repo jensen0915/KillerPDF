@@ -53,6 +53,13 @@ namespace KillerPDF.Controls
             if (_renderDims.TryGetValue(pageIndex, out var dimensions))
                 RenderFormFields(pageIndex, dimensions.w, dimensions.h);
         }
+        // Rebuilds the field overlays on every page currently on screen (the "Highlight fields" toggle).
+        internal void RefreshVisibleFormFieldsExt()
+        {
+            if (_doc is null) return;
+            var pages = new HashSet<int>(_pages.Keys) { _currentPage };
+            foreach (int page in pages) RefreshFormFieldsExt(page);
+        }
         internal bool SelectAllAnnotationsExt() => SelectAllAnnotations();
         internal void HideBrushPreviewExt() => HideBrushPreview();
         internal void ClearMeasurementExt() => ClearMeasurement();

@@ -1055,4 +1055,7 @@ KillerPDF 不会创建两个已安装的副本。</sys:String>
     <sys:String x:Key="Str_CompatibleExplanation">导出由页面图像组成的 PDF 副本，便于交付，并在各种阅读器中显示一致。副本中的文字无法选取，表单字段无法再填写。当前文件与尚未保存的修改会保留。</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">请使用不同的文件名，以保留当前打开的文件。</sys:String>
     <sys:String x:Key="Str_TextEdit_MoveGrip">拖动以移动文本框</sys:String>
+    <sys:String x:Key="Str_Lbl_FormHints">提示填表字段</sys:String>
+    <sys:String x:Key="Str_FormHints_On">已标示可填写的字段</sys:String>
+    <sys:String x:Key="Str_FormHints_Off">已关闭字段底色，页面按打印样式显示</sys:String>
 </ResourceDictionary>

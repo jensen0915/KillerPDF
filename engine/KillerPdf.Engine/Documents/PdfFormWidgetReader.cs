@@ -18,6 +18,7 @@ public static class PdfFormWidgetReader
     private static readonly PdfName DefaultAppearanceName = Name("DA");
     private static readonly PdfName FlagsName = Name("Ff");
     private static readonly PdfName MaximumLengthName = Name("MaxLen");
+    private static readonly PdfName QuaddingName = Name("Q");
     private static readonly PdfName OptionsName = Name("Opt");
     private static readonly PdfName AppearanceName = Name("AP");
     private static readonly PdfName ActionName = Name("A");
@@ -65,6 +66,7 @@ public static class PdfFormWidgetReader
             string defaultAppearance = string.Empty;
             long flags = 0;
             int maximumLength = 0;
+            long quadding = -1;
             List<PdfFormChoiceInfo> options = [];
             var nameParts = new List<string>();
             PdfDictionary? node = widget;
@@ -108,6 +110,8 @@ public static class PdfFormWidgetReader
                         throw new InvalidOperationException("An AcroForm /MaxLen value is out of range.");
                     maximumLength = (int)length;
                 }
+                if (quadding < 0 && node.TryGetValue(QuaddingName, out PdfObject? quaddingValue))
+                    quadding = Math.Clamp(Integer(document, quaddingValue, "An AcroForm /Q value"), 0, 2);
                 if (options.Count == 0 && node.TryGetValue(OptionsName, out PdfObject? optionsValue))
                     options = ReadOptions(document, optionsValue);
                 if (!node.TryGetValue(ParentName, out PdfObject? parentValue)) break;
@@ -138,6 +142,7 @@ public static class PdfFormWidgetReader
                 BorderColor = WidgetColor(
                     document, widget, BorderColorName, "border"),
                 MaximumLength = maximumLength,
+                Alignment = quadding < 0 ? PdfTextFieldAlignment.Left : (PdfTextFieldAlignment)quadding,
                 OnValue = ButtonOnValue(document, widget),
                 HasAction = widget.ContainsKey(ActionName),
                 HasAppearanceState = widget.ContainsKey(AppearanceStateName),

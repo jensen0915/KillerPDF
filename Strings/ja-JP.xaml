@@ -1071,4 +1071,7 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_CompatibleExplanation">ページ画像で構成された PDF のコピーを書き出します。どのビューアーでも同じように表示されますが、コピーの文字は選択できず、フォームにも入力できません。開いている文書と未保存の変更はそのまま残ります。</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">開いている文書を残すため、別のファイル名を指定してください。</sys:String>
     <sys:String x:Key="Str_TextEdit_MoveGrip">ドラッグしてテキストボックスを移動</sys:String>
+    <sys:String x:Key="Str_Lbl_FormHints">入力欄を強調</sys:String>
+    <sys:String x:Key="Str_FormHints_On">入力欄を強調表示しています</sys:String>
+    <sys:String x:Key="Str_FormHints_Off">入力欄の強調をオフにしました。ページは印刷時の表示です</sys:String>
 </ResourceDictionary>

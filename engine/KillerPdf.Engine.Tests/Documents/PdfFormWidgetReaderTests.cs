@@ -82,6 +82,25 @@ public sealed class PdfFormWidgetReaderTests
     }
 
     [Fact]
+    public void ReadPage_ExposesTextFieldQuadding()
+    {
+        byte[] source = new PdfDocumentBuilder()
+            .AddBlankPage(300, 400)
+            .AddTextField(0, "date", 20, 300, 180, 24, "115/10/03", 11,
+                new PdfTextFieldOptions { Alignment = PdfTextFieldAlignment.Right })
+            .AddTextField(0, "title", 20, 250, 180, 24, "", 11,
+                new PdfTextFieldOptions { Alignment = PdfTextFieldAlignment.Center })
+            .AddTextField(0, "name", 20, 200, 180, 24, "", 11)
+            .Build();
+
+        IReadOnlyList<PdfFormWidgetInfo> widgets = PdfFormWidgetReader.ReadPage(PdfDocument.Open(source), 0);
+
+        Assert.Equal(PdfTextFieldAlignment.Right, widgets.Single(w => w.FieldName == "date").Alignment);
+        Assert.Equal(PdfTextFieldAlignment.Center, widgets.Single(w => w.FieldName == "title").Alignment);
+        Assert.Equal(PdfTextFieldAlignment.Left, widgets.Single(w => w.FieldName == "name").Alignment);
+    }
+
+    [Fact]
     public void ReadPage_ReturnsEmptyListWithoutWidgetsAndValidatesPageIndex()
     {
         PdfDocument document = PdfDocument.Open(new PdfDocumentBuilder().AddBlankPage().Build());

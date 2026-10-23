@@ -1051,4 +1051,7 @@ Windows সেটিংস - ডিফল্ট অ্যাপ খুলবে�
     <sys:String x:Key="Str_CompatibleExplanation">Export an image-based PDF copy that opens the same in every reader. Text in the copy cannot be selected and form fields can no longer be filled. Your open document and unsaved changes are kept.</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">Choose a different file name to keep the open document.</sys:String>
     <sys:String x:Key="Str_TextEdit_MoveGrip">Drag to move the text box</sys:String>
+    <sys:String x:Key="Str_Lbl_FormHints">Highlight fields</sys:String>
+    <sys:String x:Key="Str_FormHints_On">Fillable fields are highlighted</sys:String>
+    <sys:String x:Key="Str_FormHints_Off">Field highlighting is off; the page shows as printed</sys:String>
 </ResourceDictionary>
