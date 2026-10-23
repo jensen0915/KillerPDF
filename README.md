@@ -6,6 +6,25 @@ KillerPDF is a free, open-source PDF editor for Windows. View, annotate, OCR, me
 
 Full how-tos live on the [help page](https://killerpdf.net/help.html); internals, formats, and limits on the [technical page](https://killerpdf.net/technical.html).
 
+## 本分支微調版／About this fork
+
+**1.8.91-office-ux** · Original project: [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF) · This fork: [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF)
+
+這是在原開源 KillerPDF 1.8.91 基礎上延續修改的一版，針對台灣辦公文件的閱讀、填寫、簽名與寄回情境調整操作與繁中用語。本分支依舊遵循原專案的開源原則，沿用 **GNU GPLv3**，保留原作者與貢獻者的署名及授權資訊，並提供對應版本的原始碼與建置方式。這是衍生微調版，不是原專案的官方發佈。
+
+This is a follow-up refinement of KillerPDF 1.8.91 for everyday office documents and Traditional Chinese workflows in Taiwan. It continues under **GNU GPLv3**, retains upstream attribution and license notices, and provides corresponding source and build instructions. It is a modified fork, not an official upstream release.
+
+- 依工作分組的辦公工具列：閱讀、填寫與簽名、註解、整理頁面，並顯示「已儲存／尚未儲存」；可切回原版工具列。
+- 插入日期（西元或民國年）與勾選記號；「新增文字」工具可直接拖曳已放置的內容，編輯框有移動把手。
+- 原生 WPF 墨跡手寫簽名：可復原上一筆，預設不存到本機。
+- 表單可用 Tab／空白鍵操作，可開關「提示填表欄位」；列印頁碼接受全形數字與頓號。
+- 台灣繁中用語；繁中環境下中文以正黑體輸出，勾選記號改用符號字型。
+- **檔案 → 匯出相容副本** 產生以頁面影像組成的副本；文字無法選取、表單無法再填，目前文件與未儲存的修改會保留。
+
+[繁中操作說明](OFFICE_UX.md) · [驗證結果與待驗項目](OFFICE_UX_VALIDATION.md) · [發佈方式與目前狀態](PROJECT_STATUS.md) · [從舊版 fork 移植的紀錄](docs/PORT_FROM_FORK.md)
+
+This fork's Releases ship an unsigned self-contained package that includes the .NET runtime; building from source needs the .NET 10 SDK. The in-app update check still points to the upstream project, so take fork updates from this fork's Releases.
+
 ## The KillerPDF.Engine
 
 KillerPDF 1.8 introduces The KillerPDF.Engine, an independent and reusable .NET library for PDF 2.0, PDF/A, and PDF/UA document processing. It is a first-class area of this monorepo with its own public API, tests, corpus tooling, architecture documentation, [README](engine/README.md), and release history.

@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   verify:
+    # Fork guard: checks the upstream project's release channels only.
+    if: github.repository == 'SteveTheKiller/KillerPDF'
     runs-on: ubuntu-latest
     env:
       APP_NAME: KillerPDF

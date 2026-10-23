@@ -89,6 +89,39 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 6. 文件與 workflow（#32–35）
 7. 建置並執行 `KillerPDF.Tests`、引擎測試與新測試
 
+## 使用者決定（2026-10-23）
+
+使用者同意上述建議：接受 .NET 10、不移植清單照建議、辦公工具列為預設並保留切回原版、自動更新先不改；.NET 10 SDK 10.0.402 由使用者自行安裝。完成後合併到 `main`。
+
 ## 移植結果
 
-（移植完成後填寫每一項的實際結果與 commit。）
+| # | 結果 | Commit |
+|---|---|---|
+| 1–3 | 已移植。工具列用語與連結、簽署相關字串改為 fork 用語；71 處標點與「註釋→註解」一致化；另修正 upstream 把「位置」譯成「職稱」、四角方位不一致。Transform 已含傾斜與透視校正，改譯「旋轉／調整」；「平面化」在工具列縮短為「匯出相容副本」以免斷行。 | `4c5f8c5e`、`71eaad76`、`4d5c8ca3` |
+| 4 | 依計畫：fork 用語套到 upstream 對應的 key（狀態列、印表機、簽署訊息等 25 處）。 | `4c5f8c5e` |
+| 5 | upstream 已涵蓋，未改動。 | — |
+| 6–7 | 已移植。另加入頁面右鍵選單的「日期」「勾選記號」；民國年選擇會記住。日期／✓ 的文字框自動放寬為一行。 | `a22a90ce`、`e01cfc07` |
+| 8–10 | 已移植。`build/test-signature-ink.ps1` 改寫為 `SignatureInkCanvasTests`。 | `3e1a509f` |
+| 11 | 已移植（拖曳、雙擊重新編輯、移動把手、只點選不標記未儲存）。 | `ea4c48a4` |
+| 12、14 | 已移植。 | `2a11f188` |
+| 13 | upstream 已涵蓋，未改動。 | — |
+| 15 | 已移植。/Q 對齊需要引擎提供欄位資訊，因此在 `PdfFormWidgetReader` 加入 `Alignment`（含引擎測試）。 | `3ddcb1d9` |
+| 16 | upstream 已涵蓋；離屏流程確認中文表單頁面可存檔並重新開啟。 | — |
+| 17 | 未移植轉圖片的作法。實測發現 upstream 遇到 ✓ 會讓整個存檔失敗，且漢字預設用簡體的微軟雅黑；改為加入符號字型後備，並在繁中環境優先使用微軟正黑體（fork 原本的 CJK 轉圖也以正黑體為第一順位）。 | `92cbff98` |
+| 18–20 | upstream 已涵蓋或不適用，未改動。 | — |
+| 21 | 暫不移植，待使用者提供在 Edge 變空白的 PDF 再實測。 | — |
+| 22 | 已移植。 | `71eaad76` |
+| 23 | 已移植（隨辦公工具列）。 | `4d5c8ca3` |
+| 24 | 已移植。 | `dc32ce8e` |
+| 25–26 | 已移植。A4／毫米依 Windows 地區是否為公制決定，而非只看繁中介面。 | `0ab69db4` |
+| 27 | 已移植，並收錄 upstream 新工具（比較 PDF、形狀、測量、編輯表單欄位、匯出頁面圖片）。第一列合併檔案命令與分組分頁，只占兩列。 | `4d5c8ca3` |
+| 28 | 已移植。 | `9f2e7e91` |
+| 29 | 已移植。 | `dd3b85d1` |
+| 30 | 未移植（使用者同意）。辦公工具列與簽名視窗本身使用較大按鈕。 | — |
+| 31 | upstream 已涵蓋，未改動。 | — |
+| 32 | 已移植：README fork 說明、CHANGELOG fork 條目、`OFFICE_UX.md`、`OFFICE_UX_VALIDATION.md`、`PROJECT_STATUS.md` 改寫為 1.8.91 基底。 | 本次文件 commit |
+| 33 | 已移植：`build-release.yml` 改為 .NET 10 自含版發佈（先跑測試），upstream 的 Chocolatey、WinGet、NuGet、Release Sync 加上只在原專案執行的條件。打包步驟已在本機模擬。 | 本次文件 commit |
+| 34 | 已移植：App 與引擎版本 `1.8.91-office-ux`（引擎專案要求兩者一致），組件版本仍為 1.8.91.0。 | 本次文件 commit |
+| 35 | `test-signature-ink.ps1` 改為 xUnit；`test-office-workflow.ps1` 驗證的是 PdfSharpCore 的輸出快照，不適用新引擎，改以 upstream 測試、PDF 範例檢查與離屏介面流程驗證（見 `OFFICE_UX_VALIDATION.md`）。 | — |
+
+驗證結果：App 測試 464／464、引擎測試 1493／1493 通過；細節與尚待人工驗收的項目見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。

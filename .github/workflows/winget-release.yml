@@ -21,6 +21,8 @@ on:
 
 jobs:
   submit:
+    # Fork guard: publishes to the upstream project's package channels only.
+    if: github.repository == 'SteveTheKiller/KillerPDF'
     runs-on: windows-latest
     permissions:
       contents: read

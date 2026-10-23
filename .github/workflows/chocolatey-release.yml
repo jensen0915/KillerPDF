@@ -11,6 +11,8 @@ on:
 
 jobs:
   push:
+    # Fork guard: publishes to the upstream project's package channels only.
+    if: github.repository == 'SteveTheKiller/KillerPDF'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

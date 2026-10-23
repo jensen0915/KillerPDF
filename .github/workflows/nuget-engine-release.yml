@@ -18,9 +18,11 @@ concurrency:
 
 jobs:
   publish:
+    # Fork guard: the engine package is published by the upstream project only.
     if: >-
+      github.repository == 'SteveTheKiller/KillerPDF' && (
       (github.event_name == 'release' && !github.event.release.prerelease) ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     permissions:
       contents: read

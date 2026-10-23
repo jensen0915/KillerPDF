@@ -4,6 +4,39 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.91-office-ux] - 2026-10-23 (fork refinement)
+
+This is a follow-up refinement of [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF) 1.8.91, maintained in [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF). It continues under GNU GPLv3 with upstream attribution, the original LICENSE, corresponding source, and build instructions retained. The fork's earlier 1.6.3-office-ux work was ported onto 1.8.91 feature by feature rather than merged; [docs/PORT_FROM_FORK.md](docs/PORT_FROM_FORK.md) records what was carried over, what upstream already covered, and what was dropped.
+
+這是在原開源專案 1.8.91 上延續微調的一版，針對台灣辦公文件的使用情境改善操作，依舊遵循原有 GNU GPLv3 開源原則，保留作者與貢獻者署名並提供對應原始碼。
+
+### Added
+
+- Office toolbar grouped by task (Read, Fill & sign, Annotate, Organize pages) with captioned commands, a "More" overflow, and a saved / unsaved label. File → Use the original toolbar switches back; the original toolbar's right-click menu switches again.
+- Date insertion (Gregorian yyyy/MM/dd or ROC year such as 115/10/03) and check mark insertion, from the toolbar or the page's right-click menu.
+- Signature pad on native WPF ink: every stylus sample kept, taps become dots, fixed pen width, undo last stroke, Cancel, larger pad and buttons.
+- "Highlight fields" toggle for form fields; Tab follows the page's reading order, Space or Enter toggles check boxes and radio buttons, read-only fields are skipped.
+- The engine's form widget reader exposes inheritable /Q, and text fields show centered or right-aligned values while filling.
+
+### Changed
+
+- Taiwanese Traditional Chinese wording (手寫簽名, 清除註解, 憑證簽署, 頁碼與浮水印, 匯出相容副本, fullwidth punctuation).
+- Drawn and imported signatures are kept on this computer only when "Save on this computer for next time" is chosen (off by default).
+- With the Add Text tool, dragging filled-in text, dates, check marks, and signatures moves them and a double-click re-edits text; only an empty spot places a new box. The box being edited has a move grip. A click that only selects no longer marks the document unsaved.
+- Print page ranges accept fullwidth digits and punctuation and the ideographic comma; reversed or out-of-range spans are rejected instead of reordered or clamped. Without printer information, metric regions preview A4 and list margins in millimeters.
+- Flatten is presented as "Export compatible PDF copy": it explains what the copy loses first, suggests a `-compatible` file name, and refuses to replace the open file.
+- Certificate signing saves unsaved changes to a file first, refuses to write the signed copy over its source, and confirms before replacing another file.
+- Esc no longer closes the main window. A first run starts in the Light theme with a blue accent and no film grain.
+- Han text is saved with Traditional Chinese faces (Microsoft JhengHei first) when the interface or Windows is Traditional Chinese.
+
+### Fixed
+
+- A check mark (or another symbol Segoe UI lacks) made the whole save fail; symbols now fall back to Segoe UI Symbol.
+- A committed text box was measured one line short when its text wrapped after a slash, so the end of a date such as 115/10/03 was clipped on screen and in the saved file.
+- Confirming an IME candidate (Bopomofo, Cangjie) with Enter no longer commits the text box, and Esc during composition no longer cancels the edit. Leading and trailing spaces in placed text are kept.
+
+The entries below retain the upstream release history.
+
 ## [1.8.91] - 2026-10-14
 
 1.8.91 fixes a crash when opening the theme picker in the packaged app and updates a vulnerable cryptography dependency.
