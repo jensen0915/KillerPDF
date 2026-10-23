@@ -12,6 +12,8 @@ public partial class App
     internal static string SmokeDataRoot { get; } = Path.Combine(
         Path.GetTempPath(), "KillerPDF-startup-smoke-" + Guid.NewGuid().ToString("N"));
     private static readonly Dictionary<string, string> SmokeSettings = new(StringComparer.Ordinal);
+    // Held in a field so the collector cannot drop the timer before it fires.
+    private static System.Threading.Timer? _smokeExitGuard;
 
     // Separate from normal startup: no mutex, pipe server, registration, cleanup of user
     // temporary files, session restore, or interactive crash dialog.
@@ -45,6 +47,14 @@ public partial class App
                 Console.Error.WriteLine(reportError);
                 exit = 1;
             }
+            // Fork: on a machine with a pen digitizer, WPF's tablet (WISP) enumeration can block the
+            // UI thread inside this shutdown (PenThreadWorker.WorkerGetTabletsInfo), so the process
+            // never exits although the result is already recorded. Exit with that result anyway.
+            _smokeExitGuard = new System.Threading.Timer(_ =>
+            {
+                try { Record("WARN shutdown stalled; forcing exit"); } catch { }
+                Environment.Exit(exit);
+            }, null, TimeSpan.FromSeconds(10), Timeout.InfiniteTimeSpan);
             // Shutdown closes only this process's empty window. Settings writes stay in memory.
             try { Shutdown(exit); }
             catch (Exception shutdownError)
