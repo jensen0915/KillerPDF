@@ -10,6 +10,7 @@ Fixes found by a code review of the 1.8.91-office-ux port. 修正 1.8.91-office-
 
 ### Fixed
 
+- Placed text no longer shifts when it is committed or saved. Committing used to move it up and left by the edit box's border and content margin; saving moved Chinese text down because the overlay used pixel-snapped Display layout while the saved file uses Ideal metrics, and wrapped lines drifted further apart in the file; mixed Chinese and Latin text also widened on save because the screen drew Latin in Segoe UI while the file drew the whole run in Microsoft JhengHei. The edit box, the placed text, and the saved file now use the same face and layout; measured offsets are within one pixel.
 - Clicking an unsigned signature field and then creating or importing a signature in the picker now fills that field. Before, a signature not saved on this computer was neither placed nor listed, so the field could not be signed.
 - The Add Text tool drags only text (including dates and check marks) and signatures; a click on an inserted image places a text box instead of moving the image.
 - Tab moves through form fields page by page in Continuous, Two-Page, and split views, keeps a small check box in its row, and reaches comb fields in order. Space toggles a focused check box or radio button instead of starting the pan gesture.
