@@ -98,6 +98,9 @@ namespace KillerPDF.Services
 
         private static void ApplyInternal(Locale locale)
         {
+            // Fork: a Traditional Chinese interface (or Windows) saves Han text in Traditional faces.
+            FontCoverage.PreferTraditionalChinese = locale == Locale.ZhTW
+                || FontCoverage.IsTraditionalChineseCulture(CultureInfo.CurrentUICulture);
             var merged = Application.Current.Resources.MergedDictionaries;
 
             // [0] theme. [1] en-US BASE - always present so any partial locale falls back to English for

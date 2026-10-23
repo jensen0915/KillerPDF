@@ -34,6 +34,26 @@ namespace KillerPDF.Services
         private static readonly string[] ChainThai      = ["Leelawadee UI", "Tahoma"];
         private static readonly string[] ChainArabic    = ["Segoe UI", "Tahoma", "Traditional Arabic"];
         private static readonly string[] ChainDefault   = ["Segoe UI", "Arial", "Tahoma"];
+        // Fork: check marks, ballot boxes, arrows and other symbols live in Windows' symbol faces,
+        // not in the text faces above (Segoe UI has no U+2713). Tried after the script chain, so
+        // ordinary text keeps its text face; without it an inserted check mark failed the save.
+        private static readonly string[] ChainSymbols   = ["Segoe UI Symbol", "Segoe UI Emoji", "MS Gothic"];
+
+        /// <summary>Fork: Han text without kana or Bopomofo is drawn with Traditional Chinese
+        /// faces first when the interface or Windows is Traditional Chinese (Taiwan, Hong Kong,
+        /// Macau), so 臺灣 forms keep their own glyph shapes instead of Simplified ones.</summary>
+        internal static bool PreferTraditionalChinese { get; set; } = IsTraditionalChineseCulture(
+            System.Globalization.CultureInfo.CurrentUICulture);
+
+        internal static bool IsTraditionalChineseCulture(System.Globalization.CultureInfo culture)
+        {
+            string name = culture.Name;
+            return culture.TwoLetterISOLanguageName == "zh"
+                && (name.Contains("Hant", StringComparison.OrdinalIgnoreCase)
+                    || name.EndsWith("-TW", StringComparison.OrdinalIgnoreCase)
+                    || name.EndsWith("-HK", StringComparison.OrdinalIgnoreCase)
+                    || name.EndsWith("-MO", StringComparison.OrdinalIgnoreCase));
+        }
 
         /// <summary>The family to draw <paramref name="text"/> with: the user's choice when it
         /// covers everything, otherwise the first family in the script's chain that does. Falls
@@ -49,6 +69,8 @@ namespace KillerPDF.Services
                 if (string.Equals(family, preferred, StringComparison.OrdinalIgnoreCase)) continue;
                 if (Covers(family, text!)) return family;
             }
+            foreach (var family in ChainSymbols)
+                if (Covers(family, text!)) return family;
             return preferred;
         }
 
@@ -94,7 +116,8 @@ namespace KillerPDF.Services
                     // prefer Simplified and let the Traditional chain cover what it misses.
                     foreach (int c2 in CodePoints(text))
                         if (c2 is >= 0x3040 and <= 0x30FF) return ChainJapanese;
-                    return HasTraditionalMarker(text) ? ChainTraditional : ChainSimplified;
+                    return HasTraditionalMarker(text) || PreferTraditionalChinese
+                        ? ChainTraditional : ChainSimplified;
                 }
             }
             return ChainDefault;
