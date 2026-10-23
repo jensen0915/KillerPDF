@@ -1058,7 +1058,7 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Lbl_Checkmark">チェックマーク</sys:String>
     <sys:String x:Key="Str_Office_RocDate">民国紀年を使用（例: 115/10/03）</sys:String>
     <sys:String x:Key="Str_Office_Insert">挿入</sys:String>
-    <sys:String x:Key="Str_Office_ClickToPlace">ページをクリックして配置します。Ctrl+Enter で確定、Esc で取り消し。</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">空いている場所をクリックして配置します。配置済みの項目や入力枠の上のつまみをドラッグすると移動できます。Ctrl+Enter で確定、Esc で取り消し。</sys:String>
     <sys:String x:Key="Str_Sig_UndoLast">最後の線を元に戻す</sys:String>
     <sys:String x:Key="Str_Sig_SaveToComputer">次回のためにこのコンピューターに保存</sys:String>
     <sys:String x:Key="Str_Sig_SaveImportedQuestion">この署名画像を次回のためにこのコンピューターに保存しますか？「いいえ」を選ぶと今回のみ使用します。</sys:String>
@@ -1070,4 +1070,5 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Sign_SaveFirst">この文書には未保存の変更があります。証明書による署名は保存済みのファイルを封印するため、先に署名用のコピーを保存してください。</sys:String>
     <sys:String x:Key="Str_CompatibleExplanation">ページ画像で構成された PDF のコピーを書き出します。どのビューアーでも同じように表示されますが、コピーの文字は選択できず、フォームにも入力できません。開いている文書と未保存の変更はそのまま残ります。</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">開いている文書を残すため、別のファイル名を指定してください。</sys:String>
+    <sys:String x:Key="Str_TextEdit_MoveGrip">ドラッグしてテキストボックスを移動</sys:String>
 </ResourceDictionary>

@@ -590,6 +590,26 @@ namespace KillerPDF.Controls
                 _textEditHandles.Add(hd);
                 TextEditorLayerFor(_activeCanvas).Children.Add(hd);
             }
+            // Fork: a move grip just outside the box, so a field filled in the wrong spot can be
+            // nudged into place without leaving the editor or switching tools. Same hit-test path as
+            // the corners, tagged "MOVE".
+            var grip = new Rectangle
+            {
+                Width = 30 * inv,
+                Height = 12 * inv,
+                RadiusX = 3 * inv,
+                RadiusY = 3 * inv,
+                Fill = AccentBrush(),
+                Stroke = Brushes.White,
+                StrokeThickness = 1 * inv,
+                Cursor = Cursors.SizeAll,
+                Focusable = false,
+                ToolTip = Loc("Str_TextEdit_MoveGrip"),
+                Tag = "MOVE"
+            };
+            Panel.SetZIndex(grip, 200);
+            _textEditHandles.Add(grip);
+            TextEditorLayerFor(_activeCanvas).Children.Add(grip);
             tb.SizeChanged += TextEditBox_SizeChanged;
             LayoutTextEditHandles();
         }
@@ -605,6 +625,16 @@ namespace KillerPDF.Controls
             foreach (var hd in _textEditHandles)
             {
                 double hsz = hd.Width;
+                if (hd.Tag as string == "MOVE")
+                {
+                    // Centered just above the box; below it when the box sits at the top of the page.
+                    double gap = hd.Height * 0.4;
+                    double top = y - hd.Height - gap;
+                    if (top < 0) top = y + h + gap;
+                    Canvas.SetLeft(hd, x + w / 2 - hd.Width / 2);
+                    Canvas.SetTop(hd, top);
+                    continue;
+                }
                 (double cx, double cy) = (hd.Tag as string) switch
                 {
                     "NW" => (x, y),

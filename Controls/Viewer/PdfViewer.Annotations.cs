@@ -716,6 +716,38 @@ namespace KillerPDF.Controls
 
         private static bool IsDraggable(PageAnnotation a) => a is PlacedAnnotation or TextAnnotation or HighlightAnnotation or InkAnnotation;
 
+        // Selects the topmost matching annotation under the pointer and starts dragging it (used by the
+        // Text tool). A grouped annotation selects + drags its whole group; _dragGroupOrig holds the
+        // companions' start positions so the group translates rigidly. False when nothing matches.
+        private bool TryBeginAnnotationDrag(int pageIdx, Point pos, Func<PageAnnotation, bool> canDrag)
+        {
+            if (!_annotations.TryGetValue(pageIdx, out var list)) return false;
+            for (int i = list.Count - 1; i >= 0; i--)
+            {
+                var pa = list[i];
+                if (!canDrag(pa) || !HitTestAnnotation(pa, pos, out Rect bounds)) continue;
+                _dragGroupOrig.Clear();
+                if (pa.GroupId.Length > 0)
+                {
+                    SelectGroup(pa);
+                    foreach (var m in _selectedSet) _dragGroupOrig.Add((m, AnnotGetPos(m)));
+                }
+                else
+                {
+                    ClearSelection();
+                    RenderAllAnnotations(pageIdx);
+                    SelectAnnotation(pa, bounds);
+                }
+                _isDraggingAnnot = true;
+                _dragAnnotStart = pos;
+                _dragAnnotOrigPos = AnnotGetPos(pa);
+                _dragAnnot = pa;
+                _activeCanvas.CaptureMouse();
+                return true;
+            }
+            return false;
+        }
+
         // Shortest distance from point p to the segment a-b. Used to hit-test straight lines and ink
         // strokes along their length, not just at their sample points.
         private static double DistPointToSegment(Point p, Point a, Point b)
@@ -875,6 +907,7 @@ namespace KillerPDF.Controls
                     double bh = _tehBox.ActualHeight > 0 ? _tehBox.ActualHeight : Math.Max(_tehBox.MinHeight, 24);
                     _tehAnchor = _tehCorner switch
                     {
+                        "MOVE" => new Point(hpos.X - bx, hpos.Y - by),   // grab offset inside the box
                         "NW" => new Point(bx + bw, by + bh),
                         "NE" => new Point(bx,      by + bh),
                         "SW" => new Point(bx + bw, by),
@@ -1186,7 +1219,20 @@ namespace KillerPDF.Controls
                         break;
                     }
                     CommitActiveTextBox();
-                    PlaceTextBox(pos, pageIdx);
+                    // Fork: filled-in text, dates, check marks and signatures stay movable without
+                    // switching to Select - a drag moves one, a double-click re-edits text. Only an
+                    // empty spot places a new box. Highlights and ink are left alone so text can go over them.
+                    if (e.ClickCount == 2 && _annotations.TryGetValue(pageIdx, out var textHits)
+                        && textHits.OfType<TextAnnotation>().Any(a => HitTestAnnotation(a, pos, out _)))
+                    {
+                        ClearSelection();
+                        EditTextAtPosition(pos, pageIdx);
+                    }
+                    else if (!TryBeginAnnotationDrag(pageIdx, pos, a => a is TextAnnotation or PlacedAnnotation))
+                    {
+                        ClearSelection();
+                        PlaceTextBox(pos, pageIdx);
+                    }
                     e.Handled = true;
                     break;
 
@@ -1460,6 +1506,17 @@ namespace KillerPDF.Controls
             var pos = e.GetPosition(gc);
             pos.X = Math.Max(0, Math.Min(gc.ActualWidth, pos.X));
             pos.Y = Math.Max(0, Math.Min(gc.ActualHeight, pos.Y));
+
+            // Live text-edit box move (mid-edit grip): the box follows the pointer and stays on the page.
+            if (_draggingTextEditHandle && _tehBox is not null && _tehCorner == "MOVE")
+            {
+                double bw = _tehBox.ActualWidth > 0 ? _tehBox.ActualWidth : _tehBox.Width;
+                double bh = _tehBox.ActualHeight > 0 ? _tehBox.ActualHeight : Math.Max(_tehBox.MinHeight, 24);
+                Canvas.SetLeft(_tehBox, Math.Max(0, Math.Min(gc.ActualWidth - bw, pos.X - _tehAnchor.X)));
+                Canvas.SetTop(_tehBox, Math.Max(0, Math.Min(gc.ActualHeight - bh, pos.Y - _tehAnchor.Y)));
+                LayoutTextEditHandles();
+                return;
+            }
 
             // Live text-edit box resize (mid-edit corner handles): free-form, opposite corner held fixed.
             if (_draggingTextEditHandle && _tehBox is not null)
@@ -1838,7 +1895,8 @@ namespace KillerPDF.Controls
                     }
                     else if (da.GroupId.Length > 0) SelectGroup(da);
                     else SelectAnnotation(da, AnnotBounds(da));
-                    MarkDirty();
+                    // A click that only selects leaves the saved state alone.
+                    if (AnnotGetPos(da) != _dragAnnotOrigPos) MarkDirty();
                 }
                 _dragGroupOrig.Clear();
                 return;

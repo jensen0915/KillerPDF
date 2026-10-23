@@ -1044,7 +1044,7 @@ Auf eine unterstützte Größe skalieren? Aussehen und Proportionen der Seiten b
     <sys:String x:Key="Str_Lbl_Checkmark">Check mark</sys:String>
     <sys:String x:Key="Str_Office_RocDate">Use ROC (Minguo) year, e.g. 115/10/03</sys:String>
     <sys:String x:Key="Str_Office_Insert">Insert</sys:String>
-    <sys:String x:Key="Str_Office_ClickToPlace">Click the page to place it. Ctrl+Enter finishes, Esc cancels.</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">Click an empty spot to place; drag placed items or the grip above the box to move them. Ctrl+Enter finishes, Esc cancels.</sys:String>
     <sys:String x:Key="Str_Sig_UndoLast">Undo last stroke</sys:String>
     <sys:String x:Key="Str_Sig_SaveToComputer">Save on this computer for next time</sys:String>
     <sys:String x:Key="Str_Sig_SaveImportedQuestion">Save this signature image on this computer for next time? Choose No to use it only in this session.</sys:String>
@@ -1056,4 +1056,5 @@ Auf eine unterstützte Größe skalieren? Aussehen und Proportionen der Seiten b
     <sys:String x:Key="Str_Sign_SaveFirst">This document has unsaved changes. Certificate signing seals the saved file, so save a copy to sign first.</sys:String>
     <sys:String x:Key="Str_CompatibleExplanation">Export an image-based PDF copy that opens the same in every reader. Text in the copy cannot be selected and form fields can no longer be filled. Your open document and unsaved changes are kept.</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">Choose a different file name to keep the open document.</sys:String>
+    <sys:String x:Key="Str_TextEdit_MoveGrip">Drag to move the text box</sys:String>
 </ResourceDictionary>

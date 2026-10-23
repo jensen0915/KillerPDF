@@ -1040,7 +1040,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Lbl_Checkmark">勾選記號</sys:String>
     <sys:String x:Key="Str_Office_RocDate">使用民國年（例如 115/10/03）</sys:String>
     <sys:String x:Key="Str_Office_Insert">插入</sys:String>
-    <sys:String x:Key="Str_Office_ClickToPlace">點擊頁面放置；Ctrl+Enter 完成，Esc 取消。</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">點擊空白處放置；拖曳已放置的內容或編輯框上方把手可移動。Ctrl+Enter 完成，Esc 取消。</sys:String>
     <sys:String x:Key="Str_Sig_UndoLast">復原上一筆</sys:String>
     <sys:String x:Key="Str_Sig_SaveToComputer">儲存在這台電腦供下次使用</sys:String>
     <sys:String x:Key="Str_Sig_SaveImportedQuestion">要將此簽名圖片儲存在這台電腦供下次使用嗎？選「否」僅在這次使用。</sys:String>
@@ -1052,4 +1052,5 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Sign_SaveFirst">此文件有尚未儲存的修改。憑證簽署會封存已儲存的檔案，請先另存一份待簽文件。</sys:String>
     <sys:String x:Key="Str_CompatibleExplanation">匯出以頁面影像組成的 PDF 副本，方便交付，且在各種閱讀器中顯示一致。副本的文字無法選取，表單欄位無法再填寫。目前文件與尚未儲存的修改會保留。</sys:String>
     <sys:String x:Key="Str_ExportNeedsNewPath">請使用不同檔名，以保留目前開啟的文件。</sys:String>
+    <sys:String x:Key="Str_TextEdit_MoveGrip">拖曳以移動文字框</sys:String>
 </ResourceDictionary>
