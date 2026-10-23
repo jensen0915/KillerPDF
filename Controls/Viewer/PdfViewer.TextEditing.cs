@@ -55,6 +55,20 @@ namespace KillerPDF.Controls
                     pageCanvas.Children.RemoveAt(index);
         }
 
+        // True while an IME (Bopomofo, Cangjie, Japanese) has an open composition in the active box.
+        private bool _imeComposing;
+
+        // Every editing box gets the key handler plus composition tracking, so Enter that confirms an
+        // IME candidate is never taken as "commit" and Esc that dismisses one never cancels the edit.
+        private void AttachTextBoxKeys(TextBox tb)
+        {
+            tb.PreviewKeyDown += TextBox_PreviewKeyDown;
+            TextCompositionManager.AddPreviewTextInputStartHandler(tb, (_, _) => _imeComposing = true);
+            TextCompositionManager.AddPreviewTextInputUpdateHandler(tb, (_, _) => _imeComposing = true);
+            TextCompositionManager.AddPreviewTextInputHandler(tb, (_, _) => _imeComposing = false);
+            tb.LostKeyboardFocus += (_, _) => _imeComposing = false;
+        }
+
         private void QueueTextEditorFocus(TextBox textBox, bool selectAll = false)
         {
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
@@ -191,7 +205,7 @@ namespace KillerPDF.Controls
                     TextEditorLayerFor(_activeCanvas).Children.Add(ptb);
                     _activeTextBox = ptb;
                     StyleEditBox(ptb);   // restore the box's typeface + B/I/S
-                    ptb.PreviewKeyDown += TextBox_PreviewKeyDown;
+                    AttachTextBoxKeys(ptb);
                     ptb.LostFocus += TextBox_LostFocus;
                     ptb.Loaded += (_, _) => QueueTextEditorFocus(ptb, selectAll: true);
                     ptb.PreviewMouseLeftButtonDown += (_, _) => QueueTextEditorFocus(ptb);
@@ -444,7 +458,7 @@ namespace KillerPDF.Controls
             TextEditorLayerFor(_activeCanvas).Children.Add(tb);
             _activeTextBox = tb;
             StyleEditBox(tb);
-            tb.PreviewKeyDown += TextBox_PreviewKeyDown;
+            AttachTextBoxKeys(tb);
             tb.LostFocus += TextBox_LostFocus;
             tb.Loaded += (_, _) => QueueTextEditorFocus(tb, selectAll: true);
             tb.PreviewMouseLeftButtonDown += (_, _) => QueueTextEditorFocus(tb);
@@ -537,7 +551,7 @@ namespace KillerPDF.Controls
             TextEditorLayerFor(_activeCanvas).Children.Add(tb);
             _activeTextBox = tb;
             StyleEditBox(tb);   // current typeface + B/I/S
-            tb.PreviewKeyDown += TextBox_PreviewKeyDown;
+            AttachTextBoxKeys(tb);
             tb.LostFocus += TextBox_LostFocus;
             // Input priority runs after the placement click has completed, so that click cannot
             // immediately take focus back from the new editor.
@@ -639,6 +653,12 @@ namespace KillerPDF.Controls
         // Enter inserts a line break. Ctrl+Enter commits the text box without requiring a pointer click.
         private void TextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Let an open IME composition finish or cancel before the editor acts on navigation or
+            // commit keys - otherwise confirming a Bopomofo candidate with Enter commits the box.
+            if (e.Key is Key.ImeProcessed or Key.DeadCharProcessed
+                || (_imeComposing && e.Key is Key.Enter or Key.Escape or Key.Left or Key.Right or Key.Up or Key.Down))
+                return;
+
             if (e.Key == Key.Escape)
             {
                 CancelActiveTextEdit();
@@ -679,6 +699,7 @@ namespace KillerPDF.Controls
         // "Ctrl+Z with nothing left in the box" path.
         private void CancelActiveTextEdit()
         {
+            _imeComposing = false;
             RemoveTextEditHandles();
             RemoveReeditCoverOutline();   // edit canceled; drop the cover hint (repaint follows)
             if (_activeTextBox is not null)
@@ -737,12 +758,14 @@ namespace KillerPDF.Controls
             if (_activeTextBox is null) return;
             var tb = _activeTextBox;
             _activeTextBox = null;
+            _imeComposing = false;
             RemoveTextEditHandles();
             RemoveReeditCoverOutline();   // the re-edit is ending; drop its cover hint (repaint follows)
             string reeditPair = _reeditOriginal?.PairId ?? "";   // preserve a re-edited text's cover pairing
             _reeditOriginal = null;   // committing replaces any annotation being re-edited
 
-            string content = tb.Text.Trim();
+            // Leading and trailing spaces are kept: forms use them to line text up with printed boxes.
+            string content = tb.Text;
             int pageIdx = tb.Tag is int idx ? idx : _currentPage;
             double x = Canvas.GetLeft(tb);
             double y = Canvas.GetTop(tb);
@@ -754,7 +777,7 @@ namespace KillerPDF.Controls
             // live Parent is the correct host.
             RemoveFromParent(tb);
 
-            if (!string.IsNullOrEmpty(content))
+            if (!string.IsNullOrWhiteSpace(content))
             {
                 double boxW = (!double.IsNaN(tb.Width) && tb.Width > 0) ? tb.Width
                             : (tb.ActualWidth > 0 ? tb.ActualWidth : TextBoxDefaultWidth);
