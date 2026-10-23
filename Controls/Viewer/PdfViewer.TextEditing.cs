@@ -562,7 +562,10 @@ namespace KillerPDF.Controls
                 };
                 probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 // Text width plus the box's padding and border, and a little room for the caret.
-                tb.Width = Math.Ceiling(probe.DesiredSize.Width) + 4 + 2 + fontCanvas * 0.5;
+                // Letter spacing shifts each later character right outside layout (TextEffects).
+                int elements = new System.Globalization.StringInfo(preset).LengthInTextElements;
+                double spacing = Math.Max(0, (elements - 1) * CanvasLetterSpacing(pageIdx));
+                tb.Width = Math.Ceiling(probe.DesiredSize.Width + spacing) + 4 + 2 + fontCanvas * 0.5;
             }
             AttachTextBoxKeys(tb);
             tb.LostFocus += TextBox_LostFocus;
@@ -698,8 +701,11 @@ namespace KillerPDF.Controls
         {
             // Let an open IME composition finish or cancel before the editor acts on navigation or
             // commit keys - otherwise confirming a Bopomofo candidate with Enter commits the box.
+            // Only plain keys are held back for the flag, so Ctrl+Enter still commits if a cancelled
+            // composition ever left the flag set.
             if (e.Key is Key.ImeProcessed or Key.DeadCharProcessed
-                || (_imeComposing && e.Key is Key.Enter or Key.Escape or Key.Left or Key.Right or Key.Up or Key.Down))
+                || (_imeComposing && Keyboard.Modifiers == ModifierKeys.None
+                    && e.Key is Key.Enter or Key.Escape or Key.Left or Key.Right or Key.Up or Key.Down))
                 return;
 
             if (e.Key == Key.Escape)
@@ -808,7 +814,9 @@ namespace KillerPDF.Controls
             _reeditOriginal = null;   // committing replaces any annotation being re-edited
 
             // Leading and trailing spaces are kept: forms use them to line text up with printed boxes.
-            string content = tb.Text;
+            // A trailing line break is not - an Enter pressed out of habit before clicking away would
+            // make the box a line taller and, with a fill, cover the printed line below.
+            string content = tb.Text.TrimEnd('\r', '\n');
             int pageIdx = tb.Tag is int idx ? idx : _currentPage;
             double x = Canvas.GetLeft(tb);
             double y = Canvas.GetTop(tb);

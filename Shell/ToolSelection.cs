@@ -52,6 +52,7 @@ namespace KillerPDF
                 && (_textSettingsBar is not null || _drawSettingsBar is not null || _cropConfirmBar is not null);
             if (reclickedAnnotTool)
             {
+                _officeTextPreset = null;   // re-choosing Add text means a plain box, not the pending date
                 ToggleAnnotBarMinimized();
                 return;
             }
@@ -62,7 +63,9 @@ namespace KillerPDF
             CancelShapePolygon();   // abandon an in-progress polygon when switching tools
             if (tool != EditTool.Draw) HideBrushPreview();   // drop the brush cursor when leaving Draw
             if (tool != EditTool.Measure) ActiveViewer.ClearMeasurementExt();
-            _officeTextPreset = null;   // a pending date / check mark belongs to the tool being left
+            // A pending date / check mark belongs to the tool being left. Re-applying the same tool
+            // (pane focus, tab switch, theme change) keeps it.
+            if (tool != _currentTool) _officeTextPreset = null;
             _currentTool = tool;
             UpdateOfficeTaskForTool(tool);
             ActiveViewer.RefreshFormDesignMode();
