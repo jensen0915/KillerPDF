@@ -334,6 +334,38 @@ public sealed class PdfBurnRotationTests
     }
 
     [Fact]
+    public void TextBurn_UsesTheDrawnFacesBaselineAndLinePitch()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"killerpdf-line-pitch-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            File.WriteAllBytes(path, new PdfDocumentBuilder().AddBlankPage(612, 792).Build());
+            const string content = "臺北市\n信義區";
+            var text = new TextAnnotation
+            {
+                PageIndex = 0, Position = new Point(20, 30), Content = content,
+                FontName = "Segoe UI", FontSize = 20, Width = 300, Height = 120
+            };
+            PdfEngineBurn.Burn(path,
+                new Dictionary<int, List<PageAnnotation>> { [0] = [text] },
+                new Dictionary<int, (int w, int h)> { [0] = (612, 792) });
+
+            // Segoe UI has no Han glyphs, so a Chinese face is drawn; its metrics must place the lines.
+            string drawn = FontCoverage.PickFamily("Segoe UI", content);
+            double baseline = 30 + 2 + PdfEngineBurn.BaselineRatio(drawn, false, false) * 20;
+            double pitch = PdfEngineBurn.LineSpacingRatio(drawn) * 20;
+            var lineY = System.Text.RegularExpressions.Regex
+                .Matches(AllDecodedStreams(path), @"1 0 0 -1 [-0-9.]+ ([-0-9.]+) Tm")
+                .Select(m => double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture))
+                .ToList();
+            Assert.Equal(2, lineY.Count);
+            Assert.Equal(baseline, lineY[0], 2);
+            Assert.Equal(pitch, lineY[1] - lineY[0], 2);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+
+    [Fact]
     public void TextBurn_UsesWpfTypefaceBaselineInsteadOfAssumedFullEm()
     {
         double ratio = PdfEngineBurn.BaselineRatio("Segoe UI", false, false);

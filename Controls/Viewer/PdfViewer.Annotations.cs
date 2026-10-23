@@ -65,7 +65,7 @@ namespace KillerPDF.Controls
             string? fontName = null, bool bold = false, bool italic = false)
         {
             FontFamily family;
-            try { family = new FontFamily(string.IsNullOrEmpty(fontName) ? "Segoe UI" : fontName); }
+            try { family = new FontFamily(FontCoverage.PickFamily(string.IsNullOrEmpty(fontName) ? "Segoe UI" : fontName, text)); }
             catch { family = UiKit.UiFont; }
             var probe = new TextBlock
             {
@@ -77,6 +77,7 @@ namespace KillerPDF.Controls
                 Padding = new Thickness(2),
                 TextWrapping = TextWrapping.Wrap
             };
+            TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Display);
             probe.Measure(new Size(Math.Max(1, width), double.PositiveInfinity));
             return Math.Ceiling(probe.DesiredSize.Height);
         }
@@ -88,7 +89,9 @@ namespace KillerPDF.Controls
             // A fixed W x H box: optional fill background, text wrapped to the width and clipped to the
             // height (so a free-form-resized box behaves like an image/crop frame).
             FontFamily famsel;
-            try { famsel = new FontFamily(string.IsNullOrEmpty(ta.FontName) ? "Segoe UI" : ta.FontName); }
+            // Fork: the family the save draws with (PdfEngineBurn picks one for the whole text), so
+            // mixed Chinese and Latin text is the same width on screen and in the saved file.
+            try { famsel = new FontFamily(FontCoverage.PickFamily(string.IsNullOrEmpty(ta.FontName) ? "Segoe UI" : ta.FontName, ta.Content)); }
             catch { famsel = UiKit.UiFont; }
             var tb = new TextBlock
             {

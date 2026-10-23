@@ -69,6 +69,31 @@ namespace KillerPDF.Controls
             tb.LostKeyboardFocus += (_, _) => _imeComposing = false;
         }
 
+        // How far right and down the edit box draws its first character compared with the placed
+        // TextBlock (2-unit padding, no border). Zero until the box has been laid out.
+        private static Vector TextInset(TextBox tb)
+        {
+            if (!tb.IsLoaded) return default;
+            tb.UpdateLayout();
+            Rect first = tb.GetRectFromCharacterIndex(0);
+            if (first.IsEmpty || !double.IsFinite(first.X) || !double.IsFinite(first.Y)) return default;
+            return new Vector(Math.Max(0, first.X - 2), Math.Max(0, first.Y - 2));
+        }
+
+        // Re-editing a placed text: shift the box up-left by its own text inset (the reverse of the
+        // shift CommitActiveTextBox applies), so the text neither jumps when editing starts nor
+        // creeps right and down with every re-edit.
+        private void AlignEditBoxToPlacedText(TextBox tb)
+        {
+            Vector inset = TextInset(tb);
+            if (inset.X == 0 && inset.Y == 0) return;
+            Canvas.SetLeft(tb, Canvas.GetLeft(tb) - inset.X);
+            Canvas.SetTop(tb, Canvas.GetTop(tb) - inset.Y);
+            if (!double.IsNaN(tb.Width)) tb.Width += 2 * inset.X;
+            if (!double.IsNaN(tb.Height)) tb.Height += 2 * inset.Y;
+            LayoutTextEditHandles();
+        }
+
         private void QueueTextEditorFocus(TextBox textBox, bool selectAll = false)
         {
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
@@ -207,6 +232,7 @@ namespace KillerPDF.Controls
                     StyleEditBox(ptb);   // restore the box's typeface + B/I/S
                     AttachTextBoxKeys(ptb);
                     ptb.LostFocus += TextBox_LostFocus;
+                    ptb.Loaded += (_, _) => AlignEditBoxToPlacedText(ptb);
                     ptb.Loaded += (_, _) => QueueTextEditorFocus(ptb, selectAll: true);
                     ptb.PreviewMouseLeftButtonDown += (_, _) => QueueTextEditorFocus(ptb);
                     QueueTextEditorFocus(ptb, selectAll: true);
@@ -560,6 +586,7 @@ namespace KillerPDF.Controls
                     Text = preset, FontFamily = tb.FontFamily, FontSize = tb.FontSize,
                     FontWeight = tb.FontWeight, FontStyle = tb.FontStyle
                 };
+                TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Display);
                 probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 // Text width plus the box's padding and border, and a little room for the caret.
                 // Letter spacing shifts each later character right outside layout (TextEffects).
@@ -820,6 +847,13 @@ namespace KillerPDF.Controls
             int pageIdx = tb.Tag is int idx ? idx : _currentPage;
             double x = Canvas.GetLeft(tb);
             double y = Canvas.GetTop(tb);
+            // Fork: the edit box draws its text inside a border and the TextBox's own content margin;
+            // the placed TextBlock has only its 2-unit padding. Move the placed box by the difference
+            // (and narrow it to the same text width) so the text stays where it was typed instead of
+            // jumping up and left on commit.
+            Vector inset = TextInset(tb);
+            x += inset.X;
+            y += inset.Y;
 
             // Remove the editing box from whatever canvas actually parents it. _activeCanvas may have
             // moved to another page when the user clicked away to commit (continuous/grid), and a
@@ -832,6 +866,7 @@ namespace KillerPDF.Controls
             {
                 double boxW = (!double.IsNaN(tb.Width) && tb.Width > 0) ? tb.Width
                             : (tb.ActualWidth > 0 ? tb.ActualWidth : TextBoxDefaultWidth);
+                boxW = Math.Max(1, boxW - 2 * inset.X);
                 var ta = new TextAnnotation
                 {
                     PageIndex = pageIdx,
@@ -851,7 +886,7 @@ namespace KillerPDF.Controls
                 ta.SetFill(_pendingCover is not null ? Colors.Transparent : _textFillColor);
                 // Free-form height if the box was manually resized; otherwise fit to the wrapped text.
                 ta.Height = (!double.IsNaN(tb.Height) && tb.Height > 0)
-                    ? tb.Height
+                    ? Math.Max(1, tb.Height - 2 * inset.Y)
                     : MeasureTextBoxHeight(content, boxW, tb.FontSize, ta.FontName, ta.Bold, ta.Italic);
                 // Keep the placed box fully on-page so its corners (and resize handles) stay reachable.
                 ta.Position = ClampRectToPage(pageIdx, new Rect(ta.Position, new Size(ta.Width, ta.Height))).Location;

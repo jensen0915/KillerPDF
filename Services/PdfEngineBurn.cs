@@ -124,7 +124,13 @@ internal static class PdfEngineBurn
         if (font is null) return;
         double size = Math.Max(1, text.FontSize * sy);
         double padX = 2 * sx, padY = 2 * sy;
-        double lineHeight = size * 1.2;
+        // Fork: baseline and line pitch come from the face actually drawn (FontCoverage may swap in
+        // Microsoft JhengHei or Segoe UI Symbol), as on screen. The chosen face's baseline put Chinese
+        // text a little lower than the overlay, and a fixed 1.2 em pitch let wrapped lines drift
+        // further from the screen with every line.
+        string drawnFamily = FontCoverage.PickFamily(
+            string.IsNullOrWhiteSpace(text.FontName) ? "Segoe UI" : text.FontName, text.Content);
+        double lineHeight = size * LineSpacingRatio(drawnFamily);
         double characterSpacing = text.LetterSpacing * sy;
         var lines = Wrap(text.Content, font, size, Math.Max(1, width - 2 * padX), characterSpacing);
         content.SaveState().SetFillRgb(text.ColorR / 255d, text.ColorG / 255d, text.ColorB / 255d)
@@ -133,7 +139,7 @@ internal static class PdfEngineBurn
         // WPF positions glyphs at the typeface's own baseline, which is not necessarily one em below
         // the top of the TextBlock. Assuming a full em here made saved text jump vertically even
         // though the overlay looked correctly placed before save (#273).
-        double baseline = y + padY + BaselineRatio(text.FontName, text.Bold, text.Italic) * size;
+        double baseline = y + padY + BaselineRatio(drawnFamily, text.Bold, text.Italic) * size;
         foreach (string line in lines)
         {
             if (baseline > y + height) break;
@@ -396,6 +402,19 @@ internal static class PdfEngineBurn
     {
         int count = text.EnumerateRunes().Count();
         return Measure(font, text, size) + Math.Max(0, count - 1) * characterSpacing;
+    }
+
+    // Line pitch of a WPF TextBlock in this family, in ems (its LineSpacing); 1.2 if unknown.
+    internal static double LineSpacingRatio(string family)
+    {
+        try
+        {
+            double spacing = new System.Windows.Media.FontFamily(
+                string.IsNullOrWhiteSpace(family) ? "Segoe UI" : family).LineSpacing;
+            if (double.IsFinite(spacing) && spacing is > .8 and < 2.5) return spacing;
+        }
+        catch { }
+        return 1.2;
     }
 
     internal static double BaselineRatio(string family, bool bold, bool italic)

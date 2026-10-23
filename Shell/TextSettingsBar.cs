@@ -38,7 +38,12 @@ namespace KillerPDF
         // editing stays WYSIWYG with the text bar. Bad font names fall back to Segoe UI rather than throwing.
         private void StyleEditBox(TextBox tb)
         {
-            try { tb.FontFamily = new FontFamily(_textFontName); } catch { tb.FontFamily = UiKit.UiFont; }
+            // Fork: show the face the save will draw with (one family for the whole text, picked by
+            // FontCoverage like PdfEngineBurn does) and the placed text's pixel-snapped metrics, so the
+            // text keeps its width when committed and when saved.
+            try { tb.FontFamily = new FontFamily(Services.FontCoverage.PickFamily(_textFontName, tb.Text)); }
+            catch { tb.FontFamily = UiKit.UiFont; }
+            TextOptions.SetTextFormattingMode(tb, TextFormattingMode.Display);
             tb.FontWeight = _textBold ? FontWeights.Bold : FontWeights.Normal;
             tb.FontStyle = _textItalic ? FontStyles.Italic : FontStyles.Normal;
             tb.TextDecorations = BuildDecorations(_textUnderline, _textStrike);
@@ -49,9 +54,14 @@ namespace KillerPDF
 
         private void ActiveTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (sender is TextBox tb)
-                ApplyLetterSpacing(tb, tb.Text,
-                    CanvasLetterSpacing(tb.Tag is int page ? page : PageList.SelectedIndex));
+            if (sender is not TextBox tb) return;
+            ApplyLetterSpacing(tb, tb.Text,
+                CanvasLetterSpacing(tb.Tag is int page ? page : PageList.SelectedIndex));
+            // Typing the first Chinese character into a Latin face switches the box to the face the
+            // save will use (see StyleEditBox).
+            string family = Services.FontCoverage.PickFamily(_textFontName, tb.Text);
+            if (!string.Equals(tb.FontFamily.Source, family, StringComparison.OrdinalIgnoreCase))
+                try { tb.FontFamily = new FontFamily(family); } catch { /* keep the current face */ }
         }
 
         private double CanvasLetterSpacing(int pageIndex)
