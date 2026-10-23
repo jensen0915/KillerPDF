@@ -101,6 +101,30 @@ public sealed class PdfFormWidgetReaderTests
     }
 
     [Fact]
+    public void ReadPage_ToleratesMalformedQuadding()
+    {
+        var source = new System.Text.StringBuilder("%PDF-1.7\n");
+        var offsets = new List<int> { 0 };
+        void Add(string body) { offsets.Add(source.Length); source.Append($"{offsets.Count - 1} 0 obj {body} endobj\n"); }
+        Add("<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 5 0 R] >> >>");
+        Add("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+        Add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /Annots [4 0 R 5 0 R] >>");
+        Add("<< /Type /Annot /Subtype /Widget /FT /Tx /T (real) /Rect [10 10 110 30] /Q 2.0 /P 3 0 R >>");
+        Add("<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /Rect [10 50 110 70] /Q /Center /P 3 0 R >>");
+        int xrefOffset = source.Length;
+        source.Append($"xref\n0 {offsets.Count}\n0000000000 65535 f \n");
+        foreach (int offset in offsets.Skip(1))
+            source.Append($"{offset:0000000000} 00000 n \n");
+        source.Append($"trailer << /Size {offsets.Count} /Root 1 0 R >>\nstartxref\n{xrefOffset}\n%%EOF\n");
+
+        IReadOnlyList<PdfFormWidgetInfo> widgets = PdfFormWidgetReader.ReadPage(
+            PdfDocument.Open(System.Text.Encoding.ASCII.GetBytes(source.ToString())), 0);
+
+        Assert.Equal(PdfTextFieldAlignment.Right, widgets.Single(w => w.FieldName == "real").Alignment);
+        Assert.Equal(PdfTextFieldAlignment.Left, widgets.Single(w => w.FieldName == "name").Alignment);
+    }
+
+    [Fact]
     public void ReadPage_ReturnsEmptyListWithoutWidgetsAndValidatesPageIndex()
     {
         PdfDocument document = PdfDocument.Open(new PdfDocumentBuilder().AddBlankPage().Build());

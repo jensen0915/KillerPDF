@@ -110,8 +110,15 @@ public static class PdfFormWidgetReader
                         throw new InvalidOperationException("An AcroForm /MaxLen value is out of range.");
                     maximumLength = (int)length;
                 }
+                // /Q only affects how a value is aligned, so a malformed one (a real, a name) reads as
+                // left instead of failing every widget on the page.
                 if (quadding < 0 && node.TryGetValue(QuaddingName, out PdfObject? quaddingValue))
-                    quadding = Math.Clamp(Integer(document, quaddingValue, "An AcroForm /Q value"), 0, 2);
+                    quadding = Resolve(document, quaddingValue, "An AcroForm /Q value") switch
+                    {
+                        PdfInteger integer => Math.Clamp(integer.Value, 0, 2),
+                        PdfReal real when double.IsFinite(real.Value) => Math.Clamp((long)Math.Round(real.Value), 0, 2),
+                        _ => 0
+                    };
                 if (options.Count == 0 && node.TryGetValue(OptionsName, out PdfObject? optionsValue))
                     options = ReadOptions(document, optionsValue);
                 if (!node.TryGetValue(ParentName, out PdfObject? parentValue)) break;

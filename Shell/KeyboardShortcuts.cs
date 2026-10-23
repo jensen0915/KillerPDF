@@ -557,7 +557,10 @@ namespace KillerPDF
                 if (_doc is not null && _currentTool != EditTool.Select) SetTool(EditTool.Select);
                 e.Handled = true;
             }
-            else if (e.Key == Key.Space && !_spaceHeld)
+            // Fork: a focused check box or radio button takes Space to toggle, not the pan gesture.
+            else if (e.Key == Key.Space && !_spaceHeld
+                     && !(Keyboard.FocusedElement is DependencyObject focusedField
+                          && KillerPDF.Controls.PdfViewer.IsFormFieldElementExt(focusedField)))
             {
                 _spaceHeld = true;
                 PagePreviewPanel.Cursor = DragCursors.Open;

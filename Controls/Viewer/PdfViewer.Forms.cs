@@ -363,10 +363,12 @@ namespace KillerPDF.Controls
             var radioGroups = new Dictionary<string, List<(Ellipse dot, string onVal)>>();
 
             bool anyField = false;
-            // Fork: Tab walks the fields the way a form is read - top to bottom, then left to right -
-            // instead of the order they happen to sit in /Annots.
+            // Fork: Tab walks the fields the way a form is read - row by row, left to right - instead
+            // of the order they happen to sit in /Annots. Each page canvas is its own tab scope, so in
+            // continuous, two-page and split views Tab finishes one page before moving to the next.
+            KeyboardNavigation.SetTabNavigation(canvas, KeyboardNavigationMode.Local);
             int tabIndex = 0;
-            foreach (var f in fields.OrderBy(f => Math.Round(f.Cy)).ThenBy(f => f.Cx))
+            foreach (var f in FormTabOrder.Order(fields, field => (field.Cx, field.Cy, field.Cw, field.Ch)))
             {
                 UIElement? ctrl = null;
 
@@ -644,7 +646,8 @@ namespace KillerPDF.Controls
                 if (ctrl is null) continue;
                 // Fork: read-only fields are skipped by Tab; the rest follow the reading order above.
                 if (f.IsReadOnly) ctrl.Focusable = false;
-                if (ctrl is Control focusable)
+                // A comb field is a Grid around its TextBox; the TextBox is what Tab reaches.
+                if (((ctrl as CombTextBox)?.Editor ?? ctrl as Control) is { } focusable)
                 {
                     focusable.IsTabStop = !f.IsReadOnly;
                     focusable.TabIndex = tabIndex++;

@@ -53,6 +53,7 @@ namespace KillerPDF.Controls
             if (_renderDims.TryGetValue(pageIndex, out var dimensions))
                 RenderFormFields(pageIndex, dimensions.w, dimensions.h);
         }
+        internal static bool IsFormFieldElementExt(DependencyObject element) => IsFormFieldElement(element);
         // Rebuilds the field overlays on every page currently on screen (the "Highlight fields" toggle).
         internal void RefreshVisibleFormFieldsExt()
         {
