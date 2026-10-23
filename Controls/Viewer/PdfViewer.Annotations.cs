@@ -58,15 +58,27 @@ namespace KillerPDF.Controls
             control.SetValue(TextBlock.TextEffectsProperty, effects);
         }
 
-        private static double MeasureTextBoxHeight(string text, double width, double fontSize)
+        // Fork: measured with the same TextBlock settings RenderTextAnnotation draws with. The old
+        // FormattedText measure kept "115/10/03" on one line where the TextBlock breaks after a
+        // slash, so the committed box was one line short and the end of a date was clipped.
+        private static double MeasureTextBoxHeight(string text, double width, double fontSize,
+            string? fontName = null, bool bold = false, bool italic = false)
         {
-            double inner = Math.Max(1, width - 4);   // minus left+right padding (2 + 2)
-            var ft = new FormattedText(
-                string.IsNullOrEmpty(text) ? " " : text,
-                System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI"), Math.Max(1, fontSize), Brushes.Black, 1.0)
-            { MaxTextWidth = inner };
-            return Math.Ceiling(ft.Height) + 4;      // plus top + bottom padding
+            FontFamily family;
+            try { family = new FontFamily(string.IsNullOrEmpty(fontName) ? "Segoe UI" : fontName); }
+            catch { family = UiKit.UiFont; }
+            var probe = new TextBlock
+            {
+                Text = string.IsNullOrEmpty(text) ? " " : text,
+                FontFamily = family,
+                FontWeight = bold ? FontWeights.Bold : FontWeights.Normal,
+                FontStyle = italic ? FontStyles.Italic : FontStyles.Normal,
+                FontSize = Math.Max(1, fontSize),
+                Padding = new Thickness(2),
+                TextWrapping = TextWrapping.Wrap
+            };
+            probe.Measure(new Size(Math.Max(1, width), double.PositiveInfinity));
+            return Math.Ceiling(probe.DesiredSize.Height);
         }
 
         private void RenderTextAnnotation(TextAnnotation ta)

@@ -541,7 +541,8 @@ namespace KillerPDF.Controls
                 Tag = pageIdx
             };
             // Date / check-mark insertion pre-fills the box; the user can still edit it before committing.
-            if (Host!.TakeTextPreset() is string preset)
+            string? preset = Host!.TakeTextPreset();
+            if (preset is not null)
             {
                 tb.Text = preset;
                 tb.CaretIndex = preset.Length;
@@ -551,6 +552,18 @@ namespace KillerPDF.Controls
             TextEditorLayerFor(_activeCanvas).Children.Add(tb);
             _activeTextBox = tb;
             StyleEditBox(tb);   // current typeface + B/I/S
+            // A preset is one short line; size the box to it so a date never wraps at a slash.
+            if (preset is not null)
+            {
+                var probe = new TextBlock
+                {
+                    Text = preset, FontFamily = tb.FontFamily, FontSize = tb.FontSize,
+                    FontWeight = tb.FontWeight, FontStyle = tb.FontStyle
+                };
+                probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                // Text width plus the box's padding and border, and a little room for the caret.
+                tb.Width = Math.Ceiling(probe.DesiredSize.Width) + 4 + 2 + fontCanvas * 0.5;
+            }
             AttachTextBoxKeys(tb);
             tb.LostFocus += TextBox_LostFocus;
             // Input priority runs after the placement click has completed, so that click cannot
@@ -831,7 +844,7 @@ namespace KillerPDF.Controls
                 // Free-form height if the box was manually resized; otherwise fit to the wrapped text.
                 ta.Height = (!double.IsNaN(tb.Height) && tb.Height > 0)
                     ? tb.Height
-                    : MeasureTextBoxHeight(content, boxW, tb.FontSize);
+                    : MeasureTextBoxHeight(content, boxW, tb.FontSize, ta.FontName, ta.Bold, ta.Italic);
                 // Keep the placed box fully on-page so its corners (and resize handles) stay reachable.
                 ta.Position = ClampRectToPage(pageIdx, new Rect(ta.Position, new Size(ta.Width, ta.Height))).Location;
                 // Carry the pairing so the cover knows its partner text exists (renders dashed).
