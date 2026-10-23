@@ -174,6 +174,8 @@ public sealed class LocalizationParityTests
             || relative.StartsWith("Packaging/", StringComparison.OrdinalIgnoreCase)
             || relative.StartsWith("KillerPDF.Tests/", StringComparison.OrdinalIgnoreCase)
             || relative.StartsWith("engine/", StringComparison.OrdinalIgnoreCase)
+            // Fork: Claude Code keeps git worktrees (whole second checkouts) under .claude/.
+            || relative.StartsWith(".claude/", StringComparison.OrdinalIgnoreCase)
             || relative.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
             || relative.Contains("/obj/", StringComparison.OrdinalIgnoreCase);
     }
