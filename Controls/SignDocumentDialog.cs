@@ -56,8 +56,9 @@ namespace KillerPDF
         {
             _sourcePdf = sourcePdf;
             Title = "KillerPDF - " + L("Str_Sign_Name");
-            Width = 720;
-            MaxHeight = 860;
+            // Fork: stay inside small work areas (1366x768 laptops); the body scrolls.
+            Width = Math.Min(720, Math.Max(360, SystemParameters.WorkArea.Width - 32));
+            MaxHeight = Math.Min(860, Math.Max(320, SystemParameters.WorkArea.Height - 32));
             SizeToContent = SizeToContent.Height;
             UseLayoutRounding = true;
             DialogChrome.Configure(this, owner);
@@ -290,6 +291,27 @@ namespace KillerPDF
 
             string output = _outputBox.Text?.Trim() ?? "";
             if (string.IsNullOrEmpty(output)) { Warn(L("Str_Sign_NeedOutput")); return; }
+
+            // Fork: the signed copy is a new file. Never seal over the source being signed, and confirm
+            // before replacing some other existing file.
+            if (!File.Exists(_sourcePdf)) { Warn(L("Str_Sign_SourceMissing")); return; }
+            try
+            {
+                output = Path.GetFullPath(output);
+                if (string.Equals(output, Path.GetFullPath(_sourcePdf), StringComparison.OrdinalIgnoreCase))
+                { Warn(L("Str_Sign_OutputIsSource")); return; }
+                string? dir = Path.GetDirectoryName(output);
+                if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) { Warn(L("Str_Dlg_NoSuchFolder")); return; }
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                Warn(L("Str_Sign_NeedOutput") + "\n\n" + ex.Message);
+                return;
+            }
+            if (File.Exists(output) && KillerDialog.Show(this, string.Format(L("Str_Dlg_OverwriteMsg"), Path.GetFileName(output)),
+                    L("Str_Sign_TitleSuffix"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                    defaultResult: MessageBoxResult.No) != MessageBoxResult.Yes)
+                return;
 
             X509Certificate2 cert;
             try { cert = provider.GetCertificate(); }

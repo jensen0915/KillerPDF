@@ -1065,4 +1065,7 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Sig_ReadyToPlace">署名の準備ができました。ページをクリックして配置します</sys:String>
     <sys:String x:Key="Str_Sig_NameSignature">署名 {0}</sys:String>
     <sys:String x:Key="Str_Sig_NameInitials">イニシャル {0}</sys:String>
+    <sys:String x:Key="Str_Sign_SourceMissing">元の PDF が見つかりません。</sys:String>
+    <sys:String x:Key="Str_Sign_OutputIsSource">元の文書を残すため、署名済みコピーには別のファイル名を指定してください。</sys:String>
+    <sys:String x:Key="Str_Sign_SaveFirst">この文書には未保存の変更があります。証明書による署名は保存済みのファイルを封印するため、先に署名用のコピーを保存してください。</sys:String>
 </ResourceDictionary>

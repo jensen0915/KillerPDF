@@ -61,6 +61,17 @@ namespace KillerPDF
                 KillerDialog.Show(this, Loc("Str_Msg_OpenFirst"));
                 return;
             }
+            CommitActiveTextBox();
+            // Fork: certificate signing seals the file on disk, so unsaved fills, signatures and notes
+            // would be missing from the signed copy without a word. Save them to a file first.
+            if (_isDirty || string.IsNullOrEmpty(_originalFile))
+            {
+                if (KillerDialog.Show(this, Loc("Str_Sign_SaveFirst"), Loc("Str_Sign_TitleSuffix"),
+                        MessageBoxButton.OKCancel, MessageBoxImage.Information) != MessageBoxResult.OK)
+                    return;
+                SaveAs_Click(this, new RoutedEventArgs());
+                if (_isDirty || string.IsNullOrEmpty(_originalFile)) return;   // canceled or failed
+            }
             // Sign the user's real document, not the temp working copy. Operations like print/crop/repair
             // repoint _currentFile at a temp (e.g. "...printfixed...") while _originalFile keeps the real
             // path - which is the name the user expects to see and the file Save targets.

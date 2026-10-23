@@ -1047,4 +1047,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Sig_ReadyToPlace">簽名已就緒；請點擊頁面放置</sys:String>
     <sys:String x:Key="Str_Sig_NameSignature">簽名 {0}</sys:String>
     <sys:String x:Key="Str_Sig_NameInitials">姓名縮寫 {0}</sys:String>
+    <sys:String x:Key="Str_Sign_SourceMissing">找不到來源 PDF。</sys:String>
+    <sys:String x:Key="Str_Sign_OutputIsSource">請為簽署副本使用不同檔名，以保留原始文件。</sys:String>
+    <sys:String x:Key="Str_Sign_SaveFirst">此文件有尚未儲存的修改。憑證簽署會封存已儲存的檔案，請先另存一份待簽文件。</sys:String>
 </ResourceDictionary>

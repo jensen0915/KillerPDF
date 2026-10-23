@@ -1045,4 +1045,7 @@ Desteklenen bir boyuta ölçeklensin mi? Sayfaların görünümü ve oranları k
     <sys:String x:Key="Str_Sig_ReadyToPlace">Signature ready. Click on the page to place it</sys:String>
     <sys:String x:Key="Str_Sig_NameSignature">Signature {0}</sys:String>
     <sys:String x:Key="Str_Sig_NameInitials">Initials {0}</sys:String>
+    <sys:String x:Key="Str_Sign_SourceMissing">The source PDF could not be found.</sys:String>
+    <sys:String x:Key="Str_Sign_OutputIsSource">Choose a different file name for the signed copy so the original stays unchanged.</sys:String>
+    <sys:String x:Key="Str_Sign_SaveFirst">This document has unsaved changes. Certificate signing seals the saved file, so save a copy to sign first.</sys:String>
 </ResourceDictionary>
