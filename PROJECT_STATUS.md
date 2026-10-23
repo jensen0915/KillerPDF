@@ -43,11 +43,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File build/build-portable.ps1 -Pa
 發佈步驟：
 
 1. 確認要發佈的提交已推送到本分支。
-2. 到 **Actions → Build Release (fork) → Run workflow**，輸入尚未存在的新 tag（每次發佈遞增，例如 `v1.8.91-office-ux.1`、`v1.8.91-office-ux.2`，並先把 `KillerPDF.csproj` 與引擎專案的 `<Version>` 改成相同版本）；或在本機建立 tag 後推送：
+2. 到 **Actions → Build Release (fork) → Run workflow**，輸入尚未存在的新 tag（每次發佈遞增，例如 `v1.8.91-office-ux.3`、`v1.8.91-office-ux.4`，並先把 `KillerPDF.csproj` 與引擎專案的 `<Version>` 改成相同版本）；或在本機建立 tag 後推送：
 
 ```powershell
-git tag v1.8.91-office-ux.1
-git push origin v1.8.91-office-ux.1
+git tag v1.8.91-office-ux.3
+git push origin v1.8.91-office-ux.3
 ```
 
 3. 工作流程成功後，到 [Releases](https://github.com/jensen0915/KillerPDF/releases) 檢查附件與說明。

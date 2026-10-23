@@ -4,7 +4,19 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.8.91-office-ux.1] - 2026-10-23 (fork fix release)
+## [1.8.91-office-ux.2] - 2026-10-23 (fork fix release)
+
+Ships the 1.8.91-office-ux.1 fixes below. The release build for the 1.8.91-office-ux.1 tag stopped at its test step, so that version was never published; the application code is unchanged from it. 內容即 1.8.91-office-ux.1 的修正；.1 的發佈建置在測試步驟失敗，沒有發佈，程式本身與 .1 相同。
+
+### Fixed
+
+- Font tests no longer switch the shared Traditional Chinese preference while other tests run in parallel, and the saved-text baseline tests skip a font the build machine does not have instead of comparing WPF's stand-in metrics.
+
+### Changed
+
+- The fork's release workflow runs both test projects even when the first fails, and lists each failing test's name and message as a public annotation on the run.
+
+## [1.8.91-office-ux.1] - 2026-10-23 (fork fix release, not published)
 
 Fixes found by a code review of the 1.8.91-office-ux port. 修正 1.8.91-office-ux 移植後程式碼審查找到的問題。
 

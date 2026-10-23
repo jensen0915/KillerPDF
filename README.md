@@ -8,7 +8,7 @@ Full how-tos live on the [help page](https://killerpdf.net/help.html); internals
 
 ## 本分支微調版／About this fork
 
-**1.8.91-office-ux.1** · Original project: [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF) · This fork: [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF)
+**1.8.91-office-ux.2** · Original project: [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF) · This fork: [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF)
 
 這是在原開源 KillerPDF 1.8.91 基礎上延續修改的一版，針對台灣辦公文件的閱讀、填寫、簽名與寄回情境調整操作與繁中用語。本分支依舊遵循原專案的開源原則，沿用 **GNU GPLv3**，保留原作者與貢獻者的署名及授權資訊，並提供對應版本的原始碼與建置方式。這是衍生微調版，不是原專案的官方發佈。
 
