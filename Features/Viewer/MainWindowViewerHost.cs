@@ -39,6 +39,7 @@ namespace KillerPDF
         System.Windows.Controls.ContextMenu IViewerHost.MakeThemedMenu() => MakeThemedMenu();
         void IViewerHost.CloseSearchBar() => CloseSearchBar();
         void IViewerHost.HideSignaturePopup() => HideSignaturePopup();
+        string? IViewerHost.TakeTextPreset() => TakeOfficeTextPreset();
         void IViewerHost.SaveTempAndReload(bool keepAnnotations, bool preserveZoom,
             Action<string>? finalizeSavedFile, Action<Dictionary<int, int>>? remapRotations,
             int? selectedPageAfterReload, UndoEntry? documentUndo, bool preserveRenderedPages)

@@ -1039,4 +1039,11 @@ Megnyílik a Windows Beállítások - Alapértelmezett alkalmazások.</sys:Strin
     <sys:String x:Key="Str_PasswordProtected">A(z) „{0}” jelszóval védett.</sys:String>
     <sys:String x:Key="Str_About_Aka">Más néven</sys:String>
     <sys:String x:Key="Str_Btn_Run">Futtatás</sys:String>
+
+    <!-- ── Fork (jensen0915/KillerPDF): Taiwan office workflow ───────────── -->
+    <sys:String x:Key="Str_Lbl_Date">Date</sys:String>
+    <sys:String x:Key="Str_Lbl_Checkmark">Check mark</sys:String>
+    <sys:String x:Key="Str_Office_RocDate">Use ROC (Minguo) year, e.g. 115/10/03</sys:String>
+    <sys:String x:Key="Str_Office_Insert">Insert</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">Click the page to place it. Ctrl+Enter finishes, Esc cancels.</sys:String>
 </ResourceDictionary>

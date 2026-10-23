@@ -243,6 +243,11 @@ namespace KillerPDF
                 _activeCanvas = CanvasForPage(pageIdx);
                 PlaceTextBox(pt, pageIdx);
             }, "T", ""));
+            _ctxMenu.Items.Add(MakeMenuItem(Loc("Str_Lbl_Date"), (s, e) =>
+            {
+                if (PromptOfficeDate() is string date) PlaceOfficeTextAt(date, pt, pageIdx);
+            }, glyph: ""));
+            _ctxMenu.Items.Add(MakeMenuItem(Loc("Str_Lbl_Checkmark"), (s, e) => PlaceOfficeTextAt("✓", pt, pageIdx), glyph: ""));
             _ctxMenu.Items.Add(MakeMenuItem(Loc("Str_Lbl_Image"), (s, e) =>
             {
                 _activeCanvas = CanvasForPage(pageIdx);

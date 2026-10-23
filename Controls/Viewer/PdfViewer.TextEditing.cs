@@ -526,6 +526,12 @@ namespace KillerPDF.Controls
                 TextWrapping = TextWrapping.Wrap,
                 Tag = pageIdx
             };
+            // Date / check-mark insertion pre-fills the box; the user can still edit it before committing.
+            if (Host!.TakeTextPreset() is string preset)
+            {
+                tb.Text = preset;
+                tb.CaretIndex = preset.Length;
+            }
             Canvas.SetLeft(tb, pos.X);
             Canvas.SetTop(tb, EditableTextShortcutPolicy.TextBoxTop(pos.Y, fontCanvas));
             TextEditorLayerFor(_activeCanvas).Children.Add(tb);

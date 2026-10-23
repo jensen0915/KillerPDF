@@ -1052,4 +1052,11 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_PasswordProtected">「{0}」はパスワードで保護されています。</sys:String>
     <sys:String x:Key="Str_About_Aka">別名</sys:String>
     <sys:String x:Key="Str_Btn_Run">実行</sys:String>
+
+    <!-- ── Fork (jensen0915/KillerPDF): Taiwan office workflow ───────────── -->
+    <sys:String x:Key="Str_Lbl_Date">日付</sys:String>
+    <sys:String x:Key="Str_Lbl_Checkmark">チェックマーク</sys:String>
+    <sys:String x:Key="Str_Office_RocDate">民国紀年を使用（例: 115/10/03）</sys:String>
+    <sys:String x:Key="Str_Office_Insert">挿入</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">ページをクリックして配置します。Ctrl+Enter で確定、Esc で取り消し。</sys:String>
 </ResourceDictionary>

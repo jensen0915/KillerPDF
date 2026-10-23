@@ -1052,4 +1052,11 @@ Scale them to a supported size? The pages keep their look and proportions.</sys:
     <sys:String x:Key="Str_PasswordProtected">“{0}” is password protected.</sys:String>
     <sys:String x:Key="Str_About_Aka">AKA</sys:String>
     <sys:String x:Key="Str_Btn_Run">Run</sys:String>
+
+    <!-- ── Fork (jensen0915/KillerPDF): Taiwan office workflow ───────────── -->
+    <sys:String x:Key="Str_Lbl_Date">Date</sys:String>
+    <sys:String x:Key="Str_Lbl_Checkmark">Check mark</sys:String>
+    <sys:String x:Key="Str_Office_RocDate">Use ROC (Minguo) year, e.g. 115/10/03</sys:String>
+    <sys:String x:Key="Str_Office_Insert">Insert</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">Click the page to place it. Ctrl+Enter finishes, Esc cancels.</sys:String>
 </ResourceDictionary>

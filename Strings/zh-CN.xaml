@@ -1036,4 +1036,11 @@ KillerPDF 不会创建两个已安装的副本。</sys:String>
     <sys:String x:Key="Str_PasswordProtected">“{0}”受密码保护。</sys:String>
     <sys:String x:Key="Str_About_Aka">别名</sys:String>
     <sys:String x:Key="Str_Btn_Run">运行</sys:String>
+
+    <!-- ── Fork (jensen0915/KillerPDF): Taiwan office workflow ───────────── -->
+    <sys:String x:Key="Str_Lbl_Date">日期</sys:String>
+    <sys:String x:Key="Str_Lbl_Checkmark">勾选标记</sys:String>
+    <sys:String x:Key="Str_Office_RocDate">使用民国纪年（例如 115/10/03）</sys:String>
+    <sys:String x:Key="Str_Office_Insert">插入</sys:String>
+    <sys:String x:Key="Str_Office_ClickToPlace">点击页面放置；Ctrl+Enter 完成，Esc 取消。</sys:String>
 </ResourceDictionary>

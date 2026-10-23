@@ -62,6 +62,7 @@ namespace KillerPDF
             CancelShapePolygon();   // abandon an in-progress polygon when switching tools
             if (tool != EditTool.Draw) HideBrushPreview();   // drop the brush cursor when leaving Draw
             if (tool != EditTool.Measure) ActiveViewer.ClearMeasurementExt();
+            _officeTextPreset = null;   // a pending date / check mark belongs to the tool being left
             _currentTool = tool;
             ActiveViewer.RefreshFormDesignMode();
 

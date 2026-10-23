@@ -71,6 +71,9 @@ namespace KillerPDF.Features
         ContextMenu MakeThemedMenu();
         void CloseSearchBar();
         void HideSignaturePopup();
+        /// <summary>Preset text (a date or check mark) for the next placed text box, cleared on
+        /// read. Null for an ordinary empty box.</summary>
+        string? TakeTextPreset();
         void SaveTempAndReload(bool keepAnnotations, bool preserveZoom,
             Action<string>? finalizeSavedFile = null,
             Action<Dictionary<int, int>>? remapRotations = null,
