@@ -37,10 +37,33 @@ jobs:
         run: |
           # WPF FontCache requires WINDIR even for isolated resource tests.
           if (!$env:WINDIR) { $env:WINDIR = $env:SYSTEMROOT }
-          dotnet test KillerPDF.Tests/KillerPDF.Tests.csproj -c Release
-          if ($LASTEXITCODE -ne 0) { throw 'Application tests failed.' }
-          dotnet test engine/KillerPdf.Engine.Tests/KillerPdf.Engine.Tests.csproj -c Release
-          if ($LASTEXITCODE -ne 0) { throw 'Engine tests failed.' }
+          $results = Join-Path $env:RUNNER_TEMP 'test-results'
+          $failed = @()
+          foreach ($project in 'KillerPDF.Tests/KillerPDF.Tests.csproj',
+                               'engine/KillerPdf.Engine.Tests/KillerPdf.Engine.Tests.csproj') {
+            dotnet test $project -c Release --logger trx --results-directory $results
+            if ($LASTEXITCODE -ne 0) { $failed += $project }
+          }
+          # Run logs need a sign-in to read; annotations are public, so name each failing test there.
+          function Escape([string]$text, [switch]$Property) {
+            $text = $text -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            if ($Property) { $text = $text -replace ':', '%3A' -replace ',', '%2C' }
+            $text
+          }
+          foreach ($trx in Get-ChildItem $results -Filter *.trx -ErrorAction SilentlyContinue) {
+            [xml]$run = Get-Content -Raw $trx.FullName
+            foreach ($result in @($run.TestRun.Results.UnitTestResult) | Where-Object outcome -eq 'Failed') {
+              $info = $result.Output.ErrorInfo
+              $where = "$($info.StackTrace)".Trim() -split "`r?`n" | Select-Object -First 1
+              $message = "$($info.Message)".Trim()
+              if ($message.Length -gt 900) { $message = $message.Substring(0, 900) + '...' }
+              Write-Output "::error title=$(Escape $result.testName -Property)::$(Escape "$message`n$where")"
+            }
+          }
+          if ($failed) {
+            Write-Output "::error title=Tests failed::$(Escape ($failed -join ', '))"
+            throw "Tests failed: $($failed -join ', ')"
+          }
 
       # Upstream's packager: a self-contained loose payload (startup-checked and hash-manifested),
       # compressed into one KillerPDF-Portable.exe launcher. Unsigned, since -RequireSignature is off.
