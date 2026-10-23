@@ -124,4 +124,8 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 | 34 | 已移植：App 與引擎版本 `1.8.91-office-ux`（引擎專案要求兩者一致），組件版本仍為 1.8.91.0。 | 本次文件 commit |
 | 35 | `test-signature-ink.ps1` 改為 xUnit；`test-office-workflow.ps1` 驗證的是 PdfSharpCore 的輸出快照，不適用新引擎，改以 upstream 測試、PDF 範例檢查與離屏介面流程驗證（見 `OFFICE_UX_VALIDATION.md`）。 | — |
 
-驗證結果：App 測試 464／464、引擎測試 1493／1493 通過；細節與尚待人工驗收的項目見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
+## 後續修正：1.8.91-office-ux.1
+
+發佈後的獨立程式碼審查找到 9 個移植引入的問題：表單簽名欄位無法用新簽名填入、新增文字工具會拖曳圖片、多頁檢視的 Tab 順序、空白鍵無法切換勾選、/Q 格式不標準時整頁欄位失效、結尾換行、待放置日期被清除、字元間距截斷日期、原版既有使用者被當成首次啟動。另有 4 個可疑處（「更多」中的選單定位、切換工具列時重建選單、輸入法旗標卡住、格狀檢視的欄位重繪）一併防範。修正在 、、、。
+
+驗證結果（1.8.91-office-ux）：App 測試 464／464、引擎測試 1493／1493 通過；細節與尚待人工驗收的項目見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。

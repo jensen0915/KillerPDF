@@ -4,6 +4,22 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.91-office-ux.1] - 2026-10-23 (fork fix release)
+
+Fixes found by a code review of the 1.8.91-office-ux port. 修正 1.8.91-office-ux 移植後程式碼審查找到的問題。
+
+### Fixed
+
+- Clicking an unsigned signature field and then creating or importing a signature in the picker now fills that field. Before, a signature not saved on this computer was neither placed nor listed, so the field could not be signed.
+- The Add Text tool drags only text (including dates and check marks) and signatures; a click on an inserted image places a text box instead of moving the image.
+- Tab moves through form fields page by page in Continuous, Two-Page, and split views, keeps a small check box in its row, and reaches comb fields in order. Space toggles a focused check box or radio button instead of starting the pan gesture.
+- A text field whose /Q alignment is a real number or another non-integer no longer makes every field on its page disappear, or saving fail.
+- A trailing line break in placed text is dropped, so the box no longer grows a blank line that a fill can paint over the next printed line.
+- A pending date or check mark survives switching panes, tabs, or themes, and is dropped when Add Text is chosen again. An inserted date is sized for letter spacing. Ctrl+Enter always commits a text box, even if an IME composition flag was left set.
+- Existing upstream users who never picked a theme are no longer switched to the first-run Light theme, and their film grain choice is kept.
+- Menus opened from commands in the toolbar's "More" overflow anchor to the More button; switching back to the office toolbar from the original toolbar's menu rebuilds that menu after the click; "Highlight fields" redraws only pages that are on screen.
+- The `--startup-smoke` check exits with its recorded result when WPF's tablet (WISP) enumeration stalls its shutdown on machines with a pen digitizer.
+
 ## [1.8.91-office-ux] - 2026-10-23 (fork refinement)
 
 This is a follow-up refinement of [SteveTheKiller/KillerPDF](https://github.com/SteveTheKiller/KillerPDF) 1.8.91, maintained in [jensen0915/KillerPDF](https://github.com/jensen0915/KillerPDF). It continues under GNU GPLv3 with upstream attribution, the original LICENSE, corresponding source, and build instructions retained. The fork's earlier 1.6.3-office-ux work was ported onto 1.8.91 feature by feature rather than merged; [docs/PORT_FROM_FORK.md](docs/PORT_FROM_FORK.md) records what was carried over, what upstream already covered, and what was dropped.
