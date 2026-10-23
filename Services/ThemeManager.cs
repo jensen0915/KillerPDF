@@ -65,9 +65,13 @@ namespace KillerPDF.Services
         public static void Initialize()
         {
             var saved = App.GetSetting("Theme");
-            // Fork: a first run (no theme or accent saved yet) starts in Light with a blue accent and
-            // no film grain - the plainest surface for reading office documents. Saved choices win.
+            // Fork: a first run starts in Light with a blue accent and no film grain - the plainest
+            // surface for reading office documents. Upstream saves Theme only when the user picks one,
+            // so an existing user on the defaults is told apart by the Locale that LocaleManager saves
+            // on every first launch (it runs after this), and by any grain or accent choice.
             if (string.IsNullOrWhiteSpace(saved)
+                && string.IsNullOrWhiteSpace(App.GetSetting("Locale"))
+                && string.IsNullOrWhiteSpace(App.GetSetting("FilmGrain"))
                 && string.IsNullOrWhiteSpace(App.GetSetting("LightAccent"))
                 && string.IsNullOrWhiteSpace(App.GetSetting("DarkAccent")))
             {

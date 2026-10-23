@@ -43,7 +43,8 @@ namespace KillerPDF
             App.SetSetting(OfficeToolbarSetting, enabled ? "1" : "0");
             ClearOfficeToolbar();
             InitializeOfficeToolbar();
-            BuildToolbarMenu();
+            // Deferred: this can run from a click on one of ToolbarMenu's own items.
+            Dispatcher.BeginInvoke(new Action(BuildToolbarMenu));
         }
 
         private void BuildOfficeToolbar()
@@ -231,7 +232,9 @@ namespace KillerPDF
             button.Margin = new Thickness(1, 0, 1, 0);
             button.ToolTip = shortcut.Length == 0 ? label : $"{label} ({shortcut})";
             AutomationProperties.SetName(button, label);
-            button.Click += action;
+            // A menu opened from a command that sits in "More" anchors to the More button: the overflow
+            // popup closes on the click, leaving the original button nowhere on screen.
+            button.Click += menu ? (s, e) => action(MenuAnchor(button), e) : action;
             // UiKit's hover handlers repaint the background on leave; restore the task / tool highlight.
             button.MouseLeave += (_, _) => { ShowOfficeTask(_officeTask); UpdateOfficeToolHighlight(); };
             if (document) _officeDocumentButtons.Add(button);
@@ -303,7 +306,14 @@ namespace KillerPDF
             SaveInPlace();
         }
 
-        private void OpenOfficeMenu(Button button, params Control[] items)
+        private static FrameworkElement MenuAnchor(Button button)
+        {
+            if (!ToolBar.GetIsOverflowItem(button) || LogicalTreeHelper.GetParent(button) is not ToolBar bar)
+                return button;
+            return bar.Template?.FindName("OverflowButton", bar) as FrameworkElement ?? bar;
+        }
+
+        private void OpenOfficeMenu(FrameworkElement button, params Control[] items)
         {
             var menu = MakeThemedMenu();
             foreach (var item in items) menu.Items.Add(item);
@@ -316,7 +326,7 @@ namespace KillerPDF
 
         private void OfficeFileMenu(object sender, RoutedEventArgs e)
         {
-            var button = (Button)sender;
+            var button = (FrameworkElement)sender;
             bool hasDoc = _doc is not null;
             MenuItem DocItem(string key, RoutedEventHandler click, string? gesture = null)
             {
@@ -339,7 +349,7 @@ namespace KillerPDF
                 original);
         }
 
-        private void OfficeViewMenu(object sender, RoutedEventArgs e) => OpenOfficeMenu((Button)sender,
+        private void OfficeViewMenu(object sender, RoutedEventArgs e) => OpenOfficeMenu((FrameworkElement)sender,
             MakeMenuItem(Loc("Str_KS_FullScreen"), (_, _) => ToggleFullScreen(), "F11"),
             new Separator(),
             MakeMenuItem(Loc("Str_View_Single"), (_, _) => SelectViewMode(ViewMode.Single)),

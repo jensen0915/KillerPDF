@@ -58,7 +58,9 @@ namespace KillerPDF.Controls
         internal void RefreshVisibleFormFieldsExt()
         {
             if (_doc is null) return;
-            var pages = new HashSet<int>(_pages.Keys) { _currentPage };
+            // Single view draws the current page on the main canvas; the tiled views have a canvas per
+            // visible page, and a page without one must not be redrawn onto the main canvas.
+            var pages = _viewMode == ViewMode.Single ? new HashSet<int> { _currentPage } : new HashSet<int>(_pages.Keys);
             foreach (int page in pages) RefreshFormFieldsExt(page);
         }
         internal bool SelectAllAnnotationsExt() => SelectAllAnnotations();
