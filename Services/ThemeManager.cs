@@ -65,6 +65,17 @@ namespace KillerPDF.Services
         public static void Initialize()
         {
             var saved = App.GetSetting("Theme");
+            // Fork: a first run (no theme or accent saved yet) starts in Light with a blue accent and
+            // no film grain - the plainest surface for reading office documents. Saved choices win.
+            if (string.IsNullOrWhiteSpace(saved)
+                && string.IsNullOrWhiteSpace(App.GetSetting("LightAccent"))
+                && string.IsNullOrWhiteSpace(App.GetSetting("DarkAccent")))
+            {
+                saved = nameof(Theme.Light);
+                App.SetSetting("Theme", saved);
+                App.SetSetting("LightAccent", nameof(DarkAccent.Blue));
+                App.SetSetting("FilmGrain", "0");   // read by FilmGrain.Initialize right after this
+            }
             // Back-compat: the Black theme's enum value was renamed from "HighContrast".
             if (saved == "HighContrast") saved = nameof(Theme.Black);
             _current = Enum.TryParse<Theme>(saved, out var t) ? t : Theme.Dark;
