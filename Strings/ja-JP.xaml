@@ -1068,4 +1068,6 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Sign_SourceMissing">元の PDF が見つかりません。</sys:String>
     <sys:String x:Key="Str_Sign_OutputIsSource">元の文書を残すため、署名済みコピーには別のファイル名を指定してください。</sys:String>
     <sys:String x:Key="Str_Sign_SaveFirst">この文書には未保存の変更があります。証明書による署名は保存済みのファイルを封印するため、先に署名用のコピーを保存してください。</sys:String>
+    <sys:String x:Key="Str_CompatibleExplanation">ページ画像で構成された PDF のコピーを書き出します。どのビューアーでも同じように表示されますが、コピーの文字は選択できず、フォームにも入力できません。開いている文書と未保存の変更はそのまま残ります。</sys:String>
+    <sys:String x:Key="Str_ExportNeedsNewPath">開いている文書を残すため、別のファイル名を指定してください。</sys:String>
 </ResourceDictionary>

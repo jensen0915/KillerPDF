@@ -1048,4 +1048,6 @@ Desteklenen bir boyuta ölçeklensin mi? Sayfaların görünümü ve oranları k
     <sys:String x:Key="Str_Sign_SourceMissing">The source PDF could not be found.</sys:String>
     <sys:String x:Key="Str_Sign_OutputIsSource">Choose a different file name for the signed copy so the original stays unchanged.</sys:String>
     <sys:String x:Key="Str_Sign_SaveFirst">This document has unsaved changes. Certificate signing seals the saved file, so save a copy to sign first.</sys:String>
+    <sys:String x:Key="Str_CompatibleExplanation">Export an image-based PDF copy that opens the same in every reader. Text in the copy cannot be selected and form fields can no longer be filled. Your open document and unsaved changes are kept.</sys:String>
+    <sys:String x:Key="Str_ExportNeedsNewPath">Choose a different file name to keep the open document.</sys:String>
 </ResourceDictionary>

@@ -1116,10 +1116,32 @@ namespace KillerPDF
         private async void SaveFlattened_Click(object sender, RoutedEventArgs e)
         {
             if (_doc is null || _currentFile is null) { KillerDialog.Show(this, Loc("Str_Msg_OpenFirst")); return; }
+            // Fork: this is offered as "Export compatible PDF copy" for sending documents on. Say what
+            // the copy gives up before asking where to put it, and never let it replace the open file.
+            if (KillerDialog.Show(this, Loc("Str_CompatibleExplanation"), Loc("Str_Lbl_Flatten"),
+                    MessageBoxButton.OKCancel, MessageBoxImage.Information) != MessageBoxResult.OK) return;
             var dlg = new Controls.FileDialog(Controls.FileDialogMode.Save)
                           { Filter = Loc("Str_Filter_Pdf") + "|*.pdf", Title = Loc("Str_Dlg_SaveFlattened"),
                             CheckFileExists = false, CheckPathExists = true, RequireFilterExtension = true };
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_originalFile))
+                {
+                    dlg.FileName = System.IO.Path.GetFileNameWithoutExtension(_originalFile) + "-compatible.pdf";
+                    var seedDir = System.IO.Path.GetDirectoryName(_originalFile);
+                    if (!string.IsNullOrEmpty(seedDir) && System.IO.Directory.Exists(seedDir))
+                        dlg.InitialDirectory = seedDir;
+                }
+            }
+            catch { /* malformed seed path - keep the dialog defaults */ }
             if (dlg.ShowDialog(this) != true) return;
+            if (!string.IsNullOrWhiteSpace(_originalFile) && string.Equals(System.IO.Path.GetFullPath(dlg.FileName),
+                    System.IO.Path.GetFullPath(_originalFile), StringComparison.OrdinalIgnoreCase))
+            {
+                KillerDialog.Show(this, Loc("Str_ExportNeedsNewPath"), Loc("Str_Lbl_Flatten"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             Border? overlay = null;
             bool operationStarted = false;
             try

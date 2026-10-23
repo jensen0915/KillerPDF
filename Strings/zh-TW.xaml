@@ -19,7 +19,7 @@
     <sys:String x:Key="Str_TT_Save">儲存 (Ctrl+S)</sys:String>
     <sys:Double x:Key="ZoomBoxWidth">96</sys:Double>
     <sys:String x:Key="Str_TT_SaveAs">另存新檔 (Ctrl+Shift+S)</sys:String>
-    <sys:String x:Key="Str_TT_SaveFlattened">儲存平面化 PDF（點陣化所有頁面，完全不可編輯）</sys:String>
+    <sys:String x:Key="Str_TT_SaveFlattened">匯出相容 PDF 副本（頁面轉為影像，文字無法選取、表單無法再填）</sys:String>
     <sys:String x:Key="Str_TT_Print">列印 (Ctrl+P)</sys:String>
     <sys:String x:Key="Str_TT_MergePDFs">合併 PDF（將其他 PDF 加入此文件）</sys:String>
     <sys:String x:Key="Str_TT_ExtractPages">擷取頁面（將選取的頁面另存為新 PDF）</sys:String>
@@ -548,7 +548,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_St_RepairCanceled">已取消修復</sys:String>
     <sys:String x:Key="Str_St_Canceled">已取消</sys:String>
     <sys:String x:Key="Str_St_DocInfoUpdated">已更新文件資訊-請儲存檔案以保留變更</sys:String>
-    <sys:String x:Key="Str_St_FlattenCanceled">已取消平面化（未寫入檔案）</sys:String>
+    <sys:String x:Key="Str_St_FlattenCanceled">已取消匯出，目標檔案未變更</sys:String>
     <sys:String x:Key="Str_St_FlattenPrintFailed">無法為列印平面化註解；將不含註解進行列印。</sys:String>
     <sys:String x:Key="Str_St_HqDownloadCanceled">已取消高品質下載</sys:String>
     <sys:String x:Key="Str_St_LangDownloadCanceled">已取消語言下載</sys:String>
@@ -786,7 +786,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Dlg_OpenPdf">開啟 PDF</sys:String>
     <sys:String x:Key="Str_Dlg_SelectMerge">選擇要合併的 PDF</sys:String>
     <sys:String x:Key="Str_Dlg_SavePdfAs">PDF 另存為</sys:String>
-    <sys:String x:Key="Str_Dlg_SaveFlattened">儲存平面化 PDF</sys:String>
+    <sys:String x:Key="Str_Dlg_SaveFlattened">匯出相容 PDF 副本</sys:String>
     <sys:String x:Key="Str_Dlg_SaveExtractedAs">擷取的頁面另存為</sys:String>
     <sys:String x:Key="Str_Dlg_InsertImage">插入圖片</sys:String>
     <sys:String x:Key="Str_Dlg_InstallShortcut">建立桌面捷徑</sys:String>
@@ -811,7 +811,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Err_FileNotFound">找不到檔案：</sys:String>
     <sys:String x:Key="Str_Err_MergeFailed">合併失敗：</sys:String>
     <sys:String x:Key="Str_Err_SaveFailed">儲存失敗：</sys:String>
-    <sys:String x:Key="Str_Err_FlattenFailed">平面化失敗：</sys:String>
+    <sys:String x:Key="Str_Err_FlattenFailed">匯出失敗：</sys:String>
     <sys:String x:Key="Str_Err_ExportFailed">匯出失敗：</sys:String>
     <sys:String x:Key="Str_Err_SplitFailed">分割失敗：</sys:String>
     <sys:String x:Key="Str_Err_DeleteFailed">刪除失敗：</sys:String>
@@ -829,7 +829,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Dlg_DeletePagesN">刪除 {0} 頁？</sys:String>
     <sys:String x:Key="Str_Op_Repair">修復</sys:String>
     <sys:String x:Key="Str_Op_Operation">操作</sys:String>
-    <sys:String x:Key="Str_Op_Flatten">平面化</sys:String>
+    <sys:String x:Key="Str_Op_Flatten">匯出相容副本</sys:String>
     <sys:String x:Key="Str_Op_Export">匯出</sys:String>
     <sys:String x:Key="Str_Op_Merge">合併</sys:String>
     <sys:String x:Key="Str_Op_LangDownload">語言下載</sys:String>
@@ -872,7 +872,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_St_Saved">已儲存：{0}</sys:String>
     <sys:String x:Key="Str_St_SavedWithAnnots">已連同註解儲存到 {0}</sys:String>
     <sys:String x:Key="Str_St_SavedTo">已儲存到 {0}</sys:String>
-    <sys:String x:Key="Str_St_FlattenedSaved">平面化 PDF 已儲存到 {0}</sys:String>
+    <sys:String x:Key="Str_St_FlattenedSaved">已匯出副本：{0}。目前仍開啟原文件</sys:String>
     <sys:String x:Key="Str_St_OcrLanguage">OCR 語言：{0}</sys:String>
     <sys:String x:Key="Str_St_LangInstalled">{0} 已安裝 - OCR 語言：{1}</sys:String>
     <sys:String x:Key="Str_St_LangCanceled">已取消 {0} 的下載</sys:String>
@@ -952,7 +952,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Search_PreviousTT">上一個相符項目 (Shift+Enter)</sys:String>
     <sys:String x:Key="Str_Search_NextTT">下一個相符項目 (Enter)</sys:String>
     <sys:String x:Key="Str_Search_CloseTT">關閉 (Esc)</sys:String>
-    <sys:String x:Key="Str_Busy_FlattenPage">正在平面化第 {0} 頁，共 {1} 頁…</sys:String>
+    <sys:String x:Key="Str_Busy_FlattenPage">正在匯出第 {0} 頁，共 {1} 頁…</sys:String>
     <sys:String x:Key="Str_Busy_ExportPage">正在匯出第 {0} 頁，共 {1} 頁…</sys:String>
     <sys:String x:Key="Str_Busy_CancelHint">（Esc 取消）</sys:String>
     <sys:String x:Key="Str_Busy_DownloadingMany">正在下載 {0} - {1} / {2} -</sys:String>
@@ -1050,4 +1050,6 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Sign_SourceMissing">找不到來源 PDF。</sys:String>
     <sys:String x:Key="Str_Sign_OutputIsSource">請為簽署副本使用不同檔名，以保留原始文件。</sys:String>
     <sys:String x:Key="Str_Sign_SaveFirst">此文件有尚未儲存的修改。憑證簽署會封存已儲存的檔案，請先另存一份待簽文件。</sys:String>
+    <sys:String x:Key="Str_CompatibleExplanation">匯出以頁面影像組成的 PDF 副本，方便交付，且在各種閱讀器中顯示一致。副本的文字無法選取，表單欄位無法再填寫。目前文件與尚未儲存的修改會保留。</sys:String>
+    <sys:String x:Key="Str_ExportNeedsNewPath">請使用不同檔名，以保留目前開啟的文件。</sys:String>
 </ResourceDictionary>
