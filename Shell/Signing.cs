@@ -523,11 +523,11 @@ namespace KillerPDF
                 var createBtn = UiKit.Make(Loc("Str_Sig_Create"), accent: true);
                 createBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
                 createBtn.Margin = new Thickness(0, 0, 3, 0);
-                createBtn.Click += (s, e) => { HideSignaturePopup(); _pendingSignature = null; OpenSignatureCreator(kind); if (_pendingSignature is null) ShowSignaturePopup(); };
+                createBtn.Click += (s, e) => { HideSignaturePopup(); _pendingSignature = null; OpenSignatureCreator(kind); UseNewSignature(); };
                 var importBtn = UiKit.Make(Loc("Str_Sig_Import"), accent: false);
                 importBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
                 importBtn.Margin = new Thickness(3, 0, 0, 0);
-                importBtn.Click += (s, e) => { HideSignaturePopup(); _pendingSignature = null; ImportImageSignature(kind); if (_pendingSignature is null) ShowSignaturePopup(); };
+                importBtn.Click += (s, e) => { HideSignaturePopup(); _pendingSignature = null; ImportImageSignature(kind); UseNewSignature(); };
                 Grid.SetColumn(createBtn, 0);
                 Grid.SetColumn(importBtn, 1);
                 rowBtns.Children.Add(createBtn);
@@ -630,6 +630,21 @@ namespace KillerPDF
                         { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } });
                 }));
             }
+        }
+
+        // After Create / Import in the picker. A signature field that opened the picker is filled with
+        // the new signature right away - it may not be kept on this computer, so it would never appear
+        // in the list to pick. Otherwise the new signature goes straight to placement; cancelled, the
+        // picker comes back.
+        private void UseNewSignature()
+        {
+            if (_pendingSignature is not { } sig) { ShowSignaturePopup(); return; }
+            if (_pendingSignField is not { } field) return;
+            _pendingSignature = null;
+            _pendingSignField = null;
+            _annotationCanvas.Cursor = CursorForTool(_currentTool);
+            if (field.Initials) _activeInitialsChoice = sig; else _activeSignatureChoice = sig;
+            DropSignatureInField(field.ObjNum, sig, field.Page, field.X, field.Y, field.W, field.H);
         }
 
         private void OpenSignatureCreator(SignatureKind kind = SignatureKind.Signature)

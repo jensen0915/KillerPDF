@@ -1233,14 +1233,15 @@ namespace KillerPDF.Controls
                     CommitActiveTextBox();
                     // Fork: filled-in text, dates, check marks and signatures stay movable without
                     // switching to Select - a drag moves one, a double-click re-edits text. Only an
-                    // empty spot places a new box. Highlights and ink are left alone so text can go over them.
+                    // empty spot places a new box. Images, highlights and ink are left alone so text can go
+                    // over them (a pasted scan would otherwise swallow every click).
                     if (e.ClickCount == 2 && _annotations.TryGetValue(pageIdx, out var textHits)
                         && textHits.OfType<TextAnnotation>().Any(a => HitTestAnnotation(a, pos, out _)))
                     {
                         ClearSelection();
                         EditTextAtPosition(pos, pageIdx);
                     }
-                    else if (!TryBeginAnnotationDrag(pageIdx, pos, a => a is TextAnnotation or PlacedAnnotation))
+                    else if (!TryBeginAnnotationDrag(pageIdx, pos, a => a is TextAnnotation or SignatureAnnotation))
                     {
                         ClearSelection();
                         PlaceTextBox(pos, pageIdx);
