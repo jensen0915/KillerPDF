@@ -77,7 +77,7 @@ namespace KillerPDF.Controls
                 Padding = new Thickness(2),
                 TextWrapping = TextWrapping.Wrap
             };
-            TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Display);
+            TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Ideal);
             probe.Measure(new Size(Math.Max(1, width), double.PositiveInfinity));
             return Math.Ceiling(probe.DesiredSize.Height);
         }
@@ -107,9 +107,11 @@ namespace KillerPDF.Controls
                 VerticalAlignment = VerticalAlignment.Top
             };
             ApplyLetterSpacing(tb, ta.Content, ta.LetterSpacing);
-            // Crisp glyphs: pixel-snapped layout + grayscale AA (ClearType can't subpixel on the
-            // transparent overlay, and the default left the placed text looking aliased).
-            TextOptions.SetTextFormattingMode(tb, TextFormattingMode.Display);
+            // Grayscale AA: ClearType can't subpixel on the transparent overlay. Fork: Ideal (not
+            // pixel-snapped Display) layout, the metrics PdfEngineBurn writes with - Display put the
+            // baseline of Microsoft JhengHei 0.08 em higher and its lines 0.08 em closer than the
+            // saved file, so text shifted down after saving.
+            TextOptions.SetTextFormattingMode(tb, TextFormattingMode.Ideal);
             TextOptions.SetTextRenderingMode(tb, TextRenderingMode.Grayscale);
             var box = new Border
             {

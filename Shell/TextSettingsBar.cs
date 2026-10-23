@@ -39,11 +39,11 @@ namespace KillerPDF
         private void StyleEditBox(TextBox tb)
         {
             // Fork: show the face the save will draw with (one family for the whole text, picked by
-            // FontCoverage like PdfEngineBurn does) and the placed text's pixel-snapped metrics, so the
-            // text keeps its width when committed and when saved.
+            // FontCoverage like PdfEngineBurn does) with the same Ideal layout as the placed text and the
+            // saved file, so the text keeps its place and width when committed and when saved.
             try { tb.FontFamily = new FontFamily(Services.FontCoverage.PickFamily(_textFontName, tb.Text)); }
             catch { tb.FontFamily = UiKit.UiFont; }
-            TextOptions.SetTextFormattingMode(tb, TextFormattingMode.Display);
+            TextOptions.SetTextFormattingMode(tb, TextFormattingMode.Ideal);
             tb.FontWeight = _textBold ? FontWeights.Bold : FontWeights.Normal;
             tb.FontStyle = _textItalic ? FontStyles.Italic : FontStyles.Normal;
             tb.TextDecorations = BuildDecorations(_textUnderline, _textStrike);

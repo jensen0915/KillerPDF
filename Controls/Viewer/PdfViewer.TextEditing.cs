@@ -586,7 +586,7 @@ namespace KillerPDF.Controls
                     Text = preset, FontFamily = tb.FontFamily, FontSize = tb.FontSize,
                     FontWeight = tb.FontWeight, FontStyle = tb.FontStyle
                 };
-                TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Display);
+                TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Ideal);
                 probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 // Text width plus the box's padding and border, and a little room for the caret.
                 // Letter spacing shifts each later character right outside layout (TextEffects).

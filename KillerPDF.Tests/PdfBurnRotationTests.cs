@@ -365,6 +365,22 @@ public sealed class PdfBurnRotationTests
         finally { if (File.Exists(path)) File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData("Segoe UI")]
+    [InlineData("Microsoft JhengHei")]
+    public void TextBurn_BaselineAndPitchMatchTheIdealOverlayLayout(string family)
+    {
+        // The placed text overlay uses Ideal layout; the burn must land its lines where it draws them.
+        const double size = 31.9;
+        var typeface = new System.Windows.Media.Typeface(family);
+        var twoLines = new System.Windows.Media.FormattedText("臺A\n臺A",
+            System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, size,
+            System.Windows.Media.Brushes.Black, null, System.Windows.Media.TextFormattingMode.Ideal, 1.0);
+
+        Assert.Equal(twoLines.Baseline, PdfEngineBurn.BaselineRatio(family, false, false) * size, 1);
+        Assert.Equal(twoLines.Height / 2, PdfEngineBurn.LineSpacingRatio(family) * size, 1);
+    }
+
     [Fact]
     public void TextBurn_UsesWpfTypefaceBaselineInsteadOfAssumedFullEm()
     {
