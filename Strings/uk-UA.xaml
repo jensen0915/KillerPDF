@@ -1059,4 +1059,10 @@ KillerPDF не створюватиме двох установлених коп
     <sys:String x:Key="Str_Office_RocDate">Use ROC (Minguo) year, e.g. 115/10/03</sys:String>
     <sys:String x:Key="Str_Office_Insert">Insert</sys:String>
     <sys:String x:Key="Str_Office_ClickToPlace">Click the page to place it. Ctrl+Enter finishes, Esc cancels.</sys:String>
+    <sys:String x:Key="Str_Sig_UndoLast">Undo last stroke</sys:String>
+    <sys:String x:Key="Str_Sig_SaveToComputer">Save on this computer for next time</sys:String>
+    <sys:String x:Key="Str_Sig_SaveImportedQuestion">Save this signature image on this computer for next time? Choose No to use it only in this session.</sys:String>
+    <sys:String x:Key="Str_Sig_ReadyToPlace">Signature ready. Click on the page to place it</sys:String>
+    <sys:String x:Key="Str_Sig_NameSignature">Signature {0}</sys:String>
+    <sys:String x:Key="Str_Sig_NameInitials">Initials {0}</sys:String>
 </ResourceDictionary>

@@ -378,7 +378,7 @@ KillerPDF 不会创建两个已安装的副本。</sys:String>
     <sys:String x:Key="Str_Sig_Import">导入图片</sys:String>
     <sys:String x:Key="Str_Sig_DrawHere">在此处绘制您的签名</sys:String>
     <sys:String x:Key="Str_Sig_Clear">清除</sys:String>
-    <sys:String x:Key="Str_Sig_SaveSig">保存签名</sys:String>
+    <sys:String x:Key="Str_Sig_SaveSig">使用签名</sys:String>
 
     <!-- Crop confirm bar tooltips -->
     <sys:String x:Key="Str_TT_CropThisPage">裁剪此页 (Enter)</sys:String>
@@ -1043,4 +1043,10 @@ KillerPDF 不会创建两个已安装的副本。</sys:String>
     <sys:String x:Key="Str_Office_RocDate">使用民国纪年（例如 115/10/03）</sys:String>
     <sys:String x:Key="Str_Office_Insert">插入</sys:String>
     <sys:String x:Key="Str_Office_ClickToPlace">点击页面放置；Ctrl+Enter 完成，Esc 取消。</sys:String>
+    <sys:String x:Key="Str_Sig_UndoLast">撤销上一笔</sys:String>
+    <sys:String x:Key="Str_Sig_SaveToComputer">保存在这台电脑供下次使用</sys:String>
+    <sys:String x:Key="Str_Sig_SaveImportedQuestion">要将此签名图片保存在这台电脑供下次使用吗？选择“否”仅在本次使用。</sys:String>
+    <sys:String x:Key="Str_Sig_ReadyToPlace">签名已就绪；请点击页面放置</sys:String>
+    <sys:String x:Key="Str_Sig_NameSignature">签名 {0}</sys:String>
+    <sys:String x:Key="Str_Sig_NameInitials">姓名缩写 {0}</sys:String>
 </ResourceDictionary>

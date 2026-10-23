@@ -523,11 +523,11 @@ namespace KillerPDF
                 var createBtn = UiKit.Make(Loc("Str_Sig_Create"), accent: true);
                 createBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
                 createBtn.Margin = new Thickness(0, 0, 3, 0);
-                createBtn.Click += (s, e) => { HideSignaturePopup(); OpenSignatureCreator(kind); ShowSignaturePopup(); };
+                createBtn.Click += (s, e) => { HideSignaturePopup(); _pendingSignature = null; OpenSignatureCreator(kind); if (_pendingSignature is null) ShowSignaturePopup(); };
                 var importBtn = UiKit.Make(Loc("Str_Sig_Import"), accent: false);
                 importBtn.HorizontalAlignment = HorizontalAlignment.Stretch;
                 importBtn.Margin = new Thickness(3, 0, 0, 0);
-                importBtn.Click += (s, e) => { HideSignaturePopup(); ImportImageSignature(kind); ShowSignaturePopup(); };
+                importBtn.Click += (s, e) => { HideSignaturePopup(); _pendingSignature = null; ImportImageSignature(kind); if (_pendingSignature is null) ShowSignaturePopup(); };
                 Grid.SetColumn(createBtn, 0);
                 Grid.SetColumn(importBtn, 1);
                 rowBtns.Children.Add(createBtn);
@@ -634,10 +634,16 @@ namespace KillerPDF
 
         private void OpenSignatureCreator(SignatureKind kind = SignatureKind.Signature)
         {
+            // Fork: a larger pad for pen and touch signing, kept inside small work areas.
+            double workW = Math.Max(320, SystemParameters.WorkArea.Width - 40);
+            double workH = Math.Max(320, SystemParameters.WorkArea.Height - 40);
             var win = new Window
             {
                 Title = Loc("Str_Sig_Create"),
-                Width = 460,
+                Width = Math.Min(760, workW),
+                MinWidth = Math.Min(640, workW),
+                MaxWidth = workW,
+                MaxHeight = workH,
                 SizeToContent = SizeToContent.Height   // size to content so there's no empty padding below
             };
             DialogChrome.Configure(win, this);
@@ -657,14 +663,12 @@ namespace KillerPDF
                 BorderThickness = new Thickness(1),
                 Margin = new Thickness(12, 12, 12, 4),
                 CornerRadius = UiKit.RadControl,
-                Height = 170
+                MinWidth = Math.Min(600, Math.Max(300, workW - 24)),
+                Height = Math.Min(300, Math.Max(180, workH - 300))
             };
-            var drawCanvas = new Canvas
-            {
-                Background = Brushes.White,
-                ClipToBounds = true,
-                Cursor = Cursors.Pen
-            };
+            // Native WPF ink: stylus samples arrive unthrottled, taps leave dots, and pen gestures
+            // (press-and-hold, flicks) are off so they cannot interrupt a stroke.
+            var drawCanvas = new SignatureInkCanvas();
             canvasBorder.Child = drawCanvas;
 
             // Placeholder text
@@ -678,63 +682,20 @@ namespace KillerPDF
                 FontSize = 18,
                 IsHitTestVisible = false
             };
-            Canvas.SetLeft(placeholder, 18);
-            Canvas.SetTop(placeholder, 14);
+            InkCanvas.SetLeft(placeholder, 18);
+            InkCanvas.SetTop(placeholder, 14);
             drawCanvas.Children.Add(placeholder);
 
-            // Drawing state
-            var strokes = new List<List<Point>>();
-            List<Point>? currentStroke = null;
-            Polyline? currentPoly = null;
-            double penWidth = 2.5;   // medium; set by the pen-width selector below
-
-            drawCanvas.MouseLeftButtonDown += (s, e) =>
-            {
-                if (placeholder.Visibility == Visibility.Visible)
-                    placeholder.Visibility = Visibility.Collapsed;
-                currentStroke = [];
-                var pos = e.GetPosition(drawCanvas);
-                currentStroke.Add(pos);
-                currentPoly = new Polyline
-                {
-                    Stroke = Brushes.Black,
-                    StrokeThickness = penWidth,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round
-                };
-                currentPoly.Points.Add(pos);
-                drawCanvas.Children.Add(currentPoly);
-                drawCanvas.CaptureMouse();
-            };
-
-            drawCanvas.MouseMove += (s, e) =>
-            {
-                if (currentStroke is null || currentPoly is null) return;
-                var pos = e.GetPosition(drawCanvas);
-                pos.X = Math.Max(0, Math.Min(drawCanvas.ActualWidth, pos.X));
-                pos.Y = Math.Max(0, Math.Min(drawCanvas.ActualHeight, pos.Y));
-                currentStroke.Add(pos);
-                currentPoly.Points.Add(pos);
-            };
-
-            drawCanvas.MouseLeftButtonUp += (s, e) =>
-            {
-                if (currentStroke is not null && currentStroke.Count > 1)
-                    strokes.Add(currentStroke);
-                else if (currentPoly is not null)
-                    drawCanvas.Children.Remove(currentPoly);
-                currentStroke = null;
-                currentPoly = null;
-                drawCanvas.ReleaseMouseCapture();
-            };
+            double penWidth = 4.5;   // medium; set by the pen-width selector below
+            drawCanvas.PreviewStylusDown += (_, _) => placeholder.Visibility = Visibility.Collapsed;
+            drawCanvas.PreviewMouseLeftButtonDown += (_, _) => placeholder.Visibility = Visibility.Collapsed;
 
             contentArea.Children.Add(canvasBorder);
 
             // Pen-width selector: three preset thicknesses, active one highlighted. On the left so the
             // modal does not read bottom-right-heavy.
             var penRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(14, 6, 12, 0), VerticalAlignment = VerticalAlignment.Center };
-            penRow.Children.Add(new TextBlock { Text = Loc("Str_Sig_Pen"), Foreground = (SolidColorBrush)FindResource("MutedTextBrush"), FontFamily = UiKit.UiFont, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            penRow.Children.Add(new TextBlock { Text = Loc("Str_Sig_Pen"), Foreground = (SolidColorBrush)FindResource("MutedTextBrush"), FontFamily = UiKit.UiFont, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
             var penOptions = new (string Label, double W)[] { (Loc("Str_Sig_Thin"), 2.0), (Loc("Str_Sig_Medium"), 4.5), (Loc("Str_Sig_Thick"), 9.0) };
             var penBtns = new List<Button>();
             void RefreshPen()
@@ -753,41 +714,62 @@ namespace KillerPDF
                 var pb = new Button
                 {
                     Content = lbl,
+                    MinHeight = 36,
                     Style = (Style)FindResource("DarkButton"),
                     Padding = new Thickness(12, 3, 12, 3),
                     Margin = new Thickness(0, 0, 6, 0),
                     BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand,
                     FontFamily = UiKit.UiFont,
-                    FontSize = 11
+                    FontSize = 12
                 };
-                pb.Click += (s2, e2) => { penWidth = ww; RefreshPen(); };
+                pb.Click += (s2, e2) => { penWidth = ww; drawCanvas.SetPenWidth(ww); RefreshPen(); };
                 penBtns.Add(pb);
                 penRow.Children.Add(pb);
             }
             RefreshPen();
 
-            // Buttons
-            var btnPanel = new StackPanel
+            // Opt-in, off by default: a signature drawn for one document is used for this session only
+            // unless the user asks to keep it on this computer.
+            var keepCheck = UiKit.CheckBox(Loc("Str_Sig_SaveToComputer"));
+            keepCheck.IsChecked = false;
+            keepCheck.Margin = new Thickness(14, 10, 12, 0);
+
+            // Buttons - tall enough for a finger or pen tap.
+            var btnPanel = new WrapPanel
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Right
             };
+            Button SigButton(string key, bool accent)
+            {
+                var b = UiKit.Make(Loc(key), accent);
+                b.MinHeight = 44;
+                b.Margin = new Thickness(8, 4, 0, 0);
+                return b;
+            }
 
-            var clearBtn = UiKit.Make(Loc("Str_Sig_Clear"), accent: false);
-            clearBtn.Margin = new Thickness(0, 0, 8, 0);
+            var clearBtn = SigButton("Str_Sig_Clear", accent: false);
             clearBtn.Click += (s, e) =>
             {
-                strokes.Clear();
-                drawCanvas.Children.Clear();
+                drawCanvas.Strokes.Clear();
                 placeholder.Visibility = Visibility.Visible;
-                drawCanvas.Children.Add(placeholder);
             };
 
-            var saveBtn = UiKit.Make(Loc("Str_Sig_SaveSig"), accent: true);
+            var undoBtn = SigButton("Str_Sig_UndoLast", accent: false);
+            undoBtn.Click += (s, e) =>
+            {
+                drawCanvas.UndoLastStroke();
+                if (drawCanvas.Strokes.Count == 0) placeholder.Visibility = Visibility.Visible;
+            };
+
+            var cancelBtn = SigButton("Str_Btn_Cancel", accent: false);
+            cancelBtn.Click += (s, e) => win.Close();
+
+            var saveBtn = SigButton("Str_Sig_SaveSig", accent: true);
             saveBtn.Click += (s, e) =>
             {
-                if (strokes.Count == 0)
+                if (drawCanvas.Strokes.Count == 0)
                 {
                     KillerDialog.Show(this, Loc("Str_Dlg_DrawSignatureFirst"), "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
@@ -802,30 +784,38 @@ namespace KillerPDF
                     StrokeWidth = penWidth,
                     CanvasWidth = cw,
                     CanvasHeight = ch,
-                    Name = $"{(kind == SignatureKind.Initials ? "Initials" : "Signature")} {_signatureStore.Signatures.Count(x => x.Kind == kind) + 1}"
+                    Name = string.Format(Loc(kind == SignatureKind.Initials ? "Str_Sig_NameInitials" : "Str_Sig_NameSignature"),
+                        _signatureStore.Signatures.Count(x => x.Kind == kind) + 1)
                 };
-                foreach (var stroke in strokes)
+                foreach (var stroke in drawCanvas.Strokes)
                 {
-                    var sPts = stroke.Select(p => new SerializablePoint { X = p.X, Y = p.Y }).ToList();
+                    var sPts = stroke.StylusPoints.Select(p => new SerializablePoint { X = p.X, Y = p.Y }).ToList();
                     saved.Strokes.Add(sPts);
                 }
-                _signatureStore.Add(saved);
-                PersistSignatures();
+                bool keep = keepCheck.IsChecked == true;
+                if (keep)
+                {
+                    _signatureStore.Add(saved);
+                    PersistSignatures();
+                }
 
                 // Auto-select the new signature for placement
                 _pendingSignature = saved;
                 _annotationCanvas.Cursor = Cursors.Cross;
-                SetStatus(Loc("Str_St_SignatureSaved"));
+                SetStatus(Loc(keep ? "Str_St_SignatureSaved" : "Str_Sig_ReadyToPlace"));
 
                 win.Close();
             };
 
             btnPanel.Children.Add(clearBtn);
+            btnPanel.Children.Add(undoBtn);
+            btnPanel.Children.Add(cancelBtn);
             btnPanel.Children.Add(saveBtn);
 
             // Pen-size selector on its own row above the buttons. A single shared row doesn't survive
             // longer translated labels (e.g. Bengali Clear/Save) - the last pen option ("Thick") clipped.
             contentArea.Children.Add(penRow);
+            contentArea.Children.Add(keepCheck);
             btnPanel.Margin = new Thickness(12, 4, 12, 12);
             contentArea.Children.Add(btnPanel);
 
@@ -863,8 +853,14 @@ namespace KillerPDF
                     CanvasHeight = bmp.PixelHeight,
                     ImageData = Convert.ToBase64String(pngBytes)
                 };
-                _signatureStore.Add(saved);
-                PersistSignatures();
+                // Same opt-in as drawn signatures: kept on this computer only when the user says so.
+                bool keep = KillerDialog.Show(this, Loc("Str_Sig_SaveImportedQuestion"), Loc("Str_Sig_SaveToComputer"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question, defaultResult: MessageBoxResult.No) == MessageBoxResult.Yes;
+                if (keep)
+                {
+                    _signatureStore.Add(saved);
+                    PersistSignatures();
+                }
 
                 _pendingSignature = saved;
                 _annotationCanvas.Cursor = Cursors.Cross;

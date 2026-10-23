@@ -380,7 +380,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Sig_Import">匯入圖片</sys:String>
     <sys:String x:Key="Str_Sig_DrawHere">在此繪製您的簽名</sys:String>
     <sys:String x:Key="Str_Sig_Clear">清除</sys:String>
-    <sys:String x:Key="Str_Sig_SaveSig">儲存簽名</sys:String>
+    <sys:String x:Key="Str_Sig_SaveSig">使用簽名</sys:String>
 
     <!-- Crop confirm bar tooltips -->
     <sys:String x:Key="Str_TT_CropThisPage">裁切此頁 (Enter)</sys:String>
@@ -565,7 +565,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_St_SignaturePlaced">已放置簽名；拖曳可移動，拖曳角落可調整大小</sys:String>
     <sys:String x:Key="Str_St_FieldCleared">已清除欄位</sys:String>
     <sys:String x:Key="Str_St_FieldSigned">已簽署欄位</sys:String>
-    <sys:String x:Key="Str_St_SignatureSaved">已儲存簽名-在頁面上按一下即可放置</sys:String>
+    <sys:String x:Key="Str_St_SignatureSaved">已儲存簽名；請點擊頁面放置</sys:String>
     <sys:String x:Key="Str_St_ImageLoaded">圖片已就緒；請點擊頁面放置</sys:String>
     <sys:String x:Key="Str_St_EditingText">正在編輯文字-在上方變更大小/顏色，按 Enter 儲存</sys:String>
     <sys:String x:Key="Str_St_AlreadyEditHere">點擊既有文字可重新編輯，或拖曳其遮蓋區域</sys:String>
@@ -1041,4 +1041,10 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Office_RocDate">使用民國年（例如 115/10/03）</sys:String>
     <sys:String x:Key="Str_Office_Insert">插入</sys:String>
     <sys:String x:Key="Str_Office_ClickToPlace">點擊頁面放置；Ctrl+Enter 完成，Esc 取消。</sys:String>
+    <sys:String x:Key="Str_Sig_UndoLast">復原上一筆</sys:String>
+    <sys:String x:Key="Str_Sig_SaveToComputer">儲存在這台電腦供下次使用</sys:String>
+    <sys:String x:Key="Str_Sig_SaveImportedQuestion">要將此簽名圖片儲存在這台電腦供下次使用嗎？選「否」僅在這次使用。</sys:String>
+    <sys:String x:Key="Str_Sig_ReadyToPlace">簽名已就緒；請點擊頁面放置</sys:String>
+    <sys:String x:Key="Str_Sig_NameSignature">簽名 {0}</sys:String>
+    <sys:String x:Key="Str_Sig_NameInitials">姓名縮寫 {0}</sys:String>
 </ResourceDictionary>
