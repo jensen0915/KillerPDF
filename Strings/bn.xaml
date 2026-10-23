@@ -1054,4 +1054,18 @@ Windows সেটিংস - ডিফল্ট অ্যাপ খুলবে�
     <sys:String x:Key="Str_Lbl_FormHints">Highlight fields</sys:String>
     <sys:String x:Key="Str_FormHints_On">Fillable fields are highlighted</sys:String>
     <sys:String x:Key="Str_FormHints_Off">Field highlighting is off; the page shows as printed</sys:String>
+    <sys:String x:Key="Str_Office_File">File</sys:String>
+    <sys:String x:Key="Str_Office_Read">Read</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_FillSign">Fill &amp; sign</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Annotate">Annotate</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Organize">Organize pages</sys:String>
+    <sys:String x:Key="Str_Office_View">View mode</sys:String>
+    <sys:String x:Key="Str_Office_AddText">Add text</sys:String>
+    <sys:String x:Key="Str_Office_FormFields">Edit form fields</sys:String>
+    <sys:String x:Key="Str_Office_DocInfo">Document information</sys:String>
+    <sys:String x:Key="Str_Office_More">More</sys:String>
+    <sys:String x:Key="Str_Office_Saved">Saved</sys:String>
+    <sys:String x:Key="Str_Office_Unsaved">Unsaved changes</sys:String>
+    <sys:String x:Key="Str_Office_UseOriginalToolbar">Use the original toolbar</sys:String>
+    <sys:String x:Key="Str_Office_UseOfficeToolbar">Use the office toolbar</sys:String>
 </ResourceDictionary>

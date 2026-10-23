@@ -1058,4 +1058,18 @@ KillerPDF 不会创建两个已安装的副本。</sys:String>
     <sys:String x:Key="Str_Lbl_FormHints">提示填表字段</sys:String>
     <sys:String x:Key="Str_FormHints_On">已标示可填写的字段</sys:String>
     <sys:String x:Key="Str_FormHints_Off">已关闭字段底色，页面按打印样式显示</sys:String>
+    <sys:String x:Key="Str_Office_File">文件</sys:String>
+    <sys:String x:Key="Str_Office_Read">阅读</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_FillSign">填写与签名</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Annotate">注释</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Organize">整理页面</sys:String>
+    <sys:String x:Key="Str_Office_View">阅读模式</sys:String>
+    <sys:String x:Key="Str_Office_AddText">添加文字</sys:String>
+    <sys:String x:Key="Str_Office_FormFields">编辑表单字段</sys:String>
+    <sys:String x:Key="Str_Office_DocInfo">文件信息</sys:String>
+    <sys:String x:Key="Str_Office_More">更多</sys:String>
+    <sys:String x:Key="Str_Office_Saved">已保存</sys:String>
+    <sys:String x:Key="Str_Office_Unsaved">尚未保存</sys:String>
+    <sys:String x:Key="Str_Office_UseOriginalToolbar">改用原版工具栏</sys:String>
+    <sys:String x:Key="Str_Office_UseOfficeToolbar">改用办公工具栏</sys:String>
 </ResourceDictionary>

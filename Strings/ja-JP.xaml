@@ -1074,4 +1074,18 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Lbl_FormHints">入力欄を強調</sys:String>
     <sys:String x:Key="Str_FormHints_On">入力欄を強調表示しています</sys:String>
     <sys:String x:Key="Str_FormHints_Off">入力欄の強調をオフにしました。ページは印刷時の表示です</sys:String>
+    <sys:String x:Key="Str_Office_File">ファイル</sys:String>
+    <sys:String x:Key="Str_Office_Read">閲覧</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_FillSign">入力と署名</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Annotate">注釈</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Organize">ページの整理</sys:String>
+    <sys:String x:Key="Str_Office_View">表示モード</sys:String>
+    <sys:String x:Key="Str_Office_AddText">テキストを追加</sys:String>
+    <sys:String x:Key="Str_Office_FormFields">フォーム欄を編集</sys:String>
+    <sys:String x:Key="Str_Office_DocInfo">文書のプロパティ</sys:String>
+    <sys:String x:Key="Str_Office_More">その他</sys:String>
+    <sys:String x:Key="Str_Office_Saved">保存済み</sys:String>
+    <sys:String x:Key="Str_Office_Unsaved">未保存の変更あり</sys:String>
+    <sys:String x:Key="Str_Office_UseOriginalToolbar">元のツールバーを使用</sys:String>
+    <sys:String x:Key="Str_Office_UseOfficeToolbar">業務用ツールバーを使用</sys:String>
 </ResourceDictionary>

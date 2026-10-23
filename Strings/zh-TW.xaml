@@ -253,7 +253,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Lbl_Open">開啟</sys:String>
     <sys:String x:Key="Str_Lbl_Close">關閉</sys:String>
     <sys:String x:Key="Str_Lbl_Save">儲存</sys:String>
-    <sys:String x:Key="Str_Lbl_Flatten">匯出相容 PDF 副本</sys:String>
+    <sys:String x:Key="Str_Lbl_Flatten">匯出相容副本</sys:String>
     <sys:String x:Key="Str_Lbl_Print">列印</sys:String>
     <sys:String x:Key="Str_Lbl_Select">選取</sys:String>
     <sys:String x:Key="Str_Lbl_ZoomOut">縮小</sys:String>
@@ -1056,4 +1056,18 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Lbl_FormHints">提示填表欄位</sys:String>
     <sys:String x:Key="Str_FormHints_On">已標示可填寫的欄位</sys:String>
     <sys:String x:Key="Str_FormHints_Off">已關閉欄位底色，頁面依列印樣式顯示</sys:String>
+    <sys:String x:Key="Str_Office_File">檔案</sys:String>
+    <sys:String x:Key="Str_Office_Read">閱讀</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_FillSign">填寫與簽名</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Annotate">註解</sys:String>
+    <sys:String x:Key="Str_ToolbarGroup_Organize">整理頁面</sys:String>
+    <sys:String x:Key="Str_Office_View">閱讀模式</sys:String>
+    <sys:String x:Key="Str_Office_AddText">新增文字</sys:String>
+    <sys:String x:Key="Str_Office_FormFields">編輯表單欄位</sys:String>
+    <sys:String x:Key="Str_Office_DocInfo">文件資訊</sys:String>
+    <sys:String x:Key="Str_Office_More">更多</sys:String>
+    <sys:String x:Key="Str_Office_Saved">已儲存</sys:String>
+    <sys:String x:Key="Str_Office_Unsaved">尚未儲存</sys:String>
+    <sys:String x:Key="Str_Office_UseOriginalToolbar">改用原版工具列</sys:String>
+    <sys:String x:Key="Str_Office_UseOfficeToolbar">改用辦公工具列</sys:String>
 </ResourceDictionary>

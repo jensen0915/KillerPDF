@@ -318,6 +318,7 @@ namespace KillerPDF
             // Refresh snapshot FindResource calls that were set as local values.
             // SetResourceReference bindings update automatically; sidebar tabs and
             // active tool button background still need an explicit refresh.
+            RefreshOfficeToolbar();   // fork: its buttons hold theme brushes as local values
             SetTool(_currentTool);
             if (_sidebarShowingOutlines)
                 SwitchSidebarToOutlinesTab();
@@ -651,6 +652,7 @@ namespace KillerPDF
             // DynamicResource), so rebuild the toolbar on every language change. Harmless for the
             // icon-only modes; refreshes the captions for Text-beside / Text-under / Text-only.
             ApplyToolbarAppearance();
+            RefreshOfficeToolbar();   // fork: office toolbar captions are Loc() snapshots too
 
             // Refresh code-built annotate bars in both panes. A language change comes from a
             // window flyout, so the pane containing the visible bar is not guaranteed to be the
@@ -1204,6 +1206,12 @@ namespace KillerPDF
                                       IsChecked = _toolbarHidden, InputGestureText = "Alt+M" };
             hide.Click += (_, _2) => ToggleToolbarHidden();
             ToolbarMenu.Items.Add(hide);
+
+            // Fork: back to the task-grouped office toolbar.
+            ToolbarMenu.Items.Add(new Separator());
+            var office = new MenuItem { Header = Loc("Str_Office_UseOfficeToolbar") };
+            office.Click += (_, _2) => SetOfficeToolbarEnabled(true);
+            ToolbarMenu.Items.Add(office);
         }
 
         private void SyncToolbarMenuChecks()

@@ -414,6 +414,7 @@ namespace KillerPDF
             RestoreToolSettings();   // Draw + Text tool styles carry across sessions
             Loaded += (_, _) => AdjustZoomBoxWidth();   // fit the zoom box to the longest localized term
             IndexToolbarButtons();
+            InitializeOfficeToolbar();   // fork: task-grouped office toolbar (Shell/OfficeToolbar.cs)
             OutlineTree.SelectedItemChanged += OutlineTree_SelectedItemChanged;
             LoadSignatures();
             BuildContextMenu();
