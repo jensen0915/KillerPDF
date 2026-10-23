@@ -150,7 +150,10 @@ namespace KillerPDF
             OutlineTree.Items.Clear();
             try
             {
-                var outlines = _doc?.Outlines;
+                // Reading PdfDocument.Outlines adds an empty outline root to a PDF without bookmarks,
+                // which then breaks every save (see RemoveEmptyOutlineRoot); only read existing ones.
+                var outlines = _doc is not null && _doc.Internals.Catalog.Elements.ContainsKey("/Outlines")
+                    ? _doc.Outlines : null;
                 if (outlines is null || outlines.Count == 0)
                 {
                     SidebarOutlinesTab.IsEnabled = false;

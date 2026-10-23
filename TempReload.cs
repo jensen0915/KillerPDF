@@ -63,6 +63,7 @@ namespace KillerPDF
             var tempPath = App.MakeTempFile("temp");
             try
             {
+                RemoveEmptyOutlineRoot(doc);
                 doc.Save(tempPath);
                 doc.Close();
             }

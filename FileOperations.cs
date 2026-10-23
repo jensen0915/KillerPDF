@@ -179,6 +179,7 @@ namespace KillerPDF
             ex.Message.IndexOf("Invalid PDF file", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("startxref", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("Unexpected token", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            ex.Message.IndexOf("Unexpected character", StringComparison.OrdinalIgnoreCase) >= 0 ||
             // #106: "Cannot retrieve stream length." - a stream whose /Length is indirect or broken.
             ex.Message.IndexOf("stream length", StringComparison.OrdinalIgnoreCase) >= 0 ||
             ex.Message.IndexOf("File streams are not yet implemented", StringComparison.OrdinalIgnoreCase) >= 0;

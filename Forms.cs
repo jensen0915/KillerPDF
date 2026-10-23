@@ -828,52 +828,17 @@ namespace KillerPDF
         }
 
         /// <summary>
-        /// Attaches raw content bytes to a PdfDictionary as a stream.
-        /// Accesses PdfDictionary.PdfStream via reflection because its constructor is internal.
-        /// Falls back to the backing field if the property setter is protected.
+        /// Attaches raw content bytes to a PdfDictionary as a stream. Uses PdfSharpCore's public
+        /// stream API so /Length stays in sync; a stream written without /Length makes the saved
+        /// file unreadable to PdfSharpCore ("Cannot retrieve stream length").
         /// </summary>
         private static bool TryAttachStreamBytes(PdfDictionary dict, byte[] bytes)
         {
             try
             {
-                var dictType   = typeof(PdfDictionary);
-                var streamType = dictType.GetNestedType("PdfStream",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                if (streamType is null) return false;
-
-                // Try (byte[], PdfDictionary) ctor first, then (byte[]) only
-                System.Reflection.ConstructorInfo? ctor =
-                    streamType.GetConstructor(
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                        null, [typeof(byte[]), typeof(PdfDictionary)], null) ??
-                    streamType.GetConstructor(
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-                        null, [typeof(byte[])], null);
-                if (ctor is null) return false;
-
-                object streamObj = ctor.GetParameters().Length == 2
-                    ? ctor.Invoke([bytes, dict])
-                    : ctor.Invoke([bytes]);
-
-                // Try public Stream property setter first
-                var prop = dictType.GetProperty("Stream",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                if (prop?.CanWrite == true)
-                {
-                    prop.SetValue(dict, streamObj);
-                    return true;
-                }
-
-                // Fall back to the backing field
-                var field = dictType.GetField("_stream",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field is not null)
-                {
-                    field.SetValue(dict, streamObj);
-                    return true;
-                }
-
-                return false;
+                if (dict.Stream is null) dict.CreateStream(bytes);
+                else dict.Stream.Value = bytes;
+                return true;
             }
             catch { return false; }
         }

@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 ## [Unreleased]
 
+### Fixed
+
+- Saving a PDF without bookmarks failed with "Unexpected token 'xref' in PDF stream" after any edit. Loading the Outline sidebar created an empty outline root that PdfSharpCore lists in the xref but never writes; the sidebar no longer creates it and saves drop an empty root.
+- Save, Save As, print, and compatible export rebuild an output snapshot losslessly through PDFium if PdfSharpCore cannot reread it, restoring the fallback the earlier save path had.
+- Checkbox appearance streams are written with `/Length`, so PDFs saved after toggling a checkbox reopen in KillerPDF instead of failing with "Cannot retrieve stream length".
+
 ### Maintenance
 
 - Updated release actions to Node.js 24 runtimes to address the GitHub Actions Node.js 20 deprecation warning; .NET SDK 8.0 and the net48 application target are unchanged.

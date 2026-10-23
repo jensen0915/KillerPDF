@@ -2315,6 +2315,7 @@ namespace KillerPDF
         {
             if (_doc is null) return;
             using var ms = new System.IO.MemoryStream();
+            RemoveEmptyOutlineRoot(_doc);
             _doc.Save(ms);
             _undoStack.Push(new UndoEntry(UndoKind.Document, DocBytes: ms.ToArray(), WasDirty: _isDirty));
         }

@@ -29,8 +29,9 @@ namespace KillerPDF
             try
             {
                 var widgetKeys = CaptureFormWidgetKeys();
+                RemoveEmptyOutlineRoot(_doc);
                 _doc.Save(clean);
-                using var copy = PdfReader.Open(clean, PdfDocumentOpenMode.Modify);
+                using var copy = OpenOutputBase(ref clean);
                 WriteFormValuesToDocument(copy, widgetKeys);
                 StripLinkAnnotationBorders(copy);
                 StripInvalidPdfXMetadata(copy);
@@ -41,6 +42,43 @@ namespace KillerPDF
                 return output;
             }
             catch { DeleteOutputTemp(output); DeleteOutputTemp(clean); throw; }
+        }
+
+        // PdfSharpCore lists an outline root without entries in the xref but never writes it, so the
+        // saved file cannot be reopened ("Unexpected token 'xref'"). Drop such a root before saving.
+        private static void RemoveEmptyOutlineRoot(PdfDocument doc)
+        {
+            var catalog = doc.Internals.Catalog.Elements;
+            try
+            {
+                if (catalog.ContainsKey("/Outlines") && doc.Outlines.Count == 0) catalog.Remove("/Outlines");
+            }
+            catch { /* Malformed outline: leave it as it is. */ }
+        }
+
+        // PdfSharpCore can write a file that its own reader then rejects (for example
+        // "Unexpected token 'xref'"). The editable document is still intact, so rewrite the
+        // snapshot losslessly through PDFium and continue from that copy.
+        private static PdfDocument OpenOutputBase(ref string clean)
+        {
+            try { return PdfReader.Open(clean, PdfDocumentOpenMode.Modify); }
+            catch
+            {
+                string repaired = App.MakeTempFile("output-base-fixed");
+                try
+                {
+                    if (TryPdfiumStripEncryption(clean, repaired))
+                    {
+                        var document = PdfReader.Open(repaired, PdfDocumentOpenMode.Modify);
+                        DeleteOutputTemp(clean);
+                        clean = repaired;
+                        return document;
+                    }
+                }
+                catch { /* Report the original reader error below. */ }
+                DeleteOutputTemp(repaired);
+                throw;
+            }
         }
 
         private bool SaveDocumentTo(string target)
