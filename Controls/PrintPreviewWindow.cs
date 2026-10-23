@@ -74,8 +74,25 @@ namespace KillerPDF
             _nUp, _duplex, _grayscale);
 
         // Printable area in DIPs for the currently selected printer + orientation.
-        private double _areaW = 816;   // Letter portrait fallback (8.5in * 96)
-        private double _areaH = 1056;  // (11in * 96)
+        private double _areaW = FallbackAreaW;
+        private double _areaH = FallbackAreaH;
+
+        // Without printer information the preview uses the region's usual paper: A4 where the
+        // Windows region is metric (Taiwan, most of the world), Letter otherwise. The same region
+        // setting picks millimeters or inches for the margin choices.
+        private static readonly bool MetricRegion = IsMetricRegion();
+        private static double FallbackAreaW => MetricRegion ? 210 * 96 / 25.4 : 816;    // A4 / Letter 8.5in
+        private static double FallbackAreaH => MetricRegion ? 297 * 96 / 25.4 : 1056;   // A4 / Letter 11in
+
+        private static bool IsMetricRegion()
+        {
+            try { return System.Globalization.RegionInfo.CurrentRegion.IsMetric; }
+            catch { return false; }
+        }
+
+        private static string MarginLabel(string key, double inches) => MetricRegion
+            ? $"{S(key)} ({inches * 25.4:0.#} mm)"
+            : $"{S(key)} ({inches:0.##}\")";
 
         private readonly Grid _previewHost = new();
         private readonly TextBlock _pageLabel = new();
@@ -576,9 +593,9 @@ namespace KillerPDF
             var marginOpts = new (string name, double inches)[]
             {
                 (S("Str_Margin_None"), 0),
-                ($"{S("Str_Margin_Narrow")} (0.25\")", 0.25),
-                ($"{S("Str_Margin_Normal")} (0.5\")", 0.5),
-                ($"{S("Str_Margin_Wide")} (1\")", 1.0)
+                (MarginLabel("Str_Margin_Narrow", 0.25), 0.25),
+                (MarginLabel("Str_Margin_Normal", 0.5), 0.5),
+                (MarginLabel("Str_Margin_Wide", 1.0), 1.0)
             };
             foreach (var (name, _) in marginOpts) margins.Items.Add(name);
             margins.SelectedIndex = 0;
@@ -1027,7 +1044,7 @@ namespace KillerPDF
 
         private void RefreshArea()
         {
-            double w = 816, h = 1056;   // Letter portrait fallback
+            double w = FallbackAreaW, h = FallbackAreaH;
             try
             {
                 if (_queue != null)
@@ -1534,46 +1551,9 @@ namespace KillerPDF
 
         private void RemoveOverlay(Border overlay) => _rootGrid.Children.Remove(overlay);
 
-        // Parses "1-3,5" style ranges into sorted 0-based indices. Blank = all pages; a range that
-        // matches no page returns empty and the callers surface it.
-        private static List<int> ParseRange(string? text, int count)
-        {
-            text = text?.Trim() ?? "";
-            if (text.Length == 0) return [.. Enumerable.Range(0, count)];
-
-            var set = new SortedSet<int>();
-            foreach (var raw in text.Split(','))
-            {
-                var part = raw.Trim();
-                if (part.Length == 0) continue;
-                if (part.Contains('-'))
-                {
-                    var seg = part.Split('-');
-                    if (seg.Length == 2 &&
-                        int.TryParse(seg[0].Trim(), out int a) &&
-                        int.TryParse(seg[1].Trim(), out int b))
-                    {
-                        if (a > b) (a, b) = (b, a);
-                        // Clamp the ends rather than testing each i inside the loop. With the test
-                        // inside, "1-2147483647" ran i++ past int.MaxValue, wrapped to int.MinValue,
-                        // and i <= b was true again - the loop never ended. The Pages box drives the
-                        // preview live, so that froze the app on a keystroke. Same output either way.
-                        if (a < 1) a = 1;
-                        if (b > count) b = count;
-                        for (int i = a; i <= b; i++) set.Add(i - 1);
-                    }
-                }
-                else if (int.TryParse(part, out int v))
-                {
-                    if (v >= 1 && v <= count) set.Add(v - 1);
-                }
-            }
-            // A blank box already returned every page above, so reaching here with nothing resolved
-            // means the text matched no page - a number past the end, or a typo. Return the empty
-            // set and let the callers surface it. Falling back to every page here meant a slipped
-            // keystroke in the Pages box silently spooled the whole document.
-            return [.. set];
-        }
+        // Blank = all pages; anything that is not an exact in-range list returns empty and the
+        // callers surface it. Fullwidth and ideographic-comma input is accepted (Services/PrintPageRange).
+        private static List<int> ParseRange(string? text, int count) => PrintPageRange.Parse(text, count);
 
         // Shared themed button (UiKit.Make) so the print dialog matches every other dialog.
         private static Button MakeButton(string label, bool accent) => UiKit.Make(label, accent);

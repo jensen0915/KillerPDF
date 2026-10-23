@@ -77,6 +77,7 @@
     <Compile Include="..\Services\SaveFileNamePolicy.cs" Link="Services\SaveFileNamePolicy.cs" />
     <Compile Include="..\Services\DeferredActionGate.cs" Link="Services\DeferredActionGate.cs" />
     <Compile Include="..\Services\UndoHistoryBudget.cs" Link="Services\UndoHistoryBudget.cs" />
+    <Compile Include="..\Services\PrintPageRange.cs" Link="Services\PrintPageRange.cs" />
     <Compile Include="..\Packaging\KillerLauncher\PortableProcessIdentity.cs" Link="Packaging\PortableProcessIdentity.cs" />
     <Compile Include="..\Packaging\KillerLauncher\InstallerPrerequisitePolicy.cs" Link="Packaging\InstallerPrerequisitePolicy.cs" />
     <Compile Include="..\Packaging\KillerLauncher\PortableLauncherPolicy.cs" Link="Packaging\PortableLauncherPolicy.cs" />

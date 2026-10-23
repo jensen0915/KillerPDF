@@ -326,7 +326,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Print_ScaleHint">縮放百分比（例如 50 或 50.23）</sys:String>
     <sys:String x:Key="Str_Print_Copies">份數</sys:String>
     <sys:String x:Key="Str_Print_Pages">頁面</sys:String>
-    <sys:String x:Key="Str_Print_PagesHint">例如 1-3,5（空白 = 全部）</sys:String>
+    <sys:String x:Key="Str_Print_PagesHint">例如 1-3,5 或 １－３，５；空白表示全部。</sys:String>
     <sys:String x:Key="Str_Print_NoPages">無頁面</sys:String>
     <sys:String x:Key="Str_Print_Margins">邊界</sys:String>
     <sys:String x:Key="Str_Margin_None">無</sys:String>
@@ -582,7 +582,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Dlg_SelectExtract">請選取要擷取的頁面。</sys:String>
     <sys:String x:Key="Str_Dlg_SelectDelete">請選取要刪除的頁面。</sys:String>
     <sys:String x:Key="Str_Dlg_NoPrinter">找不到可用的印表機。</sys:String>
-    <sys:String x:Key="Str_Dlg_NoValidPages">該範圍中沒有有效的頁面。</sys:String>
+    <sys:String x:Key="Str_Dlg_NoValidPages">請輸入有效頁碼，例如 1-3,5；不可超出頁數或由大到小。</sys:String>
     <sys:String x:Key="Str_Dlg_SignedSavedTo">已將簽署副本儲存至：</sys:String>
     <sys:String x:Key="Str_Dlg_DrawSignatureFirst">請先簽名。</sys:String>
 
