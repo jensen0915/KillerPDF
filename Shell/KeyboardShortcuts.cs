@@ -549,18 +549,12 @@ namespace KillerPDF
                 SetTrueZoom(1.0);
                 e.Handled = true;
             }
-            else if (e.Key == Key.Escape && _doc is not null && _currentTool != EditTool.Select)
-            {
-                // 1.6.6 (#127 Phase 3): Esc with nothing left to cancel drops back to the Select
-                // tool, Acrobat-style. With Select already active it keeps falling through to the
-                // app-exit handler below, unchanged.
-                SetTool(EditTool.Select);
-                e.Handled = true;
-            }
             else if (e.Key == Key.Escape)
             {
-                // No overlay active - ESC exits the app
-                Close();
+                // 1.6.6 (#127 Phase 3): Esc with nothing left to cancel drops back to the Select
+                // tool, Acrobat-style. Fork: with Select already active it does nothing. Esc is pressed
+                // often while filling forms; closing the window is left to Alt+F4 and the close button.
+                if (_doc is not null && _currentTool != EditTool.Select) SetTool(EditTool.Select);
                 e.Handled = true;
             }
             else if (e.Key == Key.Space && !_spaceHeld)
