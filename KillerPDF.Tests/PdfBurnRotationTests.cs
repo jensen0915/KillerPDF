@@ -339,8 +339,10 @@ public sealed class PdfBurnRotationTests
         string path = Path.Combine(Path.GetTempPath(), $"killerpdf-line-pitch-{Guid.NewGuid():N}.pdf");
         try
         {
-            File.WriteAllBytes(path, new PdfDocumentBuilder().AddBlankPage(612, 792).Build());
             const string content = "臺北市\n信義區";
+            // A machine with no Han-capable face (a bare CI image) cannot save this text at all.
+            if (FontCoverage.WillLoseGlyphs("Segoe UI", content)) return;
+            File.WriteAllBytes(path, new PdfDocumentBuilder().AddBlankPage(612, 792).Build());
             var text = new TextAnnotation
             {
                 PageIndex = 0, Position = new Point(20, 30), Content = content,
@@ -371,6 +373,9 @@ public sealed class PdfBurnRotationTests
     public void TextBurn_BaselineAndPitchMatchTheIdealOverlayLayout(string family)
     {
         // The placed text overlay uses Ideal layout; the burn must land its lines where it draws them.
+        // A missing family would compare WPF's stand-in metrics with the burn's, so there is nothing to check.
+        if (!System.Windows.Media.Fonts.SystemFontFamilies.Any(f =>
+                string.Equals(f.Source, family, StringComparison.OrdinalIgnoreCase))) return;
         const double size = 31.9;
         var typeface = new System.Windows.Media.Typeface(family);
         var twoLines = new System.Windows.Media.FormattedText("臺A\n臺A",

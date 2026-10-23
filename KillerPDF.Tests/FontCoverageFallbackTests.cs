@@ -23,16 +23,11 @@ public sealed class FontCoverageFallbackTests
     [Fact]
     public void TraditionalPreferencePicksJhengHeiForHanText()
     {
-        bool saved = FontCoverage.PreferTraditionalChinese;
-        try
-        {
-            FontCoverage.PreferTraditionalChinese = true;
-            string family = FontCoverage.PickFamily("Segoe UI", "臺北市政府");
-            if (FontCoverage.UncoveredChars("Microsoft JhengHei", "臺北市政府").Length == 0
-                && family != "Segoe UI")
-                Assert.Equal("Microsoft JhengHei", family);
-        }
-        finally { FontCoverage.PreferTraditionalChinese = saved; }
+        // Passed explicitly: flipping the shared setting would race other tests that pick fonts.
+        string family = FontCoverage.PickFamily("Segoe UI", "臺北市政府", preferTraditional: true);
+        if (FontCoverage.UncoveredChars("Microsoft JhengHei", "臺北市政府").Length == 0
+            && family != "Segoe UI")
+            Assert.Equal("Microsoft JhengHei", family);
     }
 
     [Theory]

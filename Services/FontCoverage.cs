@@ -60,11 +60,16 @@ namespace KillerPDF.Services
         /// back to the user's choice when nothing covers it, so behavior never gets worse than
         /// before - the caller warns in that case.</summary>
         internal static string PickFamily(string preferred, string? text)
+            => PickFamily(preferred, text, PreferTraditionalChinese);
+
+        // Same, with the Traditional preference passed in rather than read from the shared setting
+        // (lets tests run in parallel without flipping it for each other).
+        internal static string PickFamily(string preferred, string? text, bool preferTraditional)
         {
             if (string.IsNullOrEmpty(text)) return preferred;
             if (Covers(preferred, text!)) return preferred;
 
-            foreach (var family in ChainFor(text!))
+            foreach (var family in ChainFor(text!, preferTraditional))
             {
                 if (string.Equals(family, preferred, StringComparison.OrdinalIgnoreCase)) continue;
                 if (Covers(family, text!)) return family;
@@ -100,7 +105,7 @@ namespace KillerPDF.Services
 
         // Picked from the first character that needs help, not the first character overall: a line
         // starting "Re: " and continuing in Japanese is Japanese text, not Latin text.
-        private static string[] ChainFor(string text)
+        private static string[] ChainFor(string text, bool preferTraditional)
         {
             foreach (int cp in CodePoints(text))
             {
@@ -116,7 +121,7 @@ namespace KillerPDF.Services
                     // prefer Simplified and let the Traditional chain cover what it misses.
                     foreach (int c2 in CodePoints(text))
                         if (c2 is >= 0x3040 and <= 0x30FF) return ChainJapanese;
-                    return HasTraditionalMarker(text) || PreferTraditionalChinese
+                    return HasTraditionalMarker(text) || preferTraditional
                         ? ChainTraditional : ChainSimplified;
                 }
             }
