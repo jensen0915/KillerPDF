@@ -145,3 +145,7 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 ## 發佈版本：1.8.91-office-ux.5
 
 修正 Adobe Reader 將新增的文字顯示為方框（`a52681ea`）：內嵌字型的編碼 CMap 原本同名，改為依內容命名。細節見 CHANGELOG 與 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
+
+## 發佈版本：1.8.91-office-ux.6
+
+修正辦公工具列「檔案 ▸ 最近的檔案」點了會當掉（`b3c5995b`）：選單改為傳入選單項目本身的點擊事件。細節見 CHANGELOG 與 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
