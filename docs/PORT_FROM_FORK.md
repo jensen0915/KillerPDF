@@ -133,3 +133,7 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 ## 發佈版本：1.8.91-office-ux.2
 
 `v1.8.91-office-ux.1` 的發佈建置在測試步驟失敗，沒有產生 Release；該 tag 保留不動。字型測試改為不切換共用的繁中偏好、缺字型時略過（`50f54720`），發佈 workflow 改為把失敗測試寫成公開註記（`2cd27056`）。程式本身與 .1 相同，以 `1.8.91-office-ux.2` 發佈。
+
+## 發佈版本：1.8.91-office-ux.3
+
+依實際使用回報新增的功能，不屬於舊版移植範圍：直書、勾選記號連續放置、文字框隨輸入自動加寬、繁中預設新細明體並記住使用者選的字型（`7d414892`）。細節見 CHANGELOG，本機驗證見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
