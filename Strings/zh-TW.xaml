@@ -1073,4 +1073,6 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Office_CheckModeOn">點擊方框即放上勾選記號，可連續點擊。再按一次「勾選記號」或 Esc 結束。</sys:String>
     <sys:String x:Key="Str_Bar_VerticalText">直書（由上而下、由右至左）</sys:String>
     <sys:String x:Key="Str_Bar_VerticalGlyph">直</sys:String>
+    <sys:String x:Key="Str_St_EditableTextRestored">先前在 KillerPDF 新增的 {0} 個文字可再拖曳或雙擊修改。</sys:String>
+    <sys:String x:Key="Str_St_EditableTextKeptFixed">有 {0} 頁之後在其他程式修改過，這些頁新增的文字維持為頁面內容。</sys:String>
 </ResourceDictionary>

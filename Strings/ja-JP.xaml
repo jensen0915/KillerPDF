@@ -1091,4 +1091,6 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Office_CheckModeOn">チェックする枠をクリックすると印が付きます。続けてクリックできます。もう一度「チェック」を押すか Esc で終了します。</sys:String>
     <sys:String x:Key="Str_Bar_VerticalText">縦書き（上から下、右から左）</sys:String>
     <sys:String x:Key="Str_Bar_VerticalGlyph">縦</sys:String>
+    <sys:String x:Key="Str_St_EditableTextRestored">以前に KillerPDF で追加した {0} 個の文字は、ドラッグやダブルクリックで再編集できます。</sys:String>
+    <sys:String x:Key="Str_St_EditableTextKeptFixed">{0} ページは後で別のプログラムで変更されたため、追加した文字はページの一部のままです。</sys:String>
 </ResourceDictionary>

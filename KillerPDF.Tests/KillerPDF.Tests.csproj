@@ -83,6 +83,7 @@
     <Compile Include="..\Services\FormTabOrder.cs" Link="Services\FormTabOrder.cs" />
     <Compile Include="..\Services\VerticalTextLayout.cs" Link="Services\VerticalTextLayout.cs" />
     <Compile Include="..\Services\TextFontDefaults.cs" Link="Services\TextFontDefaults.cs" />
+    <Compile Include="..\Services\EditableTextStore.cs" Link="Services\EditableTextStore.cs" />
     <Compile Include="..\Packaging\KillerLauncher\PortableProcessIdentity.cs" Link="Packaging\PortableProcessIdentity.cs" />
     <Compile Include="..\Packaging\KillerLauncher\InstallerPrerequisitePolicy.cs" Link="Packaging\InstallerPrerequisitePolicy.cs" />
     <Compile Include="..\Packaging\KillerLauncher\PortableLauncherPolicy.cs" Link="Packaging\PortableLauncherPolicy.cs" />

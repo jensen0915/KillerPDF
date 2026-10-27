@@ -435,7 +435,7 @@ namespace KillerPDF.Controls
                 StartCoverTextEdit(pageIdx, new Rect(cLeft, cTop, cWidth, cHeight), prefill,
                     Math.Max(canvasFontSize, syInv), fontName, syInv,
                     fontBold, fontItalic);
-                SetStatus(string.Equals(requestedFamily, fontName, StringComparison.OrdinalIgnoreCase)
+                SetStatus(string.Equals(requestedFamily.Replace(" ", ""), fontName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase)
                     ? string.Format(Loc("Str_St_TextEditDetectedFont"), fontName, _textFontSize.ToString("0.##"))
                     : string.Format(Loc("Str_St_TextEditFontSubstituted"), requestedFamily, fontName, _textFontSize.ToString("0.##")));
             }

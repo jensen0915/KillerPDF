@@ -1078,4 +1078,6 @@ Megnyílik a Windows Beállítások - Alapértelmezett alkalmazások.</sys:Strin
     <sys:String x:Key="Str_Office_CheckModeOn">Click each box to place a check mark; keep clicking to add more. Click Check mark again or press Esc to stop.</sys:String>
     <sys:String x:Key="Str_Bar_VerticalText">Vertical text (top to bottom, columns right to left)</sys:String>
     <sys:String x:Key="Str_Bar_VerticalGlyph">↓</sys:String>
+    <sys:String x:Key="Str_St_EditableTextRestored">{0} text box(es) added earlier in KillerPDF can be moved or double-clicked to edit again.</sys:String>
+    <sys:String x:Key="Str_St_EditableTextKeptFixed">{0} page(s) were changed in another program since, so their added text stays part of the page.</sys:String>
 </ResourceDictionary>

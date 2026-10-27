@@ -39,6 +39,7 @@ internal static class PdfEngineBurn
         HashSet<int> watermarkPages = stamps is { WmEnabled: true }
             ? [.. PdfBurn.StampPageRange(stamps.WmRange, pages.Count)] : [];
         int firstNumberPage = numberPages.Count == 0 ? 0 : numberPages.Min();
+        var editableText = new Dictionary<int, List<EditableTextStore.Box>>();
 
         for (int pageIndex = 0; pageIndex < pages.Count; pageIndex++)
         {
@@ -60,15 +61,27 @@ internal static class PdfEngineBurn
             if (hasWatermark) DrawWatermark(content, stamps!, watermark, visualWidth, visualHeight, fonts);
             if (hasNumber) DrawNumber(content, stamps!, pageIndex, firstNumberPage, pages.Count,
                 visualWidth, visualHeight, fonts);
+            // Fork: placed text goes into an overlay of its own, drawn over the other markup, whose
+            // boxes EditableTextStore records so a later open can make them editable again. A copy
+            // made for rasterizing keeps everything in one overlay, as before.
+            List<TextAnnotation> placedText = !forRasterization && hasAnnotations
+                ? [.. pageAnnotations!.OfType<TextAnnotation>().Where(t => !string.IsNullOrWhiteSpace(t.Content))]
+                : [];
+            double sx = 1, sy = 1;
+            bool drewMarkup = hasWatermark || hasNumber;
             if (hasAnnotations)
             {
                 var (renderWidth, renderHeight) = renderDims.TryGetValue(pageIndex, out var storedDims)
                     && storedDims.w > 0 && storedDims.h > 0
                     ? storedDims : CanonicalRenderDimensions(visualWidth, visualHeight);
-                double sx = visualWidth / renderWidth;
-                double sy = visualHeight / renderHeight;
+                sx = visualWidth / renderWidth;
+                sy = visualHeight / renderHeight;
                 foreach (PageAnnotation annotation in pageAnnotations!)
-                    DrawAnnotation(content, annotation, sx, sy, fonts);
+                    if (annotation is not TextAnnotation text || !placedText.Contains(text))
+                    {
+                        DrawAnnotation(content, annotation, sx, sy, fonts);
+                        drewMarkup = true;
+                    }
             }
 
             content.RestoreState();
@@ -76,20 +89,57 @@ internal static class PdfEngineBurn
                 editor.AppendPageArtifact(pageIndex, page.Width, page.Height, content);
             else
             {
-                var descriptions = new List<string>();
-                if (hasAnnotations)
-                    foreach (PageAnnotation annotation in pageAnnotations!)
-                        descriptions.Add(annotation is TextAnnotation text && !string.IsNullOrWhiteSpace(text.Content)
-                            ? text.Content : annotation is SignatureAnnotation ? "Signature" : "Markup");
-                if (hasNumber) descriptions.Add("Page number");
-                if (hasWatermark) descriptions.Add("Watermark");
-                editor.AppendPageDescribedContent(pageIndex, page.Width, page.Height, content,
-                    string.Join("\n", descriptions));
+                if (drewMarkup)
+                {
+                    var descriptions = new List<string>();
+                    if (hasAnnotations)
+                        foreach (PageAnnotation annotation in pageAnnotations!)
+                            if (annotation is not TextAnnotation text || !placedText.Contains(text))
+                                descriptions.Add(annotation is TextAnnotation t && !string.IsNullOrWhiteSpace(t.Content)
+                                    ? t.Content : annotation is SignatureAnnotation ? "Signature" : "Markup");
+                    if (hasNumber) descriptions.Add("Page number");
+                    if (hasWatermark) descriptions.Add("Watermark");
+                    editor.AppendPageDescribedContent(pageIndex, page.Width, page.Height, content,
+                        string.Join("\n", descriptions));
+                }
+                if (placedText.Count > 0)
+                {
+                    var textContent = new PdfContentStreamBuilder().SaveState();
+                    ApplyVisualTransform(textContent, page.X, page.Y, page.Width, page.Height, rotation);
+                    foreach (TextAnnotation text in placedText) DrawText(textContent, text, sx, sy, fonts);
+                    textContent.RestoreState();
+                    editor.AppendPageDescribedContent(pageIndex, page.Width, page.Height, textContent,
+                        string.Join("\n", placedText.Select(t => t.Content)));
+                    editableText[pageIndex] = [.. placedText.Select(t => EditableBox(t, sx, sy))];
+                }
             }
         }
 
-        Replace(path, editor.Build());
+        byte[] result = editor.Build();
+        // The record is a convenience: a failure to write it must never cost the save.
+        try { result = EditableTextStore.Attach(result, editableText); } catch { }
+        Replace(path, result);
     }
+
+    // A text box in the page's visual frame, in points (see EditableTextStore).
+    private static EditableTextStore.Box EditableBox(TextAnnotation text, double sx, double sy) => new()
+    {
+        Text = text.Content,
+        X = text.Position.X * sx,
+        Y = text.Position.Y * sy,
+        Width = Math.Max(1, text.Width * sx),
+        Height = Math.Max(1, text.Height * sy),
+        Size = Math.Max(1, text.FontSize * sy),
+        LetterSpacing = text.LetterSpacing * sy,
+        Font = string.IsNullOrWhiteSpace(text.FontName) ? "Segoe UI" : text.FontName,
+        Bold = text.Bold,
+        Italic = text.Italic,
+        Strike = text.Strike,
+        Underline = text.Underline,
+        Vertical = text.Vertical,
+        Color = (uint)(text.ColorA << 24 | text.ColorR << 16 | text.ColorG << 8 | text.ColorB),
+        Fill = (uint)(text.BgA << 24 | text.BgR << 16 | text.BgG << 8 | text.BgB)
+    };
 
     private static (int Width, int Height) CanonicalRenderDimensions(double width, double height)
     {

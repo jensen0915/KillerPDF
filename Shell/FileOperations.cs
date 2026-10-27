@@ -74,8 +74,19 @@ namespace KillerPDF
                     StripEncryptionAndOpen(srcPath, path, busyMessage: Loc("Str_Busy_OpeningProtected"));
                     return;
                 }
+                // Fork: text placed by an earlier KillerPDF save comes back as editable boxes, over a
+                // working copy that no longer draws it (Services/EditableTextStore.cs).
+                EditableTextStore.Restored? editable = LiftEditableText(srcPath);
+                if (editable is { Pages.Count: > 0 })
+                {
+                    string clean = App.MakeTempFile("editable");
+                    File.WriteAllBytes(clean, editable.CleanPdf);
+                    _doc.Close();
+                    _doc = null; _doc = PdfWorkingDocument.Open(clean);
+                    srcPath = clean;
+                }
                 _currentFile = srcPath;
-                FinishOpenFile(path, srcPath);
+                FinishOpenFile(path, srcPath, editable);
             }
             catch (Exception ex) when (PdfImport.IsOwnerPasswordException(ex))
             {
@@ -156,7 +167,61 @@ namespace KillerPDF
         // The open-failure classifiers (IsEofParseException, IsXRefException, IsNetworkPath,
         // IsOwnerPasswordException, IsPasswordException) live in Services/PdfImport.cs.
 
-        private void FinishOpenFile(string displayPath, string workingPath)
+        // Reads editable text out of a file about to open; null when there is none, or on any failure
+        // (the file then opens exactly as before, with the text as page content).
+        private static EditableTextStore.Restored? LiftEditableText(string path)
+        {
+            try
+            {
+                byte[] bytes = File.ReadAllBytes(path);
+                return EditableTextStore.MayContain(bytes) ? EditableTextStore.Extract(bytes) : null;
+            }
+            catch { return null; }
+        }
+
+        // Fork: turns lifted boxes back into text annotations in this page's canvas units.
+        private int RestoreEditableText(EditableTextStore.Restored editable, PdfEngineDocumentSession engineSession)
+        {
+            int count = 0;
+            foreach ((int pageIndex, List<EditableTextStore.Box> boxes) in editable.Pages)
+            {
+                if (pageIndex < 0 || pageIndex >= engineSession.Pages.Count) continue;
+                var (visualWidth, visualHeight) = engineSession.VisualPageSize(pageIndex, _pageRotations);
+                // The canonical render-dim space every view uses (longest side 2048).
+                double longest = Math.Max(1, Math.Max(visualWidth, visualHeight));
+                int renderWidth = Math.Max(1, (int)Math.Round(2048.0 * visualWidth / longest));
+                int renderHeight = Math.Max(1, (int)Math.Round(2048.0 * visualHeight / longest));
+                _renderDims[pageIndex] = (renderWidth, renderHeight);
+                double sx = visualWidth / renderWidth, sy = visualHeight / renderHeight;
+                if (!_annotations.TryGetValue(pageIndex, out var list)) _annotations[pageIndex] = list = [];
+                foreach (var box in boxes)
+                {
+                    var text = new TextAnnotation
+                    {
+                        PageIndex = pageIndex,
+                        Position = new Point(box.X / sx, box.Y / sy),
+                        Content = box.Text,
+                        FontSize = box.Size / sy,
+                        LetterSpacing = box.LetterSpacing / sy,
+                        FontName = box.Font,
+                        Bold = box.Bold,
+                        Italic = box.Italic,
+                        Strike = box.Strike,
+                        Underline = box.Underline,
+                        Vertical = box.Vertical,
+                        Width = box.Width / sx,
+                        Height = box.Height / sy
+                    };
+                    text.SetColor(Color.FromArgb((byte)(box.Color >> 24), (byte)(box.Color >> 16), (byte)(box.Color >> 8), (byte)box.Color));
+                    text.SetFill(Color.FromArgb((byte)(box.Fill >> 24), (byte)(box.Fill >> 16), (byte)(box.Fill >> 8), (byte)box.Fill));
+                    list.Add(text);
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        private void FinishOpenFile(string displayPath, string workingPath, EditableTextStore.Restored? editable = null)
         {
             _currentFile = workingPath;
             _originalFile = displayPath;
@@ -183,6 +248,7 @@ namespace KillerPDF
             _formRadioValues.Clear();
             Search.ClearPageResults();
             _gridScrollToPage = -1;
+            int restoredText = editable is null ? 0 : RestoreEditableText(editable, engineSession);
             MarkDirty(false);
             _openedFromProtected = false;   // #149: set true by the two protected-open paths after this returns
             // Restore this file's last page and zoom if we've seen it before. View mode is global:
@@ -209,7 +275,17 @@ namespace KillerPDF
                 }
                 else BootstrapDocumentView(0, autoFit: true);
             }
-            SetStatus(string.Format(Loc("Str_Opened"), System.IO.Path.GetFileName(displayPath), pageCount));
+            string opened = string.Format(Loc("Str_Opened"), System.IO.Path.GetFileName(displayPath), pageCount);
+            SetStatus(opened);
+            // Fork: say what came back editable once the first page has rendered - its page-number
+            // status would otherwise replace the note at once.
+            string? editableNote = restoredText > 0 ? string.Format(Loc("Str_St_EditableTextRestored"), restoredText) : null;
+            if (editable is { KeptFixedPages: > 0 })
+                editableNote = (editableNote is null ? "" : editableNote + "  ")
+                    + string.Format(Loc("Str_St_EditableTextKeptFixed"), editable.KeptFixedPages);
+            if (editableNote is not null)
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                    new Action(() => SetStatus(editableNote)));
             SyncSidebarToDocState(hasDoc: true, startup: false);   // a document is up: open the rail, show page controls
         }
 
