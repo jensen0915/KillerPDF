@@ -13,7 +13,7 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\kp-icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.8.91-office-ux.3</Version>
+    <Version>1.8.91-office-ux.4</Version>
 
     <AssemblyVersion>1.8.91.0</AssemblyVersion>
     <FileVersion>1.8.91.0</FileVersion>

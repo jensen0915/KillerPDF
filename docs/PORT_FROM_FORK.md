@@ -137,3 +137,7 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 ## 發佈版本：1.8.91-office-ux.3
 
 依實際使用回報新增的功能，不屬於舊版移植範圍：直書、勾選記號連續放置、文字框隨輸入自動加寬、繁中預設新細明體並記住使用者選的字型（`7d414892`）。細節見 CHANGELOG，本機驗證見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
+
+## 發佈版本：1.8.91-office-ux.4
+
+新增的文字存檔後重新開啟仍可編輯（`2aabea56`）：存檔時把文字畫進自己的 Form XObject 並在 /PieceInfo 記錄設定與指紋，開啟時頁面未被其他程式修改才還原成文字框。細節見 CHANGELOG，本機驗證見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
