@@ -188,6 +188,7 @@ namespace KillerPDF.Controls
         internal void RemoveTextEditHandlesExt() => RemoveTextEditHandles();
         internal void EditTextAtPositionExt(Point canvasPos, int pageIdx) => EditTextAtPosition(canvasPos, pageIdx);
         internal void PlaceTextBoxExt(Point pos, int pageIdx) => PlaceTextBox(pos, pageIdx);
+        internal void PlaceStampTextExt(string text, Point pos, int pageIdx) => PlaceStampText(text, pos, pageIdx);
         internal Brush TextEditBackgroundExt() => TextEditBackground();
         internal static ControlTemplate FlatTextBoxTemplateExt() => FlatTextBoxTemplate();
 
@@ -239,6 +240,10 @@ namespace KillerPDF.Controls
         internal double TextFontSizeRef { get => _textFontSize; set => _textFontSize = value; }
         internal double TextLetterSpacingRef { get => _textLetterSpacing; set => _textLetterSpacing = value; }
         internal string TextFontNameRef { get => _textFontName; set => _textFontName = value; }
+        internal bool TextFontBorrowedRef => _textFontBorrowed;
+        internal bool TextVerticalRef { get => _textVertical; set => _textVertical = value; }
+        internal void ApplyTextVerticalExt() => ApplyTextVertical();
+        internal void RefreshActiveEditLayoutExt() => RefreshActiveEditLayout();
         internal bool TextBoldRef { get => _textBold; set => _textBold = value; }
         internal bool TextItalicRef { get => _textItalic; set => _textItalic = value; }
         internal bool TextStrikeRef { get => _textStrike; set => _textStrike = value; }

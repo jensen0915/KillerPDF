@@ -1088,4 +1088,7 @@ Windows の設定 - 既定のアプリ を開きます。</sys:String>
     <sys:String x:Key="Str_Office_Unsaved">未保存の変更あり</sys:String>
     <sys:String x:Key="Str_Office_UseOriginalToolbar">元のツールバーを使用</sys:String>
     <sys:String x:Key="Str_Office_UseOfficeToolbar">業務用ツールバーを使用</sys:String>
+    <sys:String x:Key="Str_Office_CheckModeOn">チェックする枠をクリックすると印が付きます。続けてクリックできます。もう一度「チェック」を押すか Esc で終了します。</sys:String>
+    <sys:String x:Key="Str_Bar_VerticalText">縦書き（上から下、右から左）</sys:String>
+    <sys:String x:Key="Str_Bar_VerticalGlyph">縦</sys:String>
 </ResourceDictionary>

@@ -1088,4 +1088,7 @@ KillerPDF не будет создавать две установленные �
     <sys:String x:Key="Str_Office_Unsaved">Unsaved changes</sys:String>
     <sys:String x:Key="Str_Office_UseOriginalToolbar">Use the original toolbar</sys:String>
     <sys:String x:Key="Str_Office_UseOfficeToolbar">Use the office toolbar</sys:String>
+    <sys:String x:Key="Str_Office_CheckModeOn">Click each box to place a check mark; keep clicking to add more. Click Check mark again or press Esc to stop.</sys:String>
+    <sys:String x:Key="Str_Bar_VerticalText">Vertical text (top to bottom, columns right to left)</sys:String>
+    <sys:String x:Key="Str_Bar_VerticalGlyph">↓</sys:String>
 </ResourceDictionary>

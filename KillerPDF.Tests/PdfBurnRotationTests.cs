@@ -387,6 +387,57 @@ public sealed class PdfBurnRotationTests
     }
 
     [Fact]
+    public void VerticalTextBurn_DrawsEachCharacterInItsOverlayCell()
+    {
+        // Fork: 直書. One text matrix per character, at the cell VerticalTextLayout gives the overlay;
+        // a dash with no vertical form is turned a quarter clockwise.
+        const string content = "臺北\n市―";
+        if (FontCoverage.WillLoseGlyphs("Segoe UI", content)) return;   // no Han face on this machine
+        string path = Path.Combine(Path.GetTempPath(), $"killerpdf-vertical-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            File.WriteAllBytes(path, new PdfDocumentBuilder().AddBlankPage(612, 792).Build());
+            string family = FontCoverage.PickFamily("Segoe UI", content);
+            var m = VerticalTextLayout.MetricsFor(family, 20, 0, false, false);
+            Size box = VerticalTextLayout.BoxSize(2, 2, m);
+            var text = new TextAnnotation
+            {
+                PageIndex = 0, Position = new Point(300, 100), Content = content, Vertical = true,
+                FontName = "Segoe UI", FontSize = 20, Width = box.Width, Height = box.Height
+            };
+            PdfEngineBurn.Burn(path,
+                new Dictionary<int, List<PageAnnotation>> { [0] = [text] },
+                new Dictionary<int, (int w, int h)> { [0] = (612, 792) });
+
+            string streams = AllDecodedStreams(path);
+            var upright = Regex.Matches(streams, @"1 0 0 -1 ([-0-9.]+) ([-0-9.]+) Tm")
+                .Select(x => (X: Num(x.Groups[1].Value), Y: Num(x.Groups[2].Value))).ToList();
+            var turned = Regex.Matches(streams, @"0 1 1 0 ([-0-9.]+) ([-0-9.]+) Tm")
+                .Select(x => (X: Num(x.Groups[1].Value), Y: Num(x.Groups[2].Value))).ToList();
+            Assert.Equal(3, upright.Count);
+            Assert.Single(turned);
+
+            // 臺 and 北 share the right-hand column, 臺 above; 市 heads the next column to the left.
+            double right = 300 + box.Width;
+            double firstColumn = VerticalTextLayout.ColumnCenter(0, right, m);
+            double secondColumn = VerticalTextLayout.ColumnCenter(1, right, m);
+            Assert.InRange(upright[0].X, firstColumn - m.Size / 2 - .5, firstColumn);
+            Assert.Equal(upright[0].X, upright[1].X, 2);
+            Assert.Equal(m.Advance, upright[1].Y - upright[0].Y, 2);
+            Assert.InRange(upright[2].X, secondColumn - m.Size / 2 - .5, secondColumn);
+            Assert.Equal(upright[0].Y, upright[2].Y, 2);
+            Assert.Equal(100 + VerticalTextLayout.Pad + m.Size / 2 + m.EmCenter, upright[0].Y, 2);
+            // The turned dash: its baseline runs down the second column, one em below 市's cell top.
+            Assert.Equal(secondColumn - m.EmCenter, turned[0].X, 2);
+            Assert.InRange(turned[0].Y, 100 + VerticalTextLayout.Pad + m.Advance - .5,
+                100 + VerticalTextLayout.Pad + m.Advance + m.Size / 2);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+
+        static double Num(string s) => double.Parse(s, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    [Fact]
     public void TextBurn_UsesWpfTypefaceBaselineInsteadOfAssumedFullEm()
     {
         double ratio = PdfEngineBurn.BaselineRatio("Segoe UI", false, false);

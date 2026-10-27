@@ -58,6 +58,9 @@ namespace KillerPDF
         public bool Italic { get; set; }
         public bool Strike { get; set; }
         public bool Underline { get; set; }
+        // Fork: vertical text (直書) - top to bottom, columns right to left (Services/VerticalTextLayout).
+        // The box's height bounds each column and its right edge anchors the first one.
+        public bool Vertical { get; set; }
         public byte ColorR { get; set; } = 0;
         public byte ColorG { get; set; } = 0;
         public byte ColorB { get; set; } = 0;

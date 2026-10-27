@@ -38,6 +38,24 @@ namespace KillerPDF.Services
         // not in the text faces above (Segoe UI has no U+2713). Tried after the script chain, so
         // ordinary text keeps its text face; without it an inserted check mark failed the save.
         private static readonly string[] ChainSymbols   = ["Segoe UI Symbol", "Segoe UI Emoji", "MS Gothic"];
+        // Fork: a serif Latin choice (Times New Roman and the like) borrows a Ming / Song / Mincho face
+        // for its Han text, as Word pairs Times New Roman with 新細明體, instead of the sans default.
+        private static readonly string[] ChainJapaneseSerif    = ["Yu Mincho", "MS Mincho", "Yu Gothic", "Meiryo"];
+        private static readonly string[] ChainSimplifiedSerif  = ["SimSun", "NSimSun", "Microsoft YaHei"];
+        private static readonly string[] ChainTraditionalSerif = ["PMingLiU", "MingLiU", "Microsoft JhengHei"];
+        private static readonly HashSet<string> SerifFamilies = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Times New Roman", "Georgia", "Cambria", "Garamond", "Book Antiqua", "Palatino Linotype",
+            "Century", "Century Schoolbook", "Constantia", "Bookman Old Style", "Sylfaen", "Baskerville Old Face",
+            "Bodoni MT", "Californian FB", "Perpetua", "High Tower Text", "Goudy Old Style", "Calisto MT"
+        };
+
+        internal static bool IsSerifFamily(string family)
+            => SerifFamilies.Contains(family)
+               || (family.Contains("Serif", StringComparison.OrdinalIgnoreCase)
+                   && !family.Contains("Sans", StringComparison.OrdinalIgnoreCase))
+               || family.Contains("Times", StringComparison.OrdinalIgnoreCase)
+               || family.Contains("Mincho", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Fork: Han text without kana or Bopomofo is drawn with Traditional Chinese
         /// faces first when the interface or Windows is Traditional Chinese (Taiwan, Hong Kong,
@@ -69,7 +87,7 @@ namespace KillerPDF.Services
             if (string.IsNullOrEmpty(text)) return preferred;
             if (Covers(preferred, text!)) return preferred;
 
-            foreach (var family in ChainFor(text!, preferTraditional))
+            foreach (var family in ChainFor(text!, preferTraditional, IsSerifFamily(preferred)))
             {
                 if (string.Equals(family, preferred, StringComparison.OrdinalIgnoreCase)) continue;
                 if (Covers(family, text!)) return family;
@@ -83,6 +101,10 @@ namespace KillerPDF.Services
         /// save will contain boxes however it is drawn. Drives the commit-time warning.</summary>
         internal static bool WillLoseGlyphs(string preferred, string? text)
             => !string.IsNullOrEmpty(text) && !Covers(PickFamily(preferred, text), text!);
+
+        /// <summary>Fork: true only when the family is installed and has every character, so a glyph
+        /// drawn on its say-so (a vertical punctuation form) never comes out as a box.</summary>
+        internal static bool FamilyCovers(string family, string text) => Covers(family, text);
 
         /// <summary>The characters that survive nothing - what the warning shows the user.</summary>
         internal static string UncoveredChars(string family, string? text)
@@ -105,12 +127,12 @@ namespace KillerPDF.Services
 
         // Picked from the first character that needs help, not the first character overall: a line
         // starting "Re: " and continuing in Japanese is Japanese text, not Latin text.
-        private static string[] ChainFor(string text, bool preferTraditional)
+        private static string[] ChainFor(string text, bool preferTraditional, bool serif = false)
         {
             foreach (int cp in CodePoints(text))
             {
                 if (cp < 0x0370) continue;   // Latin / punctuation: no chain needed to decide
-                if (cp is >= 0x3040 and <= 0x30FF) return ChainJapanese;       // kana - unambiguous
+                if (cp is >= 0x3040 and <= 0x30FF) return serif ? ChainJapaneseSerif : ChainJapanese;   // kana - unambiguous
                 if (cp is >= 0xAC00 and <= 0xD7AF or >= 0x1100 and <= 0x11FF) return ChainKorean;
                 if (cp is >= 0x0E00 and <= 0x0E7F) return ChainThai;
                 if (cp is >= 0x0590 and <= 0x08FF) return ChainArabic;          // Hebrew + Arabic
@@ -120,9 +142,10 @@ namespace KillerPDF.Services
                     // Han with no kana anywhere: Chinese. Traditional-only blocks are rare, so
                     // prefer Simplified and let the Traditional chain cover what it misses.
                     foreach (int c2 in CodePoints(text))
-                        if (c2 is >= 0x3040 and <= 0x30FF) return ChainJapanese;
+                        if (c2 is >= 0x3040 and <= 0x30FF) return serif ? ChainJapaneseSerif : ChainJapanese;
                     return HasTraditionalMarker(text) || preferTraditional
-                        ? ChainTraditional : ChainSimplified;
+                        ? (serif ? ChainTraditionalSerif : ChainTraditional)
+                        : (serif ? ChainSimplifiedSerif : ChainSimplified);
                 }
             }
             return ChainDefault;

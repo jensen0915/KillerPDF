@@ -21,6 +21,17 @@ public sealed class FontCoverageFallbackTests
         => Assert.Equal("Segoe UI", FontCoverage.PickFamily("Segoe UI", "115/10/03"));
 
     [Fact]
+    public void ASerifChoiceBorrowsAMingFaceForChinese()
+    {
+        // Times New Roman with 新細明體, as Word pairs them; a sans choice keeps 微軟正黑體.
+        if (!FontCoverage.FamilyCovers("PMingLiU", "臺北市政府")) return;
+        Assert.Equal("PMingLiU", FontCoverage.PickFamily("Times New Roman", "臺北市政府", preferTraditional: true));
+        Assert.True(FontCoverage.IsSerifFamily("Times New Roman"));
+        Assert.False(FontCoverage.IsSerifFamily("Segoe UI"));
+        Assert.False(FontCoverage.IsSerifFamily("Microsoft Sans Serif"));
+    }
+
+    [Fact]
     public void TraditionalPreferencePicksJhengHeiForHanText()
     {
         // Passed explicitly: flipping the shared setting would race other tests that pick fonts.

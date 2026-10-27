@@ -8,13 +8,42 @@ namespace KillerPDF
 {
     public partial class MainWindow
     {
-        // Text the next Text-tool click drops into its new box - a date or a check mark - so those
-        // inherit the text annotation's drag, resize, restyle and undo instead of being a new kind of
-        // object. Taken (and cleared) by the viewer's PlaceTextBox through IViewerHost; any tool
-        // change drops it.
+        // Text the next Text-tool click drops into its new box - a date - so it inherits the text
+        // annotation's drag, resize, restyle and undo instead of being a new kind of object. Taken
+        // (and cleared) by the viewer's PlaceTextBox through IViewerHost; any tool change drops it.
         private string? _officeTextPreset;
 
-        private void InsertCheckmark_Click(object sender, RoutedEventArgs e) => BeginOfficeText("✓");
+        // Check mark mode: every Text-tool click on the page drops a finished check mark centred on
+        // the click - a form has a row of boxes to tick, and an edit box around each mark only hid
+        // it. Stays on until the button is clicked again, Esc, or another tool.
+        private bool _officeCheckMode;
+        internal const string OfficeCheckMark = "✓";
+
+        private bool OfficePresetActive => _officeCheckMode || _officeTextPreset is not null;
+
+        private void ClearOfficePresets()
+        {
+            _officeTextPreset = null;
+            _officeCheckMode = false;
+            UpdateOfficeToolHighlight();
+        }
+
+        private void InsertCheckmark_Click(object sender, RoutedEventArgs e)
+        {
+            if (_doc is null) { KillerDialog.Show(this, Loc("Str_Msg_OpenFirst")); return; }
+            if (_officeCheckMode && _currentTool == EditTool.Text)
+            {
+                ClearOfficePresets();
+                SetStatus(Loc("Str_Office_ClickToPlace"));
+                return;
+            }
+            if (_currentTool != EditTool.Text) SetTool(EditTool.Text);
+            else CommitActiveTextBox();
+            _officeTextPreset = null;
+            _officeCheckMode = true;
+            UpdateOfficeToolHighlight();
+            SetStatus(Loc("Str_Office_CheckModeOn"));
+        }
 
         // "Highlight fields": tint fillable form fields, or show the page exactly as printed.
         private void ToggleFormHints_Click(object sender, RoutedEventArgs e)
@@ -31,20 +60,34 @@ namespace KillerPDF
             // Re-selecting the active Text tool would tuck its settings bar away instead.
             if (_currentTool != EditTool.Text) SetTool(EditTool.Text);
             else CommitActiveTextBox();
+            _officeCheckMode = false;
             _officeTextPreset = text;
+            UpdateOfficeToolHighlight();
             SetStatus(Loc("Str_Office_ClickToPlace"));
         }
 
         private string? TakeOfficeTextPreset()
         {
             string? text = _officeTextPreset;
+            if (text is null) return null;
             _officeTextPreset = null;
+            UpdateOfficeToolHighlight();   // the date is placed; Add text is the live tool again
             return text;
         }
 
-        // Right-click placement: the text goes straight to the clicked spot, no second click.
+        // Right-click placement: the text goes straight to the clicked spot, no second click. A check
+        // mark is placed finished, centred on the click, like check mark mode does.
         private void PlaceOfficeTextAt(string text, Point pos, int pageIdx)
         {
+            if (text == OfficeCheckMark)
+            {
+                if (_doc is null) { KillerDialog.Show(this, Loc("Str_Msg_OpenFirst")); return; }
+                if (_currentTool != EditTool.Text) SetTool(EditTool.Text);
+                else CommitActiveTextBox();
+                _activeCanvas = CanvasForPage(pageIdx);
+                ActiveViewer.PlaceStampTextExt(text, pos, pageIdx);
+                return;
+            }
             BeginOfficeText(text);
             if (_officeTextPreset is null) return;   // no document
             _activeCanvas = CanvasForPage(pageIdx);

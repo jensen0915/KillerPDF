@@ -1070,4 +1070,7 @@ KillerPDF 不會建立兩個已安裝的複本。</sys:String>
     <sys:String x:Key="Str_Office_Unsaved">尚未儲存</sys:String>
     <sys:String x:Key="Str_Office_UseOriginalToolbar">改用原版工具列</sys:String>
     <sys:String x:Key="Str_Office_UseOfficeToolbar">改用辦公工具列</sys:String>
+    <sys:String x:Key="Str_Office_CheckModeOn">點擊方框即放上勾選記號，可連續點擊。再按一次「勾選記號」或 Esc 結束。</sys:String>
+    <sys:String x:Key="Str_Bar_VerticalText">直書（由上而下、由右至左）</sys:String>
+    <sys:String x:Key="Str_Bar_VerticalGlyph">直</sys:String>
 </ResourceDictionary>

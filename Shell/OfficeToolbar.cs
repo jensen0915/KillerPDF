@@ -24,6 +24,10 @@ namespace KillerPDF
         private readonly List<Button> _officeTaskTabs = [];
         private readonly List<Button> _officeDocumentButtons = [];
         private readonly Dictionary<EditTool, List<Button>> _officeToolButtons = [];
+        // Date and check mark ride on the Text tool, so they are lit from their own state rather
+        // than from the current tool.
+        private Button? _officeDateButton;
+        private Button? _officeCheckButton;
         private TextBlock? _officeSaveStatus;
         private bool? _officeHasDocument;
         private int _officeShownStatus = -1;   // 0 no document, 1 saved, 2 unsaved
@@ -109,9 +113,18 @@ namespace KillerPDF
             read.Items.Add(OfficeButton("Str_TT_ComparePDFs", ComparePdf_Click));
 
             var fill = _officeTaskBars[1];
-            OfficeTool(fill, "Str_Office_AddText", EditTool.Text);
-            fill.Items.Add(OfficeButton("Str_Lbl_Date", InsertDate_Click));
-            fill.Items.Add(OfficeButton("Str_Lbl_Checkmark", InsertCheckmark_Click));
+            // Add text after a date or check mark: back to a plain box, without tucking the text bar
+            // away the way re-clicking the current tool does.
+            OfficeTool(fill, "Str_Office_AddText", EditTool.Text, (_, _) =>
+            {
+                if (_currentTool == EditTool.Text && OfficePresetActive) ClearOfficePresets();
+                else SetTool(EditTool.Text);
+                SetStatus(Loc("Str_Office_ClickToPlace"));
+            });
+            _officeDateButton = OfficeButton("Str_Lbl_Date", InsertDate_Click);
+            fill.Items.Add(_officeDateButton);
+            _officeCheckButton = OfficeButton("Str_Lbl_Checkmark", InsertCheckmark_Click);
+            fill.Items.Add(_officeCheckButton);
             OfficeTool(fill, "Str_Lbl_Signature", EditTool.Signature, ToolSignature_Click);
             fill.Items.Add(OfficeButton("Str_Lbl_FormHints", ToggleFormHints_Click));
             OfficeTool(fill, "Str_Office_FormFields", EditTool.FormField, ToolFormField_Click);
@@ -152,6 +165,7 @@ namespace KillerPDF
             _officeTaskTabs.Clear();
             _officeDocumentButtons.Clear();
             _officeToolButtons.Clear();
+            _officeDateButton = _officeCheckButton = null;
             _officeSaveStatus = null;
             _officeToolbarBuilt = false;
         }
@@ -280,15 +294,21 @@ namespace KillerPDF
 
         private void UpdateOfficeToolHighlight()
         {
+            bool text = _currentTool == EditTool.Text;
             foreach (var pair in _officeToolButtons)
             {
-                bool active = pair.Key == _currentTool;
-                foreach (var button in pair.Value)
-                {
-                    button.SetResourceReference(Control.BackgroundProperty, active ? "SelectionBg" : "PaneBrush");
-                    button.SetResourceReference(Control.ForegroundProperty, active ? "SelectionFg" : "TextBrush");
-                }
+                // While a date or check mark is pending, its own button is lit instead of Add text.
+                bool active = pair.Key == _currentTool && !(text && OfficePresetActive);
+                foreach (var button in pair.Value) PaintOfficeButton(button, active);
             }
+            if (_officeDateButton is not null) PaintOfficeButton(_officeDateButton, text && _officeTextPreset is not null);
+            if (_officeCheckButton is not null) PaintOfficeButton(_officeCheckButton, text && _officeCheckMode);
+        }
+
+        private static void PaintOfficeButton(Button button, bool active)
+        {
+            button.SetResourceReference(Control.BackgroundProperty, active ? "SelectionBg" : "PaneBrush");
+            button.SetResourceReference(Control.ForegroundProperty, active ? "SelectionFg" : "TextBrush");
         }
 
         // Toolbar Save writes straight back like Ctrl+S; Save As stays one click away. The warning

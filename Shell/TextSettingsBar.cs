@@ -113,6 +113,26 @@ namespace KillerPDF
                 if (sy > 0) fontCanvas = _textFontSize / sy;
             }
             _activeTextBox.FontSize = fontCanvas;
+            ActiveViewer.RefreshActiveEditLayoutExt();   // refit the width / vertical preview to the new style
+        }
+
+        // Fork: the font list, in the interface language's own font names, cached per language.
+        private static List<TextFontDefaults.Choice>? _fontChoices;
+        private static Locale _fontChoicesLocale;
+
+        private static List<TextFontDefaults.Choice> FontChoices()
+        {
+            Locale locale = LocaleManager.Current;
+            if (_fontChoices is not null && _fontChoicesLocale == locale) return _fontChoices;
+            string? tag = locale switch
+            {
+                Locale.ZhTW => "zh-tw",
+                Locale.ZhCN => "zh-cn",
+                Locale.JaJP => "ja-jp",
+                _ => null
+            };
+            _fontChoicesLocale = locale;
+            return _fontChoices = TextFontDefaults.Choices(SystemFontNames, tag, FontCoverage.PreferTraditionalChinese);
         }
 
         // Applies the current text style to whatever is active: the live edit box if one is open,
@@ -561,11 +581,25 @@ namespace KillerPDF
             };
             if (FindResource("DarkComboBox") is Style cbStyle) fontBox.Style = cbStyle;
             if (FindResource("DarkComboItem") is Style ciStyle) fontBox.ItemContainerStyle = ciStyle;
-            foreach (var fn in SystemFontNames) fontBox.Items.Add(fn);
-            fontBox.SelectedItem = _textFontName;
+            var fontChoices = FontChoices();
+            foreach (var choice in fontChoices) fontBox.Items.Add(choice);
+            fontBox.SelectedItem = fontChoices.FirstOrDefault(c => string.Equals(c.Family, _textFontName, StringComparison.OrdinalIgnoreCase));
             fontBox.SelectionChanged += (s, e) =>
             {
-                if (fontBox.SelectedItem is string fn) { _textFontName = fn; ApplyTextStyleToSelection(); }
+                if (fontBox.SelectedItem is not TextFontDefaults.Choice choice) return;
+                _textFontName = choice.Family;
+                // Fork: a pick for new text - nothing selected, or the box being typed is new - becomes
+                // the typeface new text starts in, and is remembered at once. Restyling a placed box or
+                // a re-edited line leaves that default alone.
+                bool forNewText = _activeTextBox is not null
+                    ? !ActiveViewer.TextFontBorrowedRef
+                    : _selectedAnnotation is not TextAnnotation && !_selectedSet.Any(a => a is TextAnnotation);
+                if (forNewText)
+                {
+                    Controls.PdfViewer.DefaultTextFontName = choice.Family;
+                    App.SetSetting(TextFontDefaults.SettingKey, choice.Family);
+                }
+                ApplyTextStyleToSelection();
             };
             fontStack.Children.Add(fontBox);
             fontStack.Children.Add(StyleToggle("B", Loc("Str_Lbl_Bold"), _textBold, FontWeights.Bold, FontStyles.Normal, null,
@@ -576,6 +610,10 @@ namespace KillerPDF
                 () => { _textStrike = !_textStrike; ApplyTextStyleToSelection(); ShowTextSettings(); }));
             fontStack.Children.Add(StyleToggle("U", Loc("Str_Lbl_Underline"), _textUnderline, FontWeights.Normal, FontStyles.Normal, TextDecorations.Underline,
                 () => { _textUnderline = !_textUnderline; ApplyTextStyleToSelection(); ShowTextSettings(); }));
+            // Fork: vertical text (直書) for the box being typed, the selected boxes, and new text.
+            fontStack.Children.Add(StyleToggle(Loc("Str_Bar_VerticalGlyph"), Loc("Str_Bar_VerticalText"), _textVertical,
+                FontWeights.Normal, FontStyles.Normal, null,
+                () => { _textVertical = !_textVertical; ActiveViewer.ApplyTextVerticalExt(); ShowTextSettings(); }));
 
             // Opacity and Fill Opacity: two independent single-row groups.
             var grpOpacity = Group();

@@ -129,6 +129,7 @@ namespace KillerPDF
         private double _textLetterSpacing { get => ActiveViewer.TextLetterSpacingRef; set => ActiveViewer.TextLetterSpacingRef = value; }
         // Current text-tool typeface and style (mirrors the text bar; carried onto each new/edited box).
         private string _textFontName { get => ActiveViewer.TextFontNameRef; set => ActiveViewer.TextFontNameRef = value; }
+        private bool _textVertical { get => ActiveViewer.TextVerticalRef; set => ActiveViewer.TextVerticalRef = value; }
         private bool _textBold { get => ActiveViewer.TextBoldRef; set => ActiveViewer.TextBoldRef = value; }
         private bool _textItalic { get => ActiveViewer.TextItalicRef; set => ActiveViewer.TextItalicRef = value; }
         private bool _textStrike { get => ActiveViewer.TextStrikeRef; set => ActiveViewer.TextStrikeRef = value; }
@@ -680,7 +681,6 @@ namespace KillerPDF
                 App.SetSetting("DrawWidth",     _drawWidth.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 App.SetSetting("DrawOpacity",   _drawOpacity.ToString());
                 App.SetSetting("TextFontSize",  _textFontSize.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                App.SetSetting("TextFontName",  _textFontName);
                 App.SetSetting("TextBold",      _textBold ? "1" : "0");
                 App.SetSetting("TextItalic",    _textItalic ? "1" : "0");
                 App.SetSetting("TextStrike",    _textStrike ? "1" : "0");
@@ -703,7 +703,12 @@ namespace KillerPDF
 
                 if (double.TryParse(App.GetSetting("TextFontSize"), System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out double tfs) && tfs > 0) _textFontSize = tfs;
-                if (App.GetSetting("TextFontName") is { Length: > 0 } tfn) _textFontName = tfn;
+                // Fork: the typeface is remembered when it is picked (TextFontDefaults), not taken from
+                // whichever box happened to be edited last before exit.
+                Controls.PdfViewer.DefaultTextFontName = Services.TextFontDefaults.Initial(
+                    App.GetSetting(Services.TextFontDefaults.SettingKey),
+                    Services.FontCoverage.PreferTraditionalChinese, Services.TextFontDefaults.IsInstalled);
+                Viewer.TextFontNameRef = ViewerB.TextFontNameRef = Controls.PdfViewer.DefaultTextFontName;
                 _textBold      = App.GetSetting("TextBold") == "1";
                 _textItalic    = App.GetSetting("TextItalic") == "1";
                 _textStrike    = App.GetSetting("TextStrike") == "1";

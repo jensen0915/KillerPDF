@@ -103,7 +103,8 @@ namespace KillerPDF.Controls
                 textBox.Focus();
                 Keyboard.Focus(textBox);
                 if (selectAll) textBox.SelectAll();
-                if (!ReferenceEquals(_tehBox, textBox)) AttachTextEditResizeHandles(textBox);
+                // Vertical text is sized by its preview, not by dragging the input box beside it.
+                if (!ReferenceEquals(_tehBox, textBox) && _verticalPreview is null) AttachTextEditResizeHandles(textBox);
             }));
         }
 
@@ -198,7 +199,9 @@ namespace KillerPDF.Controls
                     _textLetterSpacing = placed.LetterSpacing * syp;
                     // Sync the bar's typeface + B/I/S to the box being re-edited.
                     _textFontName = string.IsNullOrEmpty(placed.FontName) ? "Segoe UI" : placed.FontName;
+                    _textFontBorrowed = true;
                     _textBold = placed.Bold; _textItalic = placed.Italic; _textStrike = placed.Strike; _textUnderline = placed.Underline;
+                    _textVertical = placed.Vertical;
 
                     _reeditOriginal = placed;
                     placedPage.Remove(placed);
@@ -232,7 +235,25 @@ namespace KillerPDF.Controls
                     StyleEditBox(ptb);   // restore the box's typeface + B/I/S
                     AttachTextBoxKeys(ptb);
                     ptb.LostFocus += TextBox_LostFocus;
-                    ptb.Loaded += (_, _) => AlignEditBoxToPlacedText(ptb);
+                    if (placed.Vertical)
+                    {
+                        // Keep the right edge (the first column) where it is. A box whose columns all end
+                        // at a line break keeps growing down the page; one that wraps keeps its height.
+                        var vm = VerticalMetricsFor(placed.Content, placed.FontSize, placed.LetterSpacing);
+                        var free = VerticalTextLayout.Layout(placed.Content, int.MaxValue, _ => false);
+                        bool wraps = free.Rows > VerticalTextLayout.MaxRowsFor(placed.Height, vm);
+                        EnableAutoWidth(ptb, AutoWidthFloor(ptb.FontSize));
+                        AttachVerticalPreview(ptb, new Point(placed.Position.X + placed.Width, placed.Position.Y),
+                            wraps ? VerticalTextLayout.MaxRowsFor(placed.Height, vm) : 0);
+                    }
+                    else
+                    {
+                        // A box whose lines all fit unwrapped keeps widening as it is typed into; one the
+                        // user narrowed so that it wraps keeps its width.
+                        if (NaturalTextWidth(placed.Content, ptb, placed.LetterSpacing) <= placed.Width + 1)
+                            EnableAutoWidth(ptb, AutoWidthFloor(ptb.FontSize));
+                        ptb.Loaded += (_, _) => AlignEditBoxToPlacedText(ptb);
+                    }
                     ptb.Loaded += (_, _) => QueueTextEditorFocus(ptb, selectAll: true);
                     ptb.PreviewMouseLeftButtonDown += (_, _) => QueueTextEditorFocus(ptb);
                     QueueTextEditorFocus(ptb, selectAll: true);
@@ -285,7 +306,7 @@ namespace KillerPDF.Controls
                 if (placeholder is Rect blank)
                 {
                     double blankFont = Math.Max(blank.Height * .75, 8);
-                    StartCoverTextEdit(pageIdx, blank, "", blankFont, "Segoe UI", syInv);
+                    StartCoverTextEdit(pageIdx, blank, "", blankFont, DefaultTextFontName, syInv);
                     return;
                 }
 
@@ -295,7 +316,7 @@ namespace KillerPDF.Controls
                     // drop a cover + empty text box at the click so the user can white out the scanned
                     // text and type over it by hand (resize the cover to fit).
                     double mf = Math.Max(_textFontSize * syInv, 8);   // current text size in canvas units
-                    StartCoverTextEdit(pageIdx, new Rect(canvasPos.X, canvasPos.Y, 200, mf * 1.35), "", mf, "Segoe UI", syInv);
+                    StartCoverTextEdit(pageIdx, new Rect(canvasPos.X, canvasPos.Y, 200, mf * 1.35), "", mf, DefaultTextFontName, syInv);
                     return;
                 }
 
@@ -449,6 +470,8 @@ namespace KillerPDF.Controls
             // encode bold and italic in the font name, so resetting these flags made every detected
             // line plain as soon as it was double-clicked (#182).
             _textFontName = string.IsNullOrEmpty(fontName) ? "Segoe UI" : fontName;
+            _textFontBorrowed = !string.Equals(_textFontName, DefaultTextFontName, StringComparison.OrdinalIgnoreCase);
+            _textVertical = false;   // a line of the PDF's own text runs across the page
             _textBold = bold;
             _textItalic = italic;
             _textStrike = _textUnderline = false;
@@ -484,6 +507,7 @@ namespace KillerPDF.Controls
             TextEditorLayerFor(_activeCanvas).Children.Add(tb);
             _activeTextBox = tb;
             StyleEditBox(tb);
+            EnableAutoWidth(tb, tb.Width);   // grows past the replaced line if the new text is longer
             AttachTextBoxKeys(tb);
             tb.LostFocus += TextBox_LostFocus;
             tb.Loaded += (_, _) => QueueTextEditorFocus(tb, selectAll: true);
@@ -540,12 +564,11 @@ namespace KillerPDF.Controls
             // _textFontSize is a point size; convert to the page's canvas (render-dim) units so
             // it renders and exports as real points. DrawAnnotationsOnDocument multiplies by
             // sy = page.Height.Point / renderH, so dividing by sy here makes "14" export as 14pt.
-            double fontCanvas = _textFontSize;
-            if (_doc is not null && _renderDims.TryGetValue(pageIdx, out var rdims) && rdims.h > 0)
-            {
-                double sy = EnsureEngineDocumentSession().Pages[pageIdx].Height / rdims.h;
-                if (sy > 0) fontCanvas = _textFontSize / sy;
-            }
+            double fontCanvas = CanvasFontSize(pageIdx);
+            // Fork: new text starts in the remembered typeface, not one borrowed from the box re-edited last.
+            bool fontReset = !string.Equals(_textFontName, DefaultTextFontName, StringComparison.OrdinalIgnoreCase);
+            _textFontName = DefaultTextFontName;
+            _textFontBorrowed = false;
             // Center the first line on the I-beam hotspot. The TextBox top edge previously started at
             // the hotspot, which made the typed text appear about half a line below the click.
             var tb = new TextBox
@@ -578,22 +601,16 @@ namespace KillerPDF.Controls
             TextEditorLayerFor(_activeCanvas).Children.Add(tb);
             _activeTextBox = tb;
             StyleEditBox(tb);   // current typeface + B/I/S
-            // A preset is one short line; size the box to it so a date never wraps at a slash.
-            if (preset is not null)
+            // Fork: the box starts small and widens with its text (a date fits on one line at once).
+            EnableAutoWidth(tb, AutoWidthFloor(fontCanvas));
+            if (_textVertical)
             {
-                var probe = new TextBlock
-                {
-                    Text = preset, FontFamily = tb.FontFamily, FontSize = tb.FontSize,
-                    FontWeight = tb.FontWeight, FontStyle = tb.FontStyle
-                };
-                TextOptions.SetTextFormattingMode(probe, TextFormattingMode.Ideal);
-                probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                // Text width plus the box's padding and border, and a little room for the caret.
-                // Letter spacing shifts each later character right outside layout (TextEffects).
-                int elements = new System.Globalization.StringInfo(preset).LengthInTextElements;
-                double spacing = Math.Max(0, (elements - 1) * CanvasLetterSpacing(pageIdx));
-                tb.Width = Math.Ceiling(probe.DesiredSize.Width + spacing) + 4 + 2 + fontCanvas * 0.5;
+                // The click marks the first character: the preview's first cell is centred on it.
+                var vm = VerticalMetricsFor(tb.Text, fontCanvas, CanvasLetterSpacing(pageIdx));
+                AttachVerticalPreview(tb, new Point(pos.X + vm.Size / 2 + VerticalTextLayout.Pad,
+                    Math.Max(0, pos.Y - vm.Size / 2 - VerticalTextLayout.Pad)), 0);
             }
+            if (fontReset && _textSettingsBar is not null) ShowTextSettings();   // the bar shows the typeface again
             AttachTextBoxKeys(tb);
             tb.LostFocus += TextBox_LostFocus;
             // Input priority runs after the placement click has completed, so that click cannot
@@ -777,6 +794,8 @@ namespace KillerPDF.Controls
         {
             _imeComposing = false;
             RemoveTextEditHandles();
+            RemoveVerticalPreview();
+            _autoWidthBox = null;
             RemoveReeditCoverOutline();   // edit canceled; drop the cover hint (repaint follows)
             if (_activeTextBox is not null)
             {
@@ -793,6 +812,7 @@ namespace KillerPDF.Controls
                 _reeditOriginal = null;
                 RenderAllAnnotations(rp);
             }
+            RestoreDefaultTextFont();
             if (_currentTool != EditTool.Text) HideTextSettings();
         }
 
@@ -833,6 +853,10 @@ namespace KillerPDF.Controls
         {
             if (_activeTextBox is null) return;
             var tb = _activeTextBox;
+            // Fork: vertical text takes its box from the preview, which is gone after this.
+            Rect? verticalBox = VerticalPreviewBox(tb);
+            RemoveVerticalPreview();
+            _autoWidthBox = null;
             _activeTextBox = null;
             _imeComposing = false;
             RemoveTextEditHandles();
@@ -881,13 +905,28 @@ namespace KillerPDF.Controls
                     Underline = _textUnderline,
                     Width = boxW
                 };
+                if (verticalBox is Rect vb)
+                {
+                    // The preview's box, refitted to the committed text (a trailing line break no longer
+                    // adds a column); its right edge and a fixed column length stay put.
+                    ta.Vertical = true;
+                    var vm = VerticalMetricsFor(content, tb.FontSize, ta.LetterSpacing);
+                    int rows = _verticalMaxRowsAtCommit > 0 ? _verticalMaxRowsAtCommit
+                        : VerticalTextLayout.MaxRowsFor(vb.Height, vm);
+                    var vl = VerticalTextLayout.Layout(content, rows, _ => false);
+                    Size size = VerticalTextLayout.BoxSize(vl.Columns, _verticalMaxRowsAtCommit > 0 ? rows : vl.Rows, vm);
+                    ta.Position = new Point(vb.Right - size.Width, vb.Top);
+                    ta.Width = size.Width;
+                    ta.Height = size.Height;
+                }
                 ta.SetColor(tb.Foreground is SolidColorBrush scb ? scb.Color : Colors.Black);
                 // A cover-paired edit gets no fill of its own - the opaque cover behind it is the backdrop.
                 ta.SetFill(_pendingCover is not null ? Colors.Transparent : _textFillColor);
                 // Free-form height if the box was manually resized; otherwise fit to the wrapped text.
-                ta.Height = (!double.IsNaN(tb.Height) && tb.Height > 0)
-                    ? Math.Max(1, tb.Height - 2 * inset.Y)
-                    : MeasureTextBoxHeight(content, boxW, tb.FontSize, ta.FontName, ta.Bold, ta.Italic);
+                if (!ta.Vertical)
+                    ta.Height = (!double.IsNaN(tb.Height) && tb.Height > 0)
+                        ? Math.Max(1, tb.Height - 2 * inset.Y)
+                        : MeasureTextBoxHeight(content, boxW, tb.FontSize, ta.FontName, ta.Bold, ta.Italic);
                 // Keep the placed box fully on-page so its corners (and resize handles) stay reachable.
                 ta.Position = ClampRectToPage(pageIdx, new Rect(ta.Position, new Size(ta.Width, ta.Height))).Location;
                 // Carry the pairing so the cover knows its partner text exists (renders dashed).
@@ -915,7 +954,300 @@ namespace KillerPDF.Controls
                 // Edit left empty - abandon it and drop the cover (added without its own undo entry).
                 DiscardPendingCover();
             }
+            RestoreDefaultTextFont();
             if (_currentTool != EditTool.Text) HideTextSettings();
+        }
+
+        // Fork: after a re-edit borrowed a placed box's (or the PDF's) typeface, the bar and the next
+        // new box go back to the user's own.
+        private void RestoreDefaultTextFont()
+        {
+            if (!_textFontBorrowed) return;
+            _textFontBorrowed = false;
+            _textFontName = DefaultTextFontName;
+        }
+
+        private double CanvasFontSize(int pageIdx)
+        {
+            // _textFontSize is a point size; convert to the page's canvas (render-dim) units so it
+            // renders and exports as real points.
+            double fontCanvas = _textFontSize;
+            if (_doc is not null && _renderDims.TryGetValue(pageIdx, out var rdims) && rdims.h > 0)
+            {
+                double sy = EnsureEngineDocumentSession().Pages[pageIdx].Height / rdims.h;
+                if (sy > 0) fontCanvas = _textFontSize / sy;
+            }
+            return fontCanvas;
+        }
+
+        // ── Fork: one-click marks ───────────────────────────────────────────────────────────────
+        // Check mark mode places a finished mark with its ink centred on the click - the middle of the
+        // printed box being ticked - instead of opening an edit box whose border and handles cover it.
+        private void PlaceStampText(string text, Point pos, int pageIdx)
+        {
+            if (_doc is null || string.IsNullOrEmpty(text)) return;
+            double fontCanvas = CanvasFontSize(pageIdx);
+            string fontName = DefaultTextFontName;
+            string family = FontCoverage.PickFamily(fontName, text);
+            var ft = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                new Typeface(new FontFamily(family), _textItalic ? FontStyles.Italic : FontStyles.Normal,
+                    _textBold ? FontWeights.Bold : FontWeights.Normal, FontStretches.Normal),
+                fontCanvas, Brushes.Black, null, TextFormattingMode.Ideal, 1.0);
+            double width = Math.Ceiling(ft.WidthIncludingTrailingWhitespace) + 4;   // 2-unit padding each side
+            double height = MeasureTextBoxHeight(text, width, fontCanvas, fontName, _textBold, _textItalic);
+            Rect ink = ft.BuildGeometry(new Point(2, 2)).Bounds;   // the placed TextBlock's padding
+            Point mid = ink.IsEmpty ? new Point(width / 2, height / 2)
+                                    : new Point((ink.Left + ink.Right) / 2, (ink.Top + ink.Bottom) / 2);
+            var ta = new TextAnnotation
+            {
+                PageIndex = pageIdx,
+                Position = new Point(pos.X - mid.X, pos.Y - mid.Y),
+                Content = text,
+                FontSize = fontCanvas,
+                FontName = fontName,
+                Bold = _textBold,
+                Italic = _textItalic,
+                Width = width,
+                Height = height
+            };
+            ta.SetColor(_textColor);
+            ta.SetFill(Colors.Transparent);   // a fill would paint over the printed box
+            ta.Position = ClampRectToPage(pageIdx, new Rect(ta.Position, new Size(width, height))).Location;
+            AddAnnotation(ta);
+            RenderAllAnnotations(pageIdx);
+            WarnIfGlyphsWillBeLost(ta);
+        }
+
+        // ── Fork: edit boxes that fit their text ─────────────────────────────────────────────────
+        // A new box starts small and widens with its longest line as it is typed, up to the page edge,
+        // where it wraps. Dragging one of its corners hands the width back to the user.
+        private static double AutoWidthFloor(double fontCanvas) => Math.Max(24, fontCanvas * 1.5);
+
+        private void EnableAutoWidth(TextBox tb, double minWidth)
+        {
+            _autoWidthBox = tb;
+            _autoWidthMin = minWidth;
+            tb.TextChanged -= EditBox_TextChanged;
+            tb.TextChanged += EditBox_TextChanged;
+            FitAutoWidth(tb);
+        }
+
+        private void EditBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+            FitAutoWidth(tb);
+            if (ReferenceEquals(tb, _activeTextBox)) UpdateVerticalPreview();
+        }
+
+        // Font, size or style changed from the text bar while a box is open.
+        private void RefreshActiveEditLayout()
+        {
+            if (_activeTextBox is null) return;
+            FitAutoWidth(_activeTextBox);
+            UpdateVerticalPreview();
+        }
+
+        private void FitAutoWidth(TextBox tb)
+        {
+            if (!ReferenceEquals(tb, _autoWidthBox)) return;
+            int page = tb.Tag is int p ? p : _currentPage;
+            // Text width plus padding, border, the TextBox's own inner margin and room for the caret.
+            double chrome = tb.Padding.Left + tb.Padding.Right + tb.BorderThickness.Left + tb.BorderThickness.Right
+                            + 4 + tb.FontSize * 0.5;
+            double want = Math.Max(_autoWidthMin,
+                NaturalTextWidth(tb.Text, tb, CanvasLetterSpacing(page)) + chrome);
+            double left = Canvas.GetLeft(tb);
+            double room = ((tb.Parent as FrameworkElement)?.ActualWidth ?? 0) - (double.IsFinite(left) ? left : 0);
+            if (_verticalPreview is null && room > 40) want = Math.Min(want, room);
+            if (double.IsNaN(tb.Width) || Math.Abs(tb.Width - want) > .5)
+            {
+                tb.Width = want;
+                LayoutTextEditHandles();
+            }
+        }
+
+        // The widest line laid out on one line, in the box's typeface, with its letter spacing.
+        private static double NaturalTextWidth(string text, TextBox tb, double letterSpacing)
+        {
+            double widest = 0;
+            var typeface = new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, FontStretches.Normal);
+            foreach (string line in (text ?? "").Replace("\r\n", "\n").Split('\n', '\r'))
+            {
+                if (line.Length == 0) continue;
+                var ft = new FormattedText(line, System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, typeface, Math.Max(1, tb.FontSize), Brushes.Black, null,
+                    TextFormattingMode.Ideal, 1.0);
+                int elements = new System.Globalization.StringInfo(line).LengthInTextElements;
+                widest = Math.Max(widest, ft.WidthIncludingTrailingWhitespace + Math.Max(0, elements - 1) * letterSpacing);
+            }
+            return Math.Ceiling(widest);
+        }
+
+        // ── Fork: vertical text (直書) editing ────────────────────────────────────────────────────
+        // A TextBox cannot lay text out vertically, so the text is typed into an ordinary box - IME
+        // candidates and all - set beside a live preview drawn exactly as the text will be placed,
+        // with a caret mark. The preview's top-right corner stays put while columns grow leftwards.
+        private int _verticalMaxRowsAtCommit;
+
+        private VerticalTextLayout.Metrics VerticalMetricsFor(string text, double fontCanvas, double letterSpacing)
+            => VerticalTextLayout.MetricsFor(FontCoverage.PickFamily(_textFontName, text), fontCanvas,
+                letterSpacing, _textBold, _textItalic);
+
+        private void AttachVerticalPreview(TextBox tb, Point topRight, int maxRows)
+        {
+            RemoveVerticalPreview();
+            RemoveTextEditHandles();
+            _verticalAnchor = topRight;
+            _verticalMaxRows = maxRows;
+            _verticalPreview = new VerticalTextView
+            {
+                IsHitTestVisible = false,
+                CaretBrush = AccentBrush(),
+                OutlineBrush = (Brush)FindResource("PrimaryBrush")
+            };
+            Panel.SetZIndex(_verticalPreview, 150);
+            (tb.Parent as Panel ?? TextEditorLayerFor(_activeCanvas)).Children.Add(_verticalPreview);
+            tb.SelectionChanged -= VerticalEdit_SelectionChanged;
+            tb.SelectionChanged += VerticalEdit_SelectionChanged;
+            tb.TextChanged -= EditBox_TextChanged;
+            tb.TextChanged += EditBox_TextChanged;
+            UpdateVerticalPreview();
+        }
+
+        private void VerticalEdit_SelectionChanged(object sender, RoutedEventArgs e)
+        {
+            if (_verticalPreview is null || sender is not TextBox tb) return;
+            _verticalPreview.CaretIndex = tb.CaretIndex;
+            _verticalPreview.InvalidateVisual();
+        }
+
+        private void RemoveVerticalPreview()
+        {
+            if (_verticalPreview is null) return;
+            if (_activeTextBox is not null) _activeTextBox.SelectionChanged -= VerticalEdit_SelectionChanged;
+            RemoveFromParent(_verticalPreview);
+            _verticalPreview = null;
+        }
+
+        // The vertical box the preview currently shows, in canvas units; null when not editing vertically.
+        private Rect? VerticalPreviewBox(TextBox tb)
+        {
+            if (_verticalPreview is null) return null;
+            UpdateVerticalPreview();
+            _verticalMaxRowsAtCommit = _verticalMaxRows;
+            return new Rect(Canvas.GetLeft(_verticalPreview), Canvas.GetTop(_verticalPreview),
+                _verticalPreview.Width, _verticalPreview.Height);
+        }
+
+        private void UpdateVerticalPreview()
+        {
+            if (_verticalPreview is not { } view || _activeTextBox is not { } tb) return;
+            int page = tb.Tag is int p ? p : _currentPage;
+            view.Text = tb.Text;
+            view.FontName = _textFontName;
+            view.TextSize = tb.FontSize;
+            view.LetterSpacing = CanvasLetterSpacing(page);
+            view.Bold = _textBold;
+            view.Italic = _textItalic;
+            view.Foreground = tb.Foreground;
+            view.Background = tb.Background;
+            view.CaretIndex = tb.CaretIndex;
+            var m = view.GetMetrics();
+            var layer = tb.Parent as FrameworkElement;
+            double pageW = layer is { ActualWidth: > 0 } ? layer.ActualWidth : _activeCanvas.ActualWidth;
+            double pageH = layer is { ActualHeight: > 0 } ? layer.ActualHeight : _activeCanvas.ActualHeight;
+            int rows = _verticalMaxRows > 0 ? _verticalMaxRows
+                : VerticalTextLayout.MaxRowsFor(Math.Max(m.Advance + 2 * VerticalTextLayout.Pad, pageH - _verticalAnchor.Y), m);
+            view.MaxRows = rows;
+            var layout = view.GetLayout(m, 0);
+            // An empty last column (after Enter) shows, so the caret has somewhere to stand.
+            Size size = VerticalTextLayout.BoxSize(Math.Max(layout.Columns, layout.CaretColumn + 1),
+                _verticalMaxRows > 0 ? rows : Math.Max(layout.Rows, layout.CaretRow + 1), m);
+            view.Width = size.Width;
+            view.Height = size.Height;
+            Canvas.SetLeft(view, _verticalAnchor.X - size.Width);
+            Canvas.SetTop(view, _verticalAnchor.Y);
+            view.InvalidateVisual();
+
+            // The input box sits just right of the text, or left of it near the page's right edge.
+            const double gap = 8;
+            double tbW = double.IsNaN(tb.Width) ? Math.Max(tb.ActualWidth, 40) : tb.Width;
+            double x = _verticalAnchor.X + gap;
+            if (x + tbW > pageW) x = Math.Max(0, _verticalAnchor.X - size.Width - gap - tbW);
+            Canvas.SetLeft(tb, x);
+            Canvas.SetTop(tb, _verticalAnchor.Y);
+        }
+
+        // The text bar's 直書 toggle: switches the box being typed, or the selected text boxes.
+        private void ApplyTextVertical()
+        {
+            if (_activeTextBox is { } tb)
+            {
+                int page = tb.Tag is int p ? p : _currentPage;
+                if (_textVertical && _verticalPreview is null)
+                {
+                    var vm = VerticalMetricsFor(tb.Text, tb.FontSize, CanvasLetterSpacing(page));
+                    double left = Canvas.GetLeft(tb), top = Canvas.GetTop(tb);
+                    AttachVerticalPreview(tb, new Point(left + vm.Size + 2 * VerticalTextLayout.Pad, top), 0);
+                }
+                else if (!_textVertical && _verticalPreview is not null)
+                {
+                    double left = Canvas.GetLeft(_verticalPreview), top = Canvas.GetTop(_verticalPreview);
+                    RemoveVerticalPreview();
+                    Canvas.SetLeft(tb, Math.Max(0, left));
+                    Canvas.SetTop(tb, top);
+                    AttachTextEditResizeHandles(tb);
+                }
+                QueueTextEditorFocus(tb);
+                return;
+            }
+
+            var touched = new HashSet<int>();
+            void Turn(TextAnnotation ta)
+            {
+                if (ta.Vertical == _textVertical) return;
+                ta.Vertical = _textVertical;
+                string family = FontCoverage.PickFamily(string.IsNullOrEmpty(ta.FontName) ? "Segoe UI" : ta.FontName, ta.Content);
+                if (ta.Vertical)
+                {
+                    // Top-left stays; the columns run down to the page bottom at most.
+                    var vm = VerticalTextLayout.MetricsFor(family, ta.FontSize, ta.LetterSpacing, ta.Bold, ta.Italic);
+                    double pageH = CanvasForPage(ta.PageIndex).ActualHeight;
+                    int rows = VerticalTextLayout.MaxRowsFor(Math.Max(vm.Advance + 4, pageH - ta.Position.Y), vm);
+                    var vl = VerticalTextLayout.Layout(ta.Content, rows, _ => false);
+                    Size size = VerticalTextLayout.BoxSize(vl.Columns, vl.Rows, vm);
+                    ta.Width = size.Width;
+                    ta.Height = size.Height;
+                }
+                else
+                {
+                    var probe = new TextBox
+                    {
+                        FontFamily = new FontFamily(family), FontSize = ta.FontSize,
+                        FontWeight = ta.Bold ? FontWeights.Bold : FontWeights.Normal,
+                        FontStyle = ta.Italic ? FontStyles.Italic : FontStyles.Normal
+                    };
+                    double pageW = CanvasForPage(ta.PageIndex).ActualWidth;
+                    double natural = NaturalTextWidth(ta.Content, probe, ta.LetterSpacing) + 4 + ta.FontSize * .5;
+                    ta.Width = Math.Max(AutoWidthFloor(ta.FontSize), pageW > 40 ? Math.Min(natural, pageW - ta.Position.X) : natural);
+                    ta.Height = MeasureTextBoxHeight(ta.Content, ta.Width, ta.FontSize, ta.FontName, ta.Bold, ta.Italic);
+                }
+                ta.Position = ClampRectToPage(ta.PageIndex, new Rect(ta.Position, new Size(ta.Width, ta.Height))).Location;
+                touched.Add(ta.PageIndex);
+            }
+            if (_selectedAnnotation is TextAnnotation primary) Turn(primary);
+            foreach (var a in _selectedSet)
+                if (a is TextAnnotation ta && !ReferenceEquals(ta, _selectedAnnotation)) Turn(ta);
+            if (touched.Count == 0) return;
+            MarkDirty();
+            int primPage = (_selectedAnnotation as TextAnnotation)?.PageIndex ?? -1;
+            foreach (int pg in touched) if (pg != primPage) RenderAllAnnotations(pg);
+            if (_selectedAnnotation is TextAnnotation sel)
+            {
+                RenderAllAnnotations(sel.PageIndex);
+                SelectAnnotation(sel, new Rect(sel.Position.X, sel.Position.Y, sel.Width, sel.Height));
+            }
         }
 
         /// <summary>

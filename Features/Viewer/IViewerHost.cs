@@ -74,6 +74,9 @@ namespace KillerPDF.Features
         /// <summary>Preset text (a date or check mark) for the next placed text box, cleared on
         /// read. Null for an ordinary empty box.</summary>
         string? TakeTextPreset();
+        /// <summary>Fork: text a Text-tool click places as a finished mark, centred on the click,
+        /// with no edit box (check mark mode). Null when the click should open a text box.</summary>
+        string? StampText { get; }
         void SaveTempAndReload(bool keepAnnotations, bool preserveZoom,
             Action<string>? finalizeSavedFile = null,
             Action<Dictionary<int, int>>? remapRotations = null,

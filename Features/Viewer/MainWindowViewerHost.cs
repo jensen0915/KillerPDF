@@ -40,6 +40,7 @@ namespace KillerPDF
         void IViewerHost.CloseSearchBar() => CloseSearchBar();
         void IViewerHost.HideSignaturePopup() => HideSignaturePopup();
         string? IViewerHost.TakeTextPreset() => TakeOfficeTextPreset();
+        string? IViewerHost.StampText => _officeCheckMode && _currentTool == EditTool.Text ? OfficeCheckMark : null;
         void IViewerHost.SaveTempAndReload(bool keepAnnotations, bool preserveZoom,
             Action<string>? finalizeSavedFile, Action<Dictionary<int, int>>? remapRotations,
             int? selectedPageAfterReload, UndoEntry? documentUndo, bool preserveRenderedPages)

@@ -39,7 +39,7 @@ namespace KillerPDF.Controls
         private TextBox? _activeTextBox;
         private double _textFontSize = 24;
         private double _textLetterSpacing;
-        private string _textFontName = "Segoe UI";
+        private string _textFontName = DefaultTextFontName;
         private bool _textBold;
         private bool _textItalic;
         private bool _textStrike;
@@ -52,6 +52,23 @@ namespace KillerPDF.Controls
         private bool _pendingEditWasDirty;
         private Border? _textSettingsBar;
         private const double TextBoxDefaultWidth = 220;
+
+        // Fork: the typeface new text starts in (both panes), restored from TextFontDefaults' setting.
+        internal static string DefaultTextFontName { get; set; } = Services.TextFontDefaults.For(
+            Services.FontCoverage.PreferTraditionalChinese, Services.TextFontDefaults.IsInstalled);
+        // Fork: true while _textFontName came from text being re-edited (a placed box or the PDF's own
+        // line) rather than from the user's choice; the next new box goes back to the default.
+        private bool _textFontBorrowed;
+        // Fork: vertical text (直書). While it is typed, the edit box sits beside a live preview whose
+        // top-right corner is _verticalAnchor (columns grow leftwards); _verticalMaxRows bounds a
+        // column, 0 meaning down to the page bottom.
+        private bool _textVertical;
+        private VerticalTextView? _verticalPreview;
+        private Point _verticalAnchor;
+        private int _verticalMaxRows;
+        // Fork: the edit box that widens with its text, and the narrowest it gets.
+        private TextBox? _autoWidthBox;
+        private double _autoWidthMin;
 
         // ── Resize handles ───────────────────────────────────────────────────────────────────
         private bool _isResizingSig;

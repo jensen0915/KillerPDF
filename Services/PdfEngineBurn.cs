@@ -130,6 +130,11 @@ internal static class PdfEngineBurn
         // further from the screen with every line.
         string drawnFamily = FontCoverage.PickFamily(
             string.IsNullOrWhiteSpace(text.FontName) ? "Segoe UI" : text.FontName, text.Content);
+        if (text.Vertical)
+        {
+            DrawVerticalText(content, text, sx, sy, font, drawnFamily);
+            return;
+        }
         double lineHeight = size * LineSpacingRatio(drawnFamily);
         double characterSpacing = text.LetterSpacing * sy;
         var lines = Wrap(text.Content, font, size, Math.Max(1, width - 2 * padX), characterSpacing);
@@ -164,6 +169,30 @@ internal static class PdfEngineBurn
             if (text.Underline) DrawRuleAfterText(content, x + padX, baseline + size * .12, lineWidth, size);
             if (text.Strike) DrawRuleAfterText(content, x + padX, baseline - size * .3, lineWidth, size);
             baseline += lineHeight;
+        }
+        content.EndText().RestoreState();
+    }
+
+    // Fork: vertical text (直書). The cells come from VerticalTextLayout in the overlay's canvas units,
+    // as the screen draws them, and each character gets its own text matrix: upright, or turned a
+    // quarter clockwise for brackets and dashes the face has no vertical form for.
+    private static void DrawVerticalText(PdfContentStreamBuilder content, TextAnnotation text,
+        double sx, double sy, TrueTypeFont font, string drawnFamily)
+    {
+        var m = VerticalTextLayout.MetricsFor(drawnFamily, text.FontSize, text.LetterSpacing, text.Bold, text.Italic);
+        var layout = VerticalTextLayout.Layout(text.Content, VerticalTextLayout.MaxRowsFor(text.Height, m),
+            s => FontCoverage.FamilyCovers(drawnFamily, s));
+        double left = text.Position.X, right = text.Position.X + text.Width, top = text.Position.Y;
+        content.SaveState().SetFillRgb(text.ColorR / 255d, text.ColorG / 255d, text.ColorB / 255d)
+            .SetOpacity(text.ColorA / 255d).BeginText().SetFont(font, Math.Max(1, text.FontSize * sy))
+            .SetCharacterSpacing(0);
+        foreach (var cell in layout.Cells)
+        {
+            if (string.IsNullOrWhiteSpace(cell.Text) || !VerticalTextLayout.ColumnFits(cell.Column, left, right, m)) continue;
+            WpfPoint origin = VerticalTextLayout.GlyphOrigin(cell, right, top, m, Measure(font, cell.Text, text.FontSize));
+            if (cell.Rotated) content.SetTextMatrix(0, 1, 1, 0, origin.X * sx, origin.Y * sy);
+            else content.SetTextMatrix(1, 0, 0, -1, origin.X * sx, origin.Y * sy);
+            content.ShowUnicodeText(cell.Text);
         }
         content.EndText().RestoreState();
     }

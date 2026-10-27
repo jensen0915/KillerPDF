@@ -247,7 +247,7 @@ namespace KillerPDF
             {
                 if (PromptOfficeDate() is string date) PlaceOfficeTextAt(date, pt, pageIdx);
             }, glyph: ""));
-            _ctxMenu.Items.Add(MakeMenuItem(Loc("Str_Lbl_Checkmark"), (s, e) => PlaceOfficeTextAt("✓", pt, pageIdx), glyph: ""));
+            _ctxMenu.Items.Add(MakeMenuItem(Loc("Str_Lbl_Checkmark"), (s, e) => PlaceOfficeTextAt(OfficeCheckMark, pt, pageIdx), glyph: ""));
             _ctxMenu.Items.Add(MakeMenuItem(Loc("Str_Lbl_Image"), (s, e) =>
             {
                 _activeCanvas = CanvasForPage(pageIdx);
@@ -416,6 +416,8 @@ namespace KillerPDF
                 Position = t.Position,
                 Content = t.Content,
                 FontSize = t.FontSize,
+                LetterSpacing = t.LetterSpacing,
+                Vertical = t.Vertical,
                 FontName = t.FontName,
                 Bold = t.Bold,
                 Italic = t.Italic,

@@ -86,6 +86,35 @@ namespace KillerPDF.Controls
         {
             if (!IsFinitePositive(ta.Width) || !IsFinitePositive(ta.Height)) return;
 
+            // Fork: vertical text (直書) is drawn cell by cell, as the saved PDF draws it.
+            if (ta.Vertical)
+            {
+                var vbox = new Border
+                {
+                    Width = Math.Max(1, ta.Width),
+                    Height = Math.Max(1, ta.Height),
+                    Background = ta.HasFill ? new SolidColorBrush(ta.GetFill()) : Brushes.Transparent,
+                    ClipToBounds = true,
+                    IsHitTestVisible = false,
+                    Child = new VerticalTextView
+                    {
+                        Text = ta.Content,
+                        FontName = string.IsNullOrEmpty(ta.FontName) ? "Segoe UI" : ta.FontName,
+                        TextSize = ta.FontSize,
+                        LetterSpacing = ta.LetterSpacing,
+                        Bold = ta.Bold,
+                        Italic = ta.Italic,
+                        Foreground = new SolidColorBrush(ta.GetColor()),
+                        Width = Math.Max(1, ta.Width),
+                        Height = Math.Max(1, ta.Height)
+                    }
+                };
+                Canvas.SetLeft(vbox, ta.Position.X);
+                Canvas.SetTop(vbox, ta.Position.Y);
+                _activeCanvas.Children.Add(vbox);
+                return;
+            }
+
             // A fixed W x H box: optional fill background, text wrapped to the width and clipped to the
             // height (so a free-form-resized box behaves like an image/crop frame).
             FontFamily famsel;
@@ -706,6 +735,7 @@ namespace KillerPDF.Controls
                     sy = EnsureEngineDocumentSession().Pages[tsel.PageIndex].Height / rd.h;
                 _textFontSize = Math.Max(1, Math.Round(tsel.FontSize * sy));
                 _textLetterSpacing = tsel.LetterSpacing * sy;
+                _textVertical = tsel.Vertical;
                 ShowTextSettings();
             }
             // Selecting a highlight / strikethrough / underline opens the draw bar synced to it, so its
@@ -1236,11 +1266,23 @@ namespace KillerPDF.Controls
                         break;
                     }
                     CommitActiveTextBox();
+                    // Fork: check mark mode. Neighbouring boxes on a form sit closer than the forgiving
+                    // text grab margin, so only a click right on a placed mark drags it; anywhere else
+                    // ticks the box under the pointer.
+                    if (Host!.StampText is string stamp)
+                    {
+                        if (!TryBeginAnnotationDrag(pageIdx, pos, a => a is TextAnnotation t
+                                && new Rect(t.Position, new Size(t.Width, t.Height)).Contains(pos)))
+                        {
+                            ClearSelection();
+                            PlaceStampText(stamp, pos, pageIdx);
+                        }
+                    }
                     // Fork: filled-in text, dates, check marks and signatures stay movable without
                     // switching to Select - a drag moves one, a double-click re-edits text. Only an
                     // empty spot places a new box. Images, highlights and ink are left alone so text can go
                     // over them (a pasted scan would otherwise swallow every click).
-                    if (e.ClickCount == 2 && _annotations.TryGetValue(pageIdx, out var textHits)
+                    else if (e.ClickCount == 2 && _annotations.TryGetValue(pageIdx, out var textHits)
                         && textHits.OfType<TextAnnotation>().Any(a => HitTestAnnotation(a, pos, out _)))
                     {
                         ClearSelection();
@@ -1539,6 +1581,7 @@ namespace KillerPDF.Controls
             // Live text-edit box resize (mid-edit corner handles): free-form, opposite corner held fixed.
             if (_draggingTextEditHandle && _tehBox is not null)
             {
+                if (ReferenceEquals(_tehBox, _autoWidthBox)) _autoWidthBox = null;   // the user's width now
                 double newW = Math.Max(40, Math.Abs(pos.X - _tehAnchor.X));
                 double newH = Math.Max(24, Math.Abs(pos.Y - _tehAnchor.Y));
                 double nx = (_tehCorner is "NW" or "SW") ? _tehAnchor.X - newW : _tehAnchor.X;

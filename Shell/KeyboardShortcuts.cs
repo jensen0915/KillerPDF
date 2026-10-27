@@ -158,6 +158,13 @@ namespace KillerPDF
                 ApplyCrop([PageList.SelectedIndex]);
                 e.Handled = true;
             }
+            else if (e.Key == Key.Escape && Keyboard.Modifiers == ModifierKeys.None && OfficePresetActive)
+            {
+                // Fork: Esc ends check mark mode (or drops a pending date) before anything else it does.
+                ClearOfficePresets();
+                SetStatus(Loc("Str_Office_ClickToPlace"));
+                e.Handled = true;
+            }
             else if (e.Key == Key.Escape && _currentTool == EditTool.Crop && _cropConfirmBar is not null)
             {
                 HideCropConfirmBar();
