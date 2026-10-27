@@ -4,6 +4,23 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] (fork)
+
+### Added
+
+- Vertical text (直書): the text bar's 直 toggle lays text out top to bottom with columns right to left; Enter starts the next column and a full column continues in the next. While typing, an ordinary input box (IME candidates included) sits beside a live preview with a caret mark. Brackets and dashes use their vertical presentation forms, or turn a quarter when the face has none; centred Taiwan punctuation stays upright. The overlay, the preview and the saved PDF share one layout, so the saved characters land in the same cells. Selected text boxes can be switched between vertical and horizontal. 新增直書。
+- Check mark mode: after Check mark, each click places a finished ✓ centred on the click, without an edit box, until the button is clicked again, Esc, or another tool. Right-click placement does the same. 勾選記號可連續點擊放置。
+
+### Changed
+
+- New text boxes start narrow and widen with the longest line as it is typed, up to the page edge, where they wrap; dragging a corner keeps the user's width. Re-edited boxes that fit on one line keep widening too. 文字框隨輸入自動加寬。
+- Traditional Chinese starts new text in PMingLiU (新細明體), falling back to Microsoft JhengHei. The font list shows Chinese family names with the common Taiwan faces first. A font picked for new text is remembered at once under a new setting; the old setting, written at exit from whichever box was edited last, is no longer read, so earlier choices need picking once more. A serif Latin choice such as Times New Roman borrows a Ming / Song / Mincho face for Chinese and Japanese instead of the sans default. 預設新細明體並記住字型。
+
+### Fixed
+
+- While a date or check mark is pending, the office toolbar lights that button instead of Add text. 工具列反白修正。
+- A copied or pasted text box, and one restored by undoing a page-level change, lost its letter spacing; it now keeps it, along with its vertical setting. 複製與復原保留字元間距。
+
 ## [1.8.91-office-ux.2] - 2026-10-23 (fork fix release)
 
 Ships the 1.8.91-office-ux.1 fixes below. The release build for the 1.8.91-office-ux.1 tag stopped at its test step, so that version was never published; the application code is unchanged from it. 內容即 1.8.91-office-ux.1 的修正；.1 的發佈建置在測試步驟失敗，沒有發佈，程式本身與 .1 相同。
