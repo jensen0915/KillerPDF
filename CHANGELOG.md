@@ -4,6 +4,21 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] (fork)
+
+### Added
+
+- Text placed in KillerPDF - including vertical text and check marks - stays editable after the file is saved, closed and reopened: it can be dragged, double-clicked and restyled again. A save draws placed text into a form of its own, so every reader shows it as ordinary page content, and records the boxes in that form's /PieceInfo with fingerprints of the page and the form. On open, a page whose fingerprints still match gets the text back as editable boxes over a working copy that no longer draws it; a page another program has changed since keeps the text as page content, and the status bar says so. 重新開啟後仍可編輯新增的文字。
+
+### Changed
+
+- Placed text is drawn above the other markup on its page (highlights, drawings, images, covers) instead of in placement order, since it now goes into an overlay of its own. 新增的文字一律在其他標註之上。
+- A page whose text was restored shows that text from the editor rather than from the page, so, as for text placed in the current session, its thumbnail and text search do not include it until the file is reopened in another program.
+
+### Fixed
+
+- Double-clicking a saved line set in a font such as PMingLiU no longer reports that "PMing Li U" is unavailable and substituted. 修正字型名稱誤報。
+
 ## [1.8.91-office-ux.3] - 2026-10-27 (fork feature release)
 
 ### Added
