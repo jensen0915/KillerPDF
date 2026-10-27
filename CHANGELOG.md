@@ -4,6 +4,12 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] (fork)
+
+### Fixed
+
+- Choosing Recent files from the office toolbar's File menu crashed with "every RoutedEventArgs must have an associated non-null RoutedEvent" instead of showing the list. The menu passed an empty event object to the recent-files handler, which marks it handled; it now passes the menu item's own click. 修正「檔案 ▸ 最近的檔案」當掉。
+
 ## [1.8.91-office-ux.5] - 2026-10-27 (fork fix release)
 
 ### Fixed

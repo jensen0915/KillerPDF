@@ -358,7 +358,9 @@ namespace KillerPDF
             original.Click += (_, _) => SetOfficeToolbarEnabled(false);
             OpenOfficeMenu(button,
                 MakeMenuItem(Loc("Str_Lbl_New"), New_Click, "Ctrl+N"),
-                MakeMenuItem(Loc("Str_TT_RecentFiles"), (_, _) => OpenRecent_Click(button, new RoutedEventArgs())),
+                // Pass the item's own click args: OpenRecent_Click marks them handled, and a bare
+                // RoutedEventArgs (no RoutedEvent) throws on that.
+                MakeMenuItem(Loc("Str_TT_RecentFiles"), (_, args) => OpenRecent_Click(button, args)),
                 new Separator(),
                 DocItem("Str_Lbl_Flatten", SaveFlattened_Click),
                 DocItem("Str_Menu_ExportImages", ExportImages_Click),
