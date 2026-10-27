@@ -114,19 +114,27 @@ internal static class PdfEmbeddedTrueTypeFontFactory
     private static byte[] BuildEncodingMap(
         IReadOnlyDictionary<ushort, EmbeddedCharacterMapping> mappings)
     {
+        var entries = new StringBuilder();
+        foreach (KeyValuePair<ushort, EmbeddedCharacterMapping>[] chunk in mappings.Chunk(100))
+        {
+            entries.Append(chunk.Length).Append(" begincidchar\n");
+            foreach ((ushort code, EmbeddedCharacterMapping mapping) in chunk)
+                entries.Append('<').Append(code.ToString("X4", CultureInfo.InvariantCulture))
+                    .Append("> ").Append(mapping.Glyph).Append('\n');
+            entries.Append("endcidchar\n");
+        }
+        // Each map is named after its own entries. Readers that keep CMaps as named resources
+        // (Adobe Reader) reused the first "KillerPDF-Identity" they met for every other font in the
+        // file, so a page whose check mark was drawn first showed its Chinese text as empty boxes.
+        // The name still starts with KillerPDF-Identity, which is how this engine recognizes its fonts.
+        string name = "KillerPDF-Identity-" + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Encoding.ASCII.GetBytes(entries.ToString())))[..16];
         var text = new StringBuilder(
             "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n" +
             "/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> def\n" +
-            "/CMapName /KillerPDF-Identity def\n/CMapType 1 def\n/WMode 0 def\n" +
+            "/CMapName /" + name + " def\n/CMapType 1 def\n/WMode 0 def\n" +
             "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n");
-        foreach (KeyValuePair<ushort, EmbeddedCharacterMapping>[] chunk in mappings.Chunk(100))
-        {
-            text.Append(chunk.Length).Append(" begincidchar\n");
-            foreach ((ushort code, EmbeddedCharacterMapping mapping) in chunk)
-                text.Append('<').Append(code.ToString("X4", CultureInfo.InvariantCulture))
-                    .Append("> ").Append(mapping.Glyph).Append('\n');
-            text.Append("endcidchar\n");
-        }
+        text.Append(entries);
         text.Append("endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend\n");
         return Encoding.ASCII.GetBytes(text.ToString());
     }

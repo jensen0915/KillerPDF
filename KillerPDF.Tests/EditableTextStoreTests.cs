@@ -152,6 +152,34 @@ public sealed class EditableTextStoreTests
     }
 
     [Fact]
+    public void EachEmbeddedFontsEncodingCMapHasItsOwnName()
+    {
+        // Adobe Reader keeps embedded CMaps by name: when the check mark's map and the text's map
+        // shared one name, whichever came first served both and the other font's text became boxes.
+        string path = Burned(Placed());
+        try
+        {
+            var document = EngineDocument.Open(File.ReadAllBytes(path));
+            var maps = new Dictionary<string, string>();
+            foreach (int number in document.CrossReferences.Keys)
+            {
+                if (document.Resolve(number) is not PdfStream stream) continue;
+                string text;
+                try { text = Encoding.Latin1.GetString(PdfStreamDecoder.Decode(stream, document.Resolve)); }
+                catch { continue; }
+                var name = Regex.Match(text, @"/CMapName /(KillerPDF-Identity\S*) def");
+                if (!name.Success) continue;
+                string body = text[text.IndexOf("endcodespacerange", StringComparison.Ordinal)..];
+                if (maps.TryGetValue(name.Groups[1].Value, out string? seen)) Assert.Equal(seen, body);
+                else maps[name.Groups[1].Value] = body;
+            }
+            // Segoe UI for the Latin text and another face for the check mark: two different maps.
+            Assert.True(maps.Count >= 2, $"expected at least two encoding CMaps, found {maps.Count}");
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public void AnImageCopyCarriesNoEditableText()
     {
         string path = Burned(Placed(), forRasterization: true);

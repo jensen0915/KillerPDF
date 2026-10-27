@@ -4,6 +4,12 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] (fork)
+
+### Fixed
+
+- Text placed in KillerPDF could show as empty boxes in Adobe Reader while check marks displayed. Every embedded font's encoding CMap was named KillerPDF-Identity although each listed only its own font's characters; a reader that keeps CMaps by name used the first one it met (often the check mark's) for every font on the page. Each map is now named after its contents. Files saved earlier display correctly once reopened and saved again in this version. 修正 Adobe Reader 將新增的文字顯示為方框。
+
 ## [1.8.91-office-ux.4] - 2026-10-27 (fork feature release)
 
 ### Added
