@@ -1,6 +1,6 @@
 # KillerPDF 辦公文件微調版
 
-版本：1.8.91-office-ux.4（檔案版本 1.8.91.0），以原專案 KillerPDF 1.8.91 為基礎。Windows x64／.NET 10。
+版本：1.8.91-office-ux.5（檔案版本 1.8.91.0），以原專案 KillerPDF 1.8.91 為基礎。Windows x64／.NET 10。
 
 ## 安裝與執行
 

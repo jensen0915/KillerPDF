@@ -141,3 +141,7 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 ## 發佈版本：1.8.91-office-ux.4
 
 新增的文字存檔後重新開啟仍可編輯（`2aabea56`）：存檔時把文字畫進自己的 Form XObject 並在 /PieceInfo 記錄設定與指紋，開啟時頁面未被其他程式修改才還原成文字框。細節見 CHANGELOG，本機驗證見 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
+
+## 發佈版本：1.8.91-office-ux.5
+
+修正 Adobe Reader 將新增的文字顯示為方框（`a52681ea`）：內嵌字型的編碼 CMap 原本同名，改為依內容命名。細節見 CHANGELOG 與 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
