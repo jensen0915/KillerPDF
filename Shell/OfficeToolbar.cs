@@ -31,6 +31,9 @@ namespace KillerPDF
         private TextBlock? _officeSaveStatus;
         private bool? _officeHasDocument;
         private int _officeShownStatus = -1;   // 0 no document, 1 saved, 2 unsaved
+        // The open File / View menu, and what to run once it has closed (see AfterOfficeMenuCloses).
+        private ContextMenu? _officeMenu;
+        private Action? _afterOfficeMenu;
 
         private static bool OfficeToolbarEnabled => App.GetSetting(OfficeToolbarSetting) != "0";
 
@@ -339,9 +342,27 @@ namespace KillerPDF
             foreach (var item in items) menu.Items.Add(item);
             menu.PlacementTarget = button;
             menu.Placement = PlacementMode.Bottom;
-            menu.Closed += (_, _) => button.Focus();
+            menu.Closed += (_, _) =>
+            {
+                if (ReferenceEquals(_officeMenu, menu)) _officeMenu = null;
+                button.Focus();
+                var next = _afterOfficeMenu;
+                _afterOfficeMenu = null;
+                next?.Invoke();
+            };
             menu.Opened += (_, _) => menu.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            _officeMenu = menu;
+            _afterOfficeMenu = null;
             menu.IsOpen = true;
+        }
+
+        // For an item that opens another popup. The menu raises Closed only after the item's Click,
+        // and it then hands focus back to its button; a popup opened from the Click lost that focus
+        // and closed again at once, so the recent-files list flashed and vanished.
+        private void AfterOfficeMenuCloses(Action action)
+        {
+            if (_officeMenu is null) action();
+            else _afterOfficeMenu = action;
         }
 
         private void OfficeFileMenu(object sender, RoutedEventArgs e)
@@ -360,7 +381,8 @@ namespace KillerPDF
                 MakeMenuItem(Loc("Str_Lbl_New"), New_Click, "Ctrl+N"),
                 // Pass the item's own click args: OpenRecent_Click marks them handled, and a bare
                 // RoutedEventArgs (no RoutedEvent) throws on that.
-                MakeMenuItem(Loc("Str_TT_RecentFiles"), (_, args) => OpenRecent_Click(button, args)),
+                MakeMenuItem(Loc("Str_TT_RecentFiles"),
+                    (_, args) => AfterOfficeMenuCloses(() => OpenRecent_Click(button, args))),
                 new Separator(),
                 DocItem("Str_Lbl_Flatten", SaveFlattened_Click),
                 DocItem("Str_Menu_ExportImages", ExportImages_Click),

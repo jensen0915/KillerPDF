@@ -4,6 +4,12 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] (fork)
+
+### Fixed
+
+- The recent-files list opened from the office toolbar's File menu closed again the moment it appeared. The File menu raises its Closed event only after the clicked item has run, and it then returns keyboard focus to the File button, which closed the list that had just taken focus. The list now opens once the File menu has finished closing. 修正「檔案 ▸ 最近的檔案」清單一出現就關閉。
+
 ## [1.8.91-office-ux.6] - 2026-10-27 (fork fix release)
 
 ### Fixed
