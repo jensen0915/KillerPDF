@@ -149,3 +149,7 @@ fork 自有 commit：`f2bc1a7` CJK 與 Edge 相容、`781558a` 發佈 workflow�
 ## 發佈版本：1.8.91-office-ux.6
 
 修正辦公工具列「檔案 ▸ 最近的檔案」點了會當掉（`b3c5995b`）：選單改為傳入選單項目本身的點擊事件。細節見 CHANGELOG 與 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
+
+## 發佈版本：1.8.91-office-ux.7
+
+修正「檔案 ▸ 最近的檔案」清單一出現就關閉（`98f9978e`）：等「檔案」選單完全關閉、焦點回到按鈕後才開啟清單。細節見 CHANGELOG 與 [OFFICE_UX_VALIDATION.md](../OFFICE_UX_VALIDATION.md)。
