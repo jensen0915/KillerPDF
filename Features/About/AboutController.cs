@@ -25,6 +25,11 @@ namespace KillerPDF.Features
 
         private const string Repo = "https://github.com/SteveTheKiller/KillerPDF";
 
+        // Fork: no update check. It reads the original project's releases, whose download would
+        // replace this build (office toolbar and all) with the original app, and the self-update
+        // only accepts a build signed by the original author, which this fork's builds are not.
+        internal const bool ChecksForUpdates = false;
+
         private readonly IAboutHost _host;
 
         /// <summary>"vX.Y.Z" of the available update, set by the update check. Null until one is found.</summary>
@@ -101,7 +106,7 @@ namespace KillerPDF.Features
         /// <summary>Checks for stable releases without a background service.</summary>
         private async void CheckForUpdateAsync(System.Version? current, bool startup = false)
         {
-            if (current is null || _updateInProgress) return;
+            if (!ChecksForUpdates || current is null || _updateInProgress) return;
             if (startup && !Services.ReleaseUpdateCheck.IsEnabled(
                     App.GetSetting(Services.ReleaseUpdateCheck.Setting))) return;
             try

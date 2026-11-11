@@ -101,6 +101,7 @@ namespace KillerPDF
         {
             StartupUpdateCheck.IsChecked = Services.ReleaseUpdateCheck.IsEnabled(
                 App.GetSetting(Services.ReleaseUpdateCheck.Setting));
+            if (!Features.AboutController.ChecksForUpdates) StartupUpdateCheck.Visibility = Visibility.Collapsed;
             // Reuse the main window's film-grain texture on the About card.
             if (GrainBrush?.ImageSource != null) AboutGrainBrush.ImageSource = GrainBrush.ImageSource;
 

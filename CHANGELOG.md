@@ -4,6 +4,12 @@ All notable changes to KillerPDF are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] (fork)
+
+### Removed
+
+- The update check. It looked for releases of the original project, so at startup it offered to download and install the original KillerPDF (v1.9.2 at the time) over this fork, which would have replaced the office toolbar and every other change here; its self-update also accepts only builds signed by the original author, which this fork's builds are not. Neither startup nor the About card checks for updates any more, and About no longer shows the "Check for updates on startup" option. 移除檢查原專案更新的提示。
+
 ## [1.8.91-office-ux.7] - 2026-10-29 (fork fix release)
 
 ### Fixed
