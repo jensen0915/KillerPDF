@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -193,8 +194,7 @@ namespace KillerPDF
             {
                 var fwd = e.Args.FirstOrDefault(a => !a.StartsWith('/'));
                 GrantPrimaryForegroundPermission();
-                ForwardToPrimary(fwd);
-                Shutdown(0);
+                Shutdown(InstanceChannel.Value.ForwardLaunch(fwd));
                 return;
             }
             StartPipeServer();
@@ -238,8 +238,10 @@ namespace KillerPDF
         // Single-instance IPC (mutex + named pipe)
         // ============================================================
 
-        private const string MutexName = @"Local\KillerPDF.SingleInstance";
-        private const string PipeName  = "KillerPDF.OpenPipe";
+        private static readonly Lazy<SingleInstanceChannel> InstanceChannel = new(() => new(
+            "KillerPDF", WindowsIdentity.GetCurrent().User!.Value,
+            Process.GetCurrentProcess().SessionId));
+        private static string MutexName => InstanceChannel.Value.MutexName;
         private const string UninstallCloseCommand = "::KILLERPDF_CLOSE_FOR_UNINSTALL::";
         private Mutex? _instanceMutex;
 
@@ -260,12 +262,13 @@ namespace KillerPDF
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(
-                        PipeName, PipeDirection.In, 1,
-                        PipeTransmissionMode.Byte, PipeOptions.None);
+                    // Disposed before the next accept, so a stalled or oversized sender is dropped
+                    // after the message deadline instead of holding the only instance (BF-A008).
+                    using var server = InstanceChannel.Value.CreateServer();
                     server.WaitForConnection();
-                    using var reader = new StreamReader(server, Encoding.UTF8);
-                    string? path = reader.ReadLine();
+                    string? path = SingleInstanceChannel.ReadMessage(server,
+                        SingleInstanceChannel.MaximumMessageBytes, SingleInstanceChannel.MessageDeadline);
+                    if (path is null) continue;
                     Dispatcher.BeginInvoke(new Action(() => DeliverExternalOpen(path)));
                 }
                 catch
@@ -307,22 +310,7 @@ namespace KillerPDF
             _instanceMutex = null;
         }
 
-        // Secondary instance: send our file path to the primary instance over the pipe.
-        private static void ForwardToPrimary(string? path)
-            => SendToPrimary(path);
-
-        private static bool SendToPrimary(string? path)
-        {
-            try
-            {
-                using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
-                client.Connect(3000);
-                using var w = new StreamWriter(client, new UTF8Encoding(false)) { AutoFlush = true };
-                w.WriteLine(path ?? "");
-                return true;
-            }
-            catch { return false; }
-        }
+        private static bool SendToPrimary(string? path) => InstanceChannel.Value.TrySend(path);
 
         private static bool CloseRunningInstanceForUninstall()
         {
