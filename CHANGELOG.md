@@ -10,6 +10,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 - The update check. It looked for releases of the original project, so at startup it offered to download and install the original KillerPDF (v1.9.2 at the time) over this fork, which would have replaced the office toolbar and every other change here; its self-update also accepts only builds signed by the original author, which this fork's builds are not. Neither startup nor the About card checks for updates any more, and About no longer shows the "Check for updates on startup" option. 移除檢查原專案更新的提示。
 
+### Security
+
+- Picked from upstream v1.9.0 (89cf2b1a, 1b2358ae): a second launch hands its file only to a KillerPDF running under the same Windows account and session. The single-instance pipe admits only the signed-in user and SYSTEM, and a forwarded open must be one message of at most 32 KB delivered within 2 seconds, so a stalled or flooding client can no longer block later launches. The mutex and pipe names now include the account and session. 已開啟的視窗只接手同一帳號與工作階段的開檔。
+
+### Fixed
+
+- Picked from upstream v1.9.2 (050427d6): appending content to a page whose content does not end in a line break no longer glues the last operator to the first appended one, which could drop a drawing or swallow it into a trailing comment. 附加頁面內容時保留指令分隔。
+- Picked from upstream v1.9.2 (13c9ce52): an Undo or Redo that fails, for example when a whole-document snapshot cannot be reopened, keeps its history entry instead of losing it, and the current document stays open until the snapshot has opened. 復原失敗時不再遺失紀錄。
+- Ported from upstream v1.9.1 (008a0544): a form field whose font size was changed with the size bar, without editing its text, kept its old size on save; the size is now saved and the field redrawn with its current value. 只改字級的表單欄位也會存檔。
+
 ## [1.8.91-office-ux.7] - 2026-10-29 (fork fix release)
 
 ### Fixed
