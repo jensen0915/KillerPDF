@@ -196,7 +196,8 @@ internal static class PdfEngineIntegration
         ArgumentNullException.ThrowIfNull(edits);
         if (edits.TextValues.Count == 0 && edits.ChoiceValues.Count == 0
             && edits.MultiChoiceValues.Count == 0
-            && edits.CheckBoxValues.Count == 0 && edits.RadioValues.Count == 0)
+            && edits.CheckBoxValues.Count == 0 && edits.RadioValues.Count == 0
+            && edits.TextFontSizes.Count == 0)
             return;
         PdfDocument document = PdfDocument.Open(File.ReadAllBytes(path));
         var fonts = new Dictionary<string, TrueTypeFont>(StringComparer.OrdinalIgnoreCase);
@@ -211,6 +212,16 @@ internal static class PdfEngineIntegration
         foreach ((string name, string value) in edits.TextValues.OrderBy(item => item.Key))
             editor.SetTextFieldValue(name, value, EmbeddedFormFont(value, fonts), fontSize:
                 edits.TextFontSizes.TryGetValue(name, out double size) ? size : null);
+        foreach ((string name, double size) in edits.TextFontSizes.OrderBy(item => item.Key))
+        {
+            if (edits.TextValues.ContainsKey(name)) continue;
+            PdfFormWidgetInfo field = widgets.FirstOrDefault(widget =>
+                widget.FieldKind == PdfFormFieldKind.Text
+                && string.Equals(widget.FieldName, name, StringComparison.Ordinal))
+                ?? throw new InvalidOperationException($"Text field '{name}' was not found.");
+            string value = field.Value ?? string.Empty;
+            editor.SetTextFieldValue(name, value, EmbeddedFormFont(value, fonts), fontSize: size);
+        }
         foreach ((string name, string value) in edits.ChoiceValues.OrderBy(item => item.Key))
         {
             string appearanceText = widgets.FirstOrDefault(widget =>
